@@ -159,6 +159,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .search-result:hover, .search-result.active { background: var(--hover); }
 .search-result small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
 .search-empty { margin: 0; padding: 8px; color: var(--muted); font-size: 14px; }
+.gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
+.gate .brand-row { align-self: center; }
+.gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
+.gate-form input { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.gate-message { margin: 0; text-align: center; color: var(--muted); }
 .sub-setting { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
 .sub-title { margin: 0; font-size: 14px; font-weight: 600; }
 .group-title { margin: 8px 0 0; font-size: 14px; font-weight: 700; }
@@ -531,11 +536,16 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       <p class="empty"><strong>Team member:</strong> Can add and change everything.</p>
       <p class="empty"><strong>Client:</strong> Can only view the calendars you choose.</p>
       <div class="theme-options">
-        <button class="quiet" id="invite-team" type="button">Invite team member</button>
-        <button class="quiet" id="invite-client" type="button">Invite client</button>
+        <button class="quiet" id="invite-team" type="button">Add team member</button>
+        <button class="quiet" id="invite-client" type="button">Add client access</button>
       </div>
       <div class="invite-list" id="invite-list"></div>
-      <p class="empty">Email invites will start working once the site is hosted. For now, invites are only saved here. To give someone access today, use the Share menu.</p>
+      <p class="empty">Added people can sign in right away with that email at this site.</p>
+    </div>
+    <div class="setting">
+      <div class="side-label">Account</div>
+      <p class="empty">Signed in as <span id="account-email"></span>.</p>
+      <div class="theme-options"><button class="quiet" id="sign-out" type="button">Sign out</button></div>
     </div>
     <div class="setting">
       <div class="side-label">Dance</div>
@@ -593,7 +603,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 <dialog class="small" id="invite-dialog" aria-labelledby="invite-title">
   <form id="invite-form" novalidate>
     <div class="dlg-head">
-      <h2 class="dlg-title" id="invite-title">Invite team member</h2>
+      <h2 class="dlg-title" id="invite-title">Add team member</h2>
       <button class="close" id="close-invite" type="button" aria-label="Close">&times;</button>
     </div>
     <div class="field"><label for="invite-email">Email</label><input id="invite-email" type="email" autocomplete="off" placeholder="name@company.com"></div>
@@ -604,7 +614,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <div class="dlg-foot">
       <p class="error" id="invite-error" hidden></p>
       <button class="quiet" id="cancel-invite" type="button">Cancel</button>
-      <button class="primary" id="save-invite" type="submit">Save invite</button>
+      <button class="primary" id="save-invite" type="submit">Add person</button>
     </div>
   </form>
 </dialog>
@@ -641,6 +651,218 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
 <div class="toast" id="toast" role="status" hidden></div>
 
+<div class="gate" id="gate">
+  <form class="gate-form" id="gate-form" hidden>
+    <label class="side-label" for="gate-email">Email</label>
+    <input id="gate-email" type="email" autocomplete="email" placeholder="name@company.com">
+    <button class="primary" type="submit">Send sign-in link</button>
+  </form>
+  <p class="gate-message" id="gate-message">Loading.</p>
+  <button class="quiet" id="gate-out" type="button" hidden>Sign out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+/* Connects the page to Supabase: sign-in, saved data, live updates, and file storage. */
+(function () {
+  const sb = window.supabase.createClient(
+    "https://wwehsdjcgvkbteeahpkv.supabase.co",
+    "sb_publishable_5mU_95igaMC4Kr8QwuECbw_rH_bte4A"
+  );
+  const gate = document.getElementById("gate");
+  const gateForm = document.getElementById("gate-form");
+  const gateMessage = document.getElementById("gate-message");
+  const gateEmail = document.getElementById("gate-email");
+  let me = null;
+  let finishReady;
+  const ready = new Promise((resolve) => { finishReady = resolve; });
+
+  gate.prepend(document.querySelector(".brand-row").cloneNode(true));
+  gate.querySelector("#home")?.removeAttribute("id");
+
+  function showGate(message, formVisible) {
+    gate.hidden = false;
+    gateForm.hidden = !formVisible;
+    gateMessage.textContent = message;
+  }
+
+  async function enter(session) {
+    if (me || !session) return;
+    const email = session.user.email.toLowerCase();
+    const { data, error } = await sb.from("members").select("email, role").eq("email", email).maybeSingle();
+    if (error) {
+      showGate("We couldn't load your account. Refresh the page to try again.", false);
+      return;
+    }
+    if (!data) {
+      showGate(email + " doesn't have access yet. Ask your admin to add you.", false);
+      document.getElementById("gate-out").hidden = false;
+      return;
+    }
+    me = { email, role: data.role };
+    gate.hidden = true;
+    document.getElementById("account-email").textContent = email;
+    finishReady();
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) setTimeout(() => enter(session), 0);
+  });
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) enter(data.session);
+    else showGate("Sign in with your email.", true);
+  });
+
+  gateForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = gateEmail.value.trim().toLowerCase();
+    if (!email) return;
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin } });
+    if (error) showGate("That didn't send. Wait a few minutes and try again.", true);
+    else showGate("Check your email for a sign-in link.", false);
+  });
+
+  async function signOut() {
+    await sb.auth.signOut();
+    location.reload();
+  }
+  document.getElementById("gate-out").addEventListener("click", signOut);
+  document.getElementById("sign-out").addEventListener("click", signOut);
+
+  function strip(object) {
+    return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+  }
+  const check = ({ error, data }) => {
+    if (error) throw error;
+    return data;
+  };
+
+  const models = {
+    clients: {
+      table: "clients", key: "id", watch: ["clients"],
+      row: (d) => strip({ name: d.name, color: d.color, created_at: d.createdAt }),
+      doc: (r) => ({ name: r.name, color: r.color, createdAt: r.created_at })
+    },
+    invites: {
+      table: "members", key: "email", watch: ["members"],
+      row: (d) => strip({ email: d.email, role: d.role, calendars: d.calendars, invited_at: d.invitedAt }),
+      doc: (r) => ({ email: r.email, role: r.role, calendars: r.calendars, invitedAt: r.invited_at })
+    },
+    posts: {
+      table: "posts", key: "id", watch: ["posts", "post_comments"],
+      row: (d) => strip({
+        client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
+        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, created_by: d.createdBy
+      }),
+      doc: (r) => ({
+        client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
+        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, createdBy: r.created_by || undefined
+      })
+    }
+  };
+
+  async function loadRows(model) {
+    const rows = check(await sb.from(model.table).select("*"));
+    if (model.table !== "posts") return rows.map((row) => ({ id: row[model.key], ...model.doc(row) }));
+    let notes = [];
+    if (me.role !== "client") notes = check(await sb.from("post_comments").select("*"));
+    const byPost = Object.fromEntries(notes.map((note) => [note.post_id, note.comments]));
+    return rows.map((row) => ({ id: row.id, ...model.doc(row), comments: byPost[row.id] || [] }));
+  }
+
+  function collection(name) {
+    const model = models[name];
+    return {
+      doc(id) {
+        return {
+          id,
+          async set(data) {
+            const row = model.row(data);
+            if (model.key === "id") row.id = id;
+            check(await sb.from(model.table).upsert(row));
+            if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+          },
+          async update(data) {
+            const row = model.row(data);
+            if (Object.keys(row).length) check(await sb.from(model.table).update(row).eq(model.key, id));
+            if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+          },
+          async delete() {
+            check(await sb.from(model.table).delete().eq(model.key, id));
+          }
+        };
+      },
+      onSnapshot(next, onError) {
+        let timer;
+        const send = async () => {
+          try {
+            const rows = await loadRows(model);
+            next({ docs: rows.map(({ id, ...rest }) => ({ id, data: () => rest })), metadata: { fromCache: false } });
+          } catch (problem) {
+            if (onError) onError(problem);
+          }
+        };
+        const later = () => {
+          clearTimeout(timer);
+          timer = setTimeout(send, 150);
+        };
+        const channel = sb.channel("live-" + name);
+        model.watch.forEach((table) => {
+          channel.on("postgres_changes", { event: "*", schema: "public", table }, later);
+        });
+        channel.subscribe();
+        send();
+        return () => sb.removeChannel(channel);
+      }
+    };
+  }
+
+  const db = {
+    collection,
+    doc() {
+      return {
+        async get() {
+          const row = check(await sb.from("preferences").select("data").eq("email", me.email).maybeSingle());
+          return { exists: Boolean(row), data: () => (row ? row.data : undefined) };
+        },
+        async set(data) {
+          check(await sb.from("preferences").upsert({ email: me.email, data }));
+        }
+      };
+    }
+  };
+
+  const user = {
+    id: async () => me.email,
+    isOwner: async () => me.role === "admin",
+    can: async () => me.role !== "client",
+    profiles: async (ids) => Object.fromEntries(ids.map((id) => [id, { name: String(id).split("@")[0] }]))
+  };
+
+  const assets = {
+    async upload(file) {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const path = crypto.randomUUID() + "-" + safe;
+      const { error } = await sb.storage.from("assets").upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      return { id: path, contentType: file.type };
+    },
+    async signedUrl(id) {
+      const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    }
+  };
+
+  const capabilities = { db, user, assets };
+  window.claude = {
+    async use(name) {
+      await ready;
+      return capabilities[name] || null;
+    }
+  };
+})();
+</script>
 <script>
 const COLORS = ["Coral", "Yellow", "Lime", "Teal", "Blue", "Pink", "Sand", "Gray", "Peach", "Butter", "Green", "Jade", "Sky", "Blush", "Cream", "Silver", "Orange", "Pale lime", "Cyan", "Lavender", "Orchid", "Sage", "Rose", "Seafoam", "Slate"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -907,12 +1129,13 @@ function renderInvites() {
     const row = el("div", "invite-row");
     const info = el("div", "invite-info", invite.email);
     const names = (invite.calendars || []).map((id) => (clientById(id) || {}).name).filter(Boolean).join(", ");
-    info.append(el("small", "", invite.role === "client" ? "Client, not sent yet" + (names ? " · " + names : "") : "Team member, not sent yet"));
+    info.append(el("small", "", invite.role === "admin" ? "Admin" : invite.role === "client" ? "Client" + (names ? " · " + names : "") : "Team member"));
     const remove = el("button", "quiet", "Remove");
     remove.type = "button";
     remove.setAttribute("aria-label", "Remove invite for " + invite.email);
     remove.addEventListener("click", () => removeInvite(invite.id));
-    row.append(info, remove);
+    row.append(info);
+    if (invite.role !== "admin") row.append(remove);
     list.append(row);
   });
 }
@@ -926,7 +1149,7 @@ async function removeInvite(id) {
   }
   state.invites = state.invites.filter((invite) => invite.id !== id);
   renderInvites();
-  showToast("Invite removed");
+  showToast("Access removed");
 }
 
 function renderInviteCalendars() {
@@ -953,7 +1176,7 @@ function renderInviteCalendars() {
 function openInvite(role) {
   inviteRole = role;
   inviteCalendars = new Set();
-  $("invite-title").textContent = role === "client" ? "Invite client" : "Invite team member";
+  $("invite-title").textContent = role === "client" ? "Add client access" : "Add team member";
   $("invite-calendars-field").hidden = role !== "client";
   $("invite-email").value = "";
   $("invite-error").hidden = true;
@@ -967,7 +1190,7 @@ async function saveInvite(event) {
   const email = $("invite-email").value.trim().toLowerCase();
   const error = $("invite-error");
   const problem = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address."
-    : state.invites.some((invite) => invite.email === email) ? "That email already has an invite."
+    : state.invites.some((invite) => invite.email === email) ? "That person is already added."
     : inviteRole === "client" && !inviteCalendars.size ? "Choose at least one calendar." : "";
   if (problem) {
     error.textContent = problem;
@@ -989,7 +1212,7 @@ async function saveInvite(event) {
   if (!state.invites.some((item) => item.id === id)) state.invites.push({ id, ...invite });
   $("invite-dialog").close();
   renderInvites();
-  showToast("Invite saved. No email was sent.");
+  showToast("Added. They can sign in now.");
 }
 
 function changeSchedule() {
@@ -1224,7 +1447,7 @@ function render() {
   });
   $("add-client").hidden = state.readOnly;
   $("new-post").hidden = state.readOnly;
-  $("people-setting").hidden = state.readOnly;
+  $("people-setting").hidden = !isOwner;
 }
 
 function moveMonth(step) {
@@ -1357,13 +1580,21 @@ function openNewPost(date) {
   openDialog();
 }
 
-function renderAssetPreview() {
+async function renderAssetPreview() {
   const preview = $("asset-preview");
   preview.replaceChildren();
   const file = draft.assetFile;
   preview.hidden = !file;
   if (!file) return;
-  const url = file.url || "/_blob/" + file.id;
+  let url;
+  try {
+    url = await assets.signedUrl(file.id);
+  } catch (problem) {
+    preview.append(el("span", "", "This file can't be previewed right now."));
+    return;
+  }
+  if (draft.assetFile !== file) return;
+  preview.replaceChildren();
   if ((file.type || "").startsWith("image/")) {
     const image = el("img");
     image.src = url;
@@ -1387,8 +1618,8 @@ async function uploadAsset(file) {
   const error = $("form-error");
   const button = $("upload-asset");
   error.hidden = true;
-  if (file.size > 20 * 1024 * 1024) {
-    error.textContent = "That file is over 20 MB. Paste a Google Drive link instead.";
+  if (file.size > 50 * 1024 * 1024) {
+    error.textContent = "That file is over 50 MB. Paste a Google Drive link instead.";
     error.hidden = false;
     return;
   }
