@@ -165,6 +165,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
 .gate-form input { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.gate-text { min-height: 34px; color: var(--muted); font-size: 13.5px; font-weight: 500; }
+.gate-text:hover { color: var(--fg); }
 .gate-note { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
 .gate-message { margin: 0; text-align: center; color: var(--muted); }
 .sub-setting { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
@@ -664,9 +666,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <input id="gate-email" type="email" autocomplete="email" placeholder="name@company.com">
     <label class="side-label" for="gate-password">Password</label>
     <input id="gate-password" type="password" autocomplete="current-password">
-    <button class="primary" type="submit">Log in</button>
-    <button class="quiet" id="gate-link" type="button">Email me a sign-in link</button>
-    <p class="gate-note">First time here, or forgot your password? Use the email link.</p>
+    <button class="primary" id="gate-submit" type="submit">Log in</button>
+    <button class="gate-text" id="gate-switch" type="button">New here? Sign up</button>
+    <button class="gate-text" id="gate-link" type="button">Forgot password?</button>
   </form>
   <form class="gate-form" id="gate-new" hidden>
     <label class="side-label" for="gate-new-password">Create a password</label>
@@ -699,6 +701,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
   const gateNew = document.getElementById("gate-new");
   let entering = false;
+  let signingUp = false;
 
   function showGate(message, formVisible) {
     gate.hidden = false;
@@ -753,9 +756,32 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       showGate("Enter your email and password.", true);
       return;
     }
+    if (signingUp) {
+      if (password.length < 8) {
+        showGate("Use at least 8 characters for your password.", true);
+        return;
+      }
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: location.origin, data: { has_password: true } }
+      });
+      if (error) showGate("That didn't work. Check your email and try again, or wait a minute.", true);
+      else if (data.session) enter(data.session);
+      else showGate("Check your email to confirm your account.", false);
+      return;
+    }
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) showGate("That email or password isn't right. First time here? Use the email link.", true);
+    if (error) showGate("That email or password isn't right.", true);
     else enter(data.session);
+  });
+
+  document.getElementById("gate-switch").addEventListener("click", () => {
+    signingUp = !signingUp;
+    document.getElementById("gate-submit").textContent = signingUp ? "Sign up" : "Log in";
+    document.getElementById("gate-switch").textContent = signingUp ? "Already have an account? Log in" : "New here? Sign up";
+    document.getElementById("gate-link").hidden = signingUp;
+    document.getElementById("gate-password").autocomplete = signingUp ? "new-password" : "current-password";
+    gateMessage.textContent = "";
   });
 
   document.getElementById("gate-link").addEventListener("click", async () => {
@@ -766,7 +792,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     }
     const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin } });
     if (error) showGate("We may have already sent your link. Check your email, or wait a minute and try again.", true);
-    else showGate("Check your email for a sign-in link.", false);
+    else showGate("Check your email for a link to get back in.", false);
   });
 
   gateNew.addEventListener("submit", async (event) => {
