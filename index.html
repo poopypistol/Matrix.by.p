@@ -547,7 +547,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <button class="quiet" id="invite-client" type="button">Add client access</button>
       </div>
       <div class="invite-list" id="invite-list"></div>
-      <p class="empty" id="people-help">Added people can sign in right away with that email at this site.</p>
     </div>
     <div class="setting">
       <div class="side-label">Account</div>
@@ -1224,7 +1223,7 @@ function renderBumpSettings() {
 function renderInvites() {
   const list = $("invite-list");
   list.replaceChildren();
-  state.invites.forEach((invite) => {
+  state.invites.filter((invite) => invite.role !== "admin").forEach((invite) => {
     const row = el("div", "invite-row");
     const info = el("div", "invite-info", invite.email);
     const names = (invite.calendars || []).map((id) => (clientById(id) || {}).name).filter(Boolean).join(", ");
@@ -1550,7 +1549,7 @@ function render() {
   $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
   $("invite-buttons").hidden = !isOwner;
   $("invite-list").hidden = !isOwner;
-  $("people-help").hidden = !isOwner;
+
 }
 
 function moveMonth(step) {
