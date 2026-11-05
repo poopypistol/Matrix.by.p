@@ -161,6 +161,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .search-empty { margin: 0; padding: 8px; color: var(--muted); font-size: 14px; }
 .password-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .password-row input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.admin-note { margin: 0; color: var(--danger); font-size: 12.5px; font-weight: 500; }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
@@ -538,14 +539,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     </div>
     <div class="setting" id="people-setting">
       <div class="side-label">Add people</div>
+      <p class="admin-note" id="people-note"></p>
       <p class="empty"><strong>Team member:</strong> Can add and change everything.</p>
       <p class="empty"><strong>Client:</strong> Can only view the calendars you choose.</p>
-      <div class="theme-options">
+      <div class="theme-options" id="invite-buttons">
         <button class="quiet" id="invite-team" type="button">Add team member</button>
         <button class="quiet" id="invite-client" type="button">Add client access</button>
       </div>
       <div class="invite-list" id="invite-list"></div>
-      <p class="empty">Added people can sign in right away with that email at this site.</p>
+      <p class="empty" id="people-help">Added people can sign in right away with that email at this site.</p>
     </div>
     <div class="setting">
       <div class="side-label">Account</div>
@@ -1544,7 +1546,11 @@ function render() {
   });
   $("add-client").hidden = state.readOnly;
   $("new-post").hidden = state.readOnly;
-  $("people-setting").hidden = !isOwner;
+  $("people-setting").hidden = state.readOnly;
+  $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
+  $("invite-buttons").hidden = !isOwner;
+  $("invite-list").hidden = !isOwner;
+  $("people-help").hidden = !isOwner;
 }
 
 function moveMonth(step) {
