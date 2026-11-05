@@ -159,10 +159,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .search-result:hover, .search-result.active { background: var(--hover); }
 .search-result small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
 .search-empty { margin: 0; padding: 8px; color: var(--muted); font-size: 14px; }
+.password-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.password-row input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
 .gate-form input { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.gate-note { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
 .gate-message { margin: 0; text-align: center; color: var(--muted); }
 .sub-setting { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
 .sub-title { margin: 0; font-size: 14px; font-weight: 600; }
@@ -545,6 +548,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <div class="setting">
       <div class="side-label">Account</div>
       <p class="empty">Signed in as <span id="account-email"></span>.</p>
+      <form class="password-row" id="password-form">
+        <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password">
+        <button class="quiet" type="submit">Change password</button>
+      </form>
       <div class="theme-options"><button class="quiet" id="sign-out" type="button">Sign out</button></div>
     </div>
     <div class="setting">
@@ -655,7 +662,17 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   <form class="gate-form" id="gate-form" hidden>
     <label class="side-label" for="gate-email">Email</label>
     <input id="gate-email" type="email" autocomplete="email" placeholder="name@company.com">
-    <button class="primary" type="submit">Send sign-in link</button>
+    <label class="side-label" for="gate-password">Password</label>
+    <input id="gate-password" type="password" autocomplete="current-password">
+    <button class="primary" type="submit">Log in</button>
+    <button class="quiet" id="gate-link" type="button">Email me a sign-in link</button>
+    <p class="gate-note">First time here, or forgot your password? Use the email link.</p>
+  </form>
+  <form class="gate-form" id="gate-new" hidden>
+    <label class="side-label" for="gate-new-password">Create a password</label>
+    <input id="gate-new-password" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+    <button class="primary" type="submit">Save password</button>
+    <p class="gate-note">You'll use this to log in on any device.</p>
   </form>
   <p class="gate-message" id="gate-message">Loading.</p>
   <button class="quiet" id="gate-out" type="button" hidden>Sign out</button>
@@ -680,16 +697,28 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   gate.prepend(document.querySelector(".brand-row").cloneNode(true));
   gate.querySelector("#home")?.removeAttribute("id");
 
+  const gateNew = document.getElementById("gate-new");
+  let entering = false;
+
   function showGate(message, formVisible) {
     gate.hidden = false;
     gateForm.hidden = !formVisible;
+    gateNew.hidden = true;
     gateMessage.textContent = message;
   }
 
+  function finishEntry() {
+    gate.hidden = true;
+    document.getElementById("account-email").textContent = me.email;
+    finishReady();
+  }
+
   async function enter(session) {
-    if (me || !session) return;
+    if (me || entering || !session) return;
+    entering = true;
     const email = session.user.email.toLowerCase();
     const { data, error } = await sb.from("members").select("email, role").eq("email", email).maybeSingle();
+    entering = false;
     if (error) {
       showGate("We couldn't load your account. Refresh the page to try again.", false);
       return;
@@ -700,9 +729,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       return;
     }
     me = { email, role: data.role };
-    gate.hidden = true;
-    document.getElementById("account-email").textContent = email;
-    finishReady();
+    if (session.user.user_metadata && session.user.user_metadata.has_password) {
+      finishEntry();
+      return;
+    }
+    showGate("", false);
+    gateNew.hidden = false;
   }
 
   sb.auth.onAuthStateChange((event, session) => {
@@ -710,16 +742,55 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   });
   sb.auth.getSession().then(({ data }) => {
     if (data.session) enter(data.session);
-    else showGate("Sign in with your email.", true);
+    else showGate("", true);
   });
 
   gateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const email = gateEmail.value.trim().toLowerCase();
-    if (!email) return;
+    const password = document.getElementById("gate-password").value;
+    if (!email || !password) {
+      showGate("Enter your email and password.", true);
+      return;
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showGate("That email or password isn't right. First time here? Use the email link.", true);
+    else enter(data.session);
+  });
+
+  document.getElementById("gate-link").addEventListener("click", async () => {
+    const email = gateEmail.value.trim().toLowerCase();
+    if (!email) {
+      showGate("Enter your email first.", true);
+      return;
+    }
     const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin } });
-    if (error) showGate("That didn't send. Wait a few minutes and try again.", true);
+    if (error) showGate("We may have already sent your link. Check your email, or wait a minute and try again.", true);
     else showGate("Check your email for a sign-in link.", false);
+  });
+
+  gateNew.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = document.getElementById("gate-new-password").value;
+    if (password.length < 8) {
+      gateMessage.textContent = "Use at least 8 characters.";
+      return;
+    }
+    const { error } = await sb.auth.updateUser({ password, data: { has_password: true } });
+    if (error) gateMessage.textContent = "That password didn't save. Try a different one.";
+    else finishEntry();
+  });
+
+  document.getElementById("password-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("new-password");
+    if (input.value.length < 8) {
+      window.showToast("Use at least 8 characters.");
+      return;
+    }
+    const { error } = await sb.auth.updateUser({ password: input.value, data: { has_password: true } });
+    input.value = "";
+    window.showToast(error ? "That password didn't save. Try a different one." : "Password changed");
   });
 
   async function signOut() {
