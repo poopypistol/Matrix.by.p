@@ -530,6 +530,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         </div>
         <button class="quiet" id="push-test" type="button" hidden>Send a test</button>
       </div>
+      <h3 class="group-title" id="slack-title">Slack</h3>
+      <p class="empty">DMA team only. Get your notifications from Matrix Bot in a Slack direct message. Your matrix email must match your Slack email.</p>
+      <div class="theme-options push-options">
+        <div class="mode-options" id="slack-modes" role="group" aria-labelledby="slack-title">
+          <button class="quiet" type="button" data-slack="on">On</button>
+          <button class="quiet" type="button" data-slack="off">Off</button>
+        </div>
+        <button class="quiet" id="slack-test" type="button" hidden>Send a Slack test</button>
+      </div>
       <h3 class="group-title">Bumps</h3>
       <p class="empty">Bumps remind you when a post is still unapproved close to its post date.</p>
       <div class="sub-setting">
@@ -787,8 +796,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       return;
     }
     showGate("", true);
-    history.replaceState(null, "", location.pathname);
-    if (window.showView) window.showView("calendar");
+    if (location.hash === "#settings") {
+      history.replaceState(null, "", location.pathname);
+      if (window.showView) window.showView("calendar");
+    }
   });
 
   gateForm.addEventListener("submit", async (event) => {
@@ -1021,6 +1032,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   const pushTest = document.getElementById("push-test");
   const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const registration = pushSupported ? navigator.serviceWorker.register("/sw.js") : null;
+  if (pushSupported) {
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data && event.data.openUrl) location.href = event.data.openUrl;
+    });
+  }
 
   async function refreshPush() {
     if (!pushSupported) {
@@ -1091,6 +1107,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     window.showToast(error || !data || !data.delivered ? "The test didn't send. Try again." : "Test sent");
   });
 
+  document.getElementById("slack-test").addEventListener("click", async () => {
+    const { data, error } = await sb.functions.invoke("send-notification", { body: { test: "slack" } });
+    window.showToast(error || !data || !data.slack ? "The Slack test didn't send. Check that your Slack email matches." : "Slack test sent");
+  });
+
   ready.then(refreshPush);
 
   const capabilities = { db, user, assets };
@@ -1110,7 +1131,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const now = new Date();
 const state = {
   year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStatus: { approved: true, unapproved: true },
-  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], commentMode: "mine", commentSeen: {},
+  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {},
   bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
 };
 let db = null;
@@ -1572,6 +1593,7 @@ function savePreferences() {
     bumpModes: { ...state.bumpModes },
     bumpSchedule: state.bumpSchedule.map((slot) => ({ ...slot })),
     commentMode: state.commentMode,
+    slack: state.slackOn,
     commentSeen: { ...state.commentSeen }
   };
   preferenceWrite = preferenceWrite
@@ -1589,6 +1611,14 @@ function doubleTap(key, wasSolo) {
   }
   lastTap = { key, time, wasSolo };
   return null;
+}
+
+/* Opens the post named in a notification link, like #post-abc123. */
+function openLinkedPost() {
+  if (!location.hash.startsWith("#post-")) return;
+  const post = state.posts.find((item) => item.id === location.hash.slice(6));
+  if (post && clientById(post.client)) goToPost(post);
+  else history.replaceState(null, "", location.pathname);
 }
 
 function closeSearch() {
@@ -1742,6 +1772,10 @@ function render() {
   renderBumps();
   renderBumpSettings();
   renderBumpTiming();
+  document.querySelectorAll("[data-slack]").forEach((button) => {
+    button.setAttribute("aria-pressed", String((button.dataset.slack === "on") === state.slackOn));
+  });
+  $("slack-test").hidden = !state.slackOn;
   document.querySelectorAll("[data-comment-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.commentMode === state.commentMode));
   });
@@ -2280,6 +2314,7 @@ async function connect() {
         Object.assign(state.bumpModes, stored.bumpModes || {});
         if (stored.bumpSchedule) state.bumpSchedule = stored.bumpSchedule.map((slot) => ({ ...slot }));
         if (stored.commentMode) state.commentMode = stored.commentMode;
+        state.slackOn = Boolean(stored.slack);
         state.commentSeen = { ...(stored.commentSeen || {}) };
       }
     } catch (problem) { /* bumps stay on for every calendar until the choice can load */ }
@@ -2296,6 +2331,7 @@ async function connect() {
     clearTimeout(timer);
     setNote("");
     notificationsReady = true;
+    openLinkedPost();
     const bumps = bumpPosts().length;
     if (bumps) showToast(bumps === 1 ? "You have 1 bump" : "You have " + bumps + " bumps");
   };
@@ -2433,6 +2469,13 @@ $("color-hex").addEventListener("input", () => {
   setPickedColor(hex.toLowerCase());
   showPickedColor(true);
 });
+$("slack-modes").addEventListener("click", (event) => {
+  const choice = event.target.dataset.slack;
+  if (!choice) return;
+  state.slackOn = choice === "on";
+  render();
+  savePreferences();
+});
 $("comment-modes").addEventListener("click", (event) => {
   const mode = event.target.dataset.commentMode;
   if (!mode) return;
@@ -2497,6 +2540,9 @@ setInterval(() => {
 }, 60000);
 
 if (location.hash === "#settings") showView("settings");
+window.addEventListener("hashchange", () => {
+  if (notificationsReady) openLinkedPost();
+});
 render();
 connect().then(() => {
   if (location.hash === "#settings") loadAccess();

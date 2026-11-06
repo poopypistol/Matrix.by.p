@@ -9,14 +9,17 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(data.title, {
     body: data.body,
     icon: "/icon-192.png",
-    badge: "/icon-192.png"
+    badge: "/icon-192.png",
+    data: { url: data.url || "/" }
   }));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const url = new URL(event.notification.data.url, self.location.origin).href;
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
-    if (windows.length) return windows[0].focus();
-    return self.clients.openWindow("/");
+    if (!windows.length) return self.clients.openWindow(url);
+    windows[0].postMessage({ openUrl: url });
+    return windows[0].focus();
   }));
 });
