@@ -782,8 +782,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     if (session) setTimeout(() => enter(session), 0);
   });
   sb.auth.getSession().then(({ data }) => {
-    if (data.session) enter(data.session);
-    else showGate("", true);
+    if (data.session) {
+      enter(data.session);
+      return;
+    }
+    showGate("", true);
+    history.replaceState(null, "", location.pathname);
+    if (window.showView) window.showView("calendar");
   });
 
   gateForm.addEventListener("submit", async (event) => {
@@ -873,7 +878,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
   async function signOut() {
     await sb.auth.signOut();
-    location.reload();
+    location.replace(location.pathname);
   }
   document.getElementById("gate-out").addEventListener("click", signOut);
   document.getElementById("sign-out").addEventListener("click", signOut);
