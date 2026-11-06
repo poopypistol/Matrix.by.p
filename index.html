@@ -168,6 +168,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .password-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .password-row input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 .admin-note { margin: 0; color: var(--danger); font-size: 12.5px; font-weight: 500; }
+.see-more { align-self: flex-start; margin-top: 6px; }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
@@ -1087,6 +1088,7 @@ let wheelSaturation = 1;
 const madeColors = new Set();
 let commentRender = 0;
 let editingClient = null;
+let showAllBumpCalendars = false;
 let notificationsReady = false;
 let lastUnread = 0;
 let lastTap = {};
@@ -1319,7 +1321,9 @@ function renderBumpSettings() {
     list.append(el("p", "empty", "Add a client to choose bumps."));
     return;
   }
-  state.clients.forEach((client) => {
+  const limit = 3;
+  const visible = showAllBumpCalendars ? state.clients : state.clients.slice(0, limit);
+  visible.forEach((client) => {
     const current = state.bumpModes[client.id] || "mine";
     const row = el("div", "bump-row " + colorClass(client.color));
     const name = el("span", "bump-name");
@@ -1342,6 +1346,15 @@ function renderBumpSettings() {
     row.append(name, options);
     list.append(row);
   });
+  if (state.clients.length > limit) {
+    const more = el("button", "quiet see-more", showAllBumpCalendars ? "See less" : "See " + (state.clients.length - limit) + " more");
+    more.type = "button";
+    more.addEventListener("click", () => {
+      showAllBumpCalendars = !showAllBumpCalendars;
+      renderBumpSettings();
+    });
+    list.append(more);
+  }
 }
 
 function accessStatus(person) {
