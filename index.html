@@ -2275,6 +2275,7 @@ function showView(view) {
   $("settings-view").hidden = !onSettings;
   $("calendar-view").hidden = onSettings;
   $("client-panel").hidden = onSettings;
+  history.replaceState(null, "", onSettings ? "#settings" : location.pathname);
   window.scrollTo(0, 0);
 }
 $("settings").addEventListener("click", () => {
@@ -2444,8 +2445,11 @@ setInterval(() => {
   showToast("BUMP: " + due[0].title + (due.length > 1 ? " and " + (due.length - 1) + " more" : ""));
 }, 60000);
 
+if (location.hash === "#settings") showView("settings");
 render();
-connect();
+connect().then(() => {
+  if (location.hash === "#settings") loadAccess();
+});
 </script>
 
 </body>
