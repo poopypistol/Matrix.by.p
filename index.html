@@ -196,6 +196,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .invite-list { display: flex; flex-direction: column; }
 .invite-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .invite-info { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.invite-info small.status-missing { color: var(--danger); font-weight: 500; }
 .invite-info small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); }
 .setting strong { color: var(--muted); font-weight: 600; }
 .bump-clients { display: flex; flex-direction: column; gap: 2px; }
@@ -558,6 +559,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <button class="quiet" id="invite-team" type="button">Add team member</button>
         <button class="quiet" id="invite-client" type="button">Add client access</button>
       </div>
+    </div>
+    <div class="setting" id="admin-setting" hidden>
+      <div class="side-label">Admin</div>
+      <p class="empty">See who has finished setting up and what's still missing.</p>
       <div class="invite-list" id="invite-list"></div>
     </div>
     <div class="setting">
@@ -971,6 +976,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     id: async () => me.email,
     isOwner: async () => me.role === "admin",
     can: async () => me.role !== "client",
+    accessStatus: async () => check(await sb.rpc("admin_access_status")),
     profiles: async (ids) => Object.fromEntries(ids.map((id) => [id, { name: String(id).split("@")[0] }]))
   };
 
@@ -1065,7 +1071,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const now = new Date();
 const state = {
   year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStatus: { approved: true, unapproved: true },
-  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], commentMode: "mine", commentSeen: {},
+  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], commentMode: "mine", commentSeen: {},
   bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
 };
 let db = null;
@@ -1338,20 +1344,48 @@ function renderBumpSettings() {
   });
 }
 
+function accessStatus(person) {
+  if (!person.on_list) return { text: "Signed up, but has no access", missing: true };
+  if (!person.has_account) return { text: "Has access, hasn't signed up yet", missing: true };
+  if (!person.has_password) return { text: "Signed up, still needs a password", missing: true };
+  if (!person.has_logged_in) return { text: "Has a password, hasn't logged in yet", missing: true };
+  return { text: "Fully set up", missing: false };
+}
+
+async function loadAccess() {
+  if (!isOwner || !user) return;
+  try {
+    state.access = await user.accessStatus();
+    renderInvites();
+  } catch (problem) {
+    $("invite-list").replaceChildren(el("p", "empty", "Access details couldn't load. Refresh to try again."));
+  }
+}
+
 function renderInvites() {
   const list = $("invite-list");
   list.replaceChildren();
-  state.invites.filter((invite) => invite.role !== "admin").forEach((invite) => {
+  const people = state.access.filter((person) => person.role !== "admin");
+  if (!people.length) list.append(el("p", "empty", "Nobody else has been added yet."));
+  people.forEach((person) => {
     const row = el("div", "invite-row");
-    const info = el("div", "invite-info", invite.email);
-    const names = (invite.calendars || []).map((id) => (clientById(id) || {}).name).filter(Boolean).join(", ");
-    info.append(el("small", "", invite.role === "admin" ? "Admin" : invite.role === "client" ? "Client" + (names ? " · " + names : "") : "Team member"));
-    const remove = el("button", "quiet", "Remove");
-    remove.type = "button";
-    remove.setAttribute("aria-label", "Remove invite for " + invite.email);
-    remove.addEventListener("click", () => removeInvite(invite.id));
+    const info = el("div", "invite-info", person.email);
+    const status = accessStatus(person);
+    const names = (person.calendars || []).map((id) => (clientById(id) || {}).name).filter(Boolean).join(", ");
+    const role = person.role === "client" ? "Client" + (names ? " · " + names : "") : person.role === "team" ? "Team member" : "Not added";
+    info.append(el("small", "", role));
+    info.append(el("small", status.missing ? "status-missing" : "", status.text));
+    if (person.on_list && person.role !== "client") {
+      info.append(el("small", "", person.devices ? "Notifications on" : "Notifications not turned on"));
+    }
     row.append(info);
-    if (invite.role !== "admin") row.append(remove);
+    if (person.on_list) {
+      const remove = el("button", "quiet", "Remove");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remove access for " + person.email);
+      remove.addEventListener("click", () => removeInvite(person.email));
+      row.append(remove);
+    }
     list.append(row);
   });
 }
@@ -1364,7 +1398,7 @@ async function removeInvite(id) {
     return;
   }
   state.invites = state.invites.filter((invite) => invite.id !== id);
-  renderInvites();
+  loadAccess();
   showToast("Access removed");
 }
 
@@ -1427,7 +1461,7 @@ async function saveInvite(event) {
   $("save-invite").disabled = false;
   if (!state.invites.some((item) => item.id === id)) state.invites.push({ id, ...invite });
   $("invite-dialog").close();
-  renderInvites();
+  loadAccess();
   showToast("Added. They can sign in now.");
 }
 
@@ -1657,7 +1691,6 @@ function render() {
   renderBumps();
   renderBumpSettings();
   renderBumpTiming();
-  renderInvites();
   document.querySelectorAll("[data-comment-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.commentMode === state.commentMode));
   });
@@ -1666,7 +1699,7 @@ function render() {
   $("people-setting").hidden = state.readOnly;
   $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
   $("invite-buttons").hidden = !isOwner;
-  $("invite-list").hidden = !isOwner;
+  $("admin-setting").hidden = !isOwner;
 
 }
 
@@ -2244,7 +2277,10 @@ function showView(view) {
   $("client-panel").hidden = onSettings;
   window.scrollTo(0, 0);
 }
-$("settings").addEventListener("click", () => showView("settings"));
+$("settings").addEventListener("click", () => {
+  showView("settings");
+  loadAccess();
+});
 
 function buildDancer() {
   const svg = document.querySelector(".logo").cloneNode(true);
