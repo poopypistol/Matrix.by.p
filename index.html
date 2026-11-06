@@ -168,6 +168,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .password-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .password-row input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
 .admin-note { margin: 0; color: var(--danger); font-size: 12.5px; font-weight: 500; }
+.push-options { align-items: center; }
 .see-more { align-self: flex-start; margin-top: 6px; }
 .setting > .admin-title { color: var(--danger); }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
@@ -519,8 +520,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       <div class="side-label">Notifications</div>
       <h3 class="group-title">This device</h3>
       <p class="empty" id="push-status">Checking this device.</p>
-      <div class="theme-options">
-        <button class="quiet" id="push-enable" type="button">Turn on notifications</button>
+      <div class="theme-options push-options">
+        <div class="mode-options" id="push-toggle" role="group" aria-label="Notifications on this device">
+          <button class="quiet" id="push-on" type="button" aria-pressed="false">On</button>
+          <button class="quiet" id="push-off" type="button" aria-pressed="true">Off</button>
+        </div>
         <button class="quiet" id="push-test" type="button" hidden>Send a test</button>
       </div>
       <h3 class="group-title">Bumps</h3>
@@ -1003,7 +1007,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   }
 
   const pushStatus = document.getElementById("push-status");
-  const pushEnable = document.getElementById("push-enable");
+  const pushOn = document.getElementById("push-on");
+  const pushOff = document.getElementById("push-off");
+  const pushToggle = document.getElementById("push-toggle");
   const pushTest = document.getElementById("push-test");
   const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   const registration = pushSupported ? navigator.serviceWorker.register("/sw.js") : null;
@@ -1011,22 +1017,23 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   async function refreshPush() {
     if (!pushSupported) {
       pushStatus.textContent = "This browser can't show notifications. On iPhone, add matrix to your Home Screen first, then open it from there.";
-      pushEnable.hidden = true;
+      pushToggle.hidden = true;
       return;
     }
     if (Notification.permission === "denied") {
       pushStatus.textContent = "Notifications are blocked on this device. Allow them in your browser or device settings.";
-      pushEnable.hidden = true;
+      pushToggle.hidden = true;
       return;
     }
     const worker = await registration;
     const subscription = await worker.pushManager.getSubscription();
-    pushStatus.textContent = subscription ? "Notifications are on for this device." : "Turn these on for each phone or computer you use.";
-    pushEnable.hidden = Boolean(subscription);
+    pushOn.setAttribute("aria-pressed", String(Boolean(subscription)));
+    pushOff.setAttribute("aria-pressed", String(!subscription));
+    pushStatus.textContent = subscription ? "Notifications are on for this device." : "Notifications are off for this device. Turn them on for each phone or computer you use.";
     pushTest.hidden = !subscription;
   }
 
-  pushEnable.addEventListener("click", async () => {
+  pushOn.addEventListener("click", async () => {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
@@ -1046,6 +1053,21 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       window.showToast("Notifications are on");
     } catch (problem) {
       window.showToast("Notifications didn't turn on. Try again.");
+    }
+  });
+
+  pushOff.addEventListener("click", async () => {
+    try {
+      const worker = await registration;
+      const subscription = await worker.pushManager.getSubscription();
+      if (subscription) {
+        check(await sb.from("push_subscriptions").delete().eq("endpoint", subscription.endpoint));
+        await subscription.unsubscribe();
+      }
+      await refreshPush();
+      window.showToast("Notifications are off");
+    } catch (problem) {
+      window.showToast("Notifications didn't turn off. Try again.");
     }
   });
 
