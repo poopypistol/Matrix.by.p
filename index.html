@@ -1021,8 +1021,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       return;
     }
     if (Notification.permission === "denied") {
-      pushStatus.textContent = "Notifications are blocked on this device. Allow them in your browser or device settings.";
-      pushToggle.hidden = true;
+      pushStatus.textContent = "Notifications are blocked here. In your browser, click the icon next to the web address and set Notifications to Allow, then refresh. On a Mac, also allow your browser in System Settings, Notifications.";
+      pushOn.setAttribute("aria-pressed", "false");
+      pushOff.setAttribute("aria-pressed", "true");
+      pushTest.hidden = true;
       return;
     }
     const worker = await registration;
@@ -1035,6 +1037,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
   pushOn.addEventListener("click", async () => {
     try {
+      if (Notification.permission === "denied") {
+        window.showToast("Your browser is blocking notifications. Follow the steps above.");
+        return;
+      }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         await refreshPush();
