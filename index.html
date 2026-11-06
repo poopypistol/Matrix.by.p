@@ -686,8 +686,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   <form class="gate-form" id="gate-form" hidden>
     <label class="side-label" for="gate-email">Email</label>
     <input id="gate-email" type="email" autocomplete="email" placeholder="name@company.com">
-    <label class="side-label" for="gate-password">Password</label>
+    <label class="side-label" id="gate-password-label" for="gate-password">Password</label>
     <input id="gate-password" type="password" autocomplete="current-password">
+    <label class="side-label" id="gate-confirm-label" for="gate-confirm" hidden>Confirm password</label>
+    <input id="gate-confirm" type="password" autocomplete="new-password" hidden>
     <button class="primary" id="gate-submit" type="submit">Log in</button>
     <button class="gate-text" id="gate-switch" type="button">New here? Sign up</button>
     <button class="gate-text" id="gate-link" type="button">Forgot password?</button>
@@ -783,11 +785,21 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         showGate("Use at least 8 characters for your password.", true);
         return;
       }
+      if (password !== document.getElementById("gate-confirm").value) {
+        showGate("Those passwords don't match.", true);
+        return;
+      }
       const { data, error } = await sb.auth.signUp({
         email, password,
         options: { emailRedirectTo: location.origin, data: { has_password: true } }
       });
-      if (error) showGate("That didn't work. Check your email and try again, or wait a minute.", true);
+      if (error) {
+        const reason = (error.message || "").toLowerCase();
+        if (reason.includes("already")) showGate("That email already has an account. Log in instead.", true);
+        else if (reason.includes("rate") || reason.includes("seconds")) showGate("Too many tries. Wait a minute and try again.", true);
+        else if (reason.includes("password")) showGate("Choose a stronger password.", true);
+        else showGate("Sign up didn't work: " + error.message, true);
+      }
       else if (data.session) enter(data.session);
       else showGate("Check your email to confirm your account.", false);
       return;
@@ -803,6 +815,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     document.getElementById("gate-switch").textContent = signingUp ? "Already have an account? Log in" : "New here? Sign up";
     document.getElementById("gate-link").hidden = signingUp;
     document.getElementById("gate-password").autocomplete = signingUp ? "new-password" : "current-password";
+    document.getElementById("gate-password").placeholder = signingUp ? "At least 8 characters" : "";
+    document.getElementById("gate-password-label").textContent = signingUp ? "Create a password" : "Password";
+    document.getElementById("gate-confirm-label").hidden = !signingUp;
+    document.getElementById("gate-confirm").hidden = !signingUp;
     gateMessage.textContent = "";
   });
 
