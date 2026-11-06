@@ -1050,7 +1050,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   });
 
   pushTest.addEventListener("click", async () => {
-    const { data, error } = await sb.functions.invoke("send-notifications", { body: { test: true } });
+    const { data, error } = await sb.functions.invoke("send-notification", { body: { test: true } });
     window.showToast(error || !data || !data.delivered ? "The test didn't send. Try again." : "Test sent");
   });
 
