@@ -117,8 +117,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .settings-btn:hover { background: var(--hover); }
 .settings-btn svg { width: 22px; height: 22px; }
-.setting { display: flex; flex-direction: column; gap: 8px; }
-.setting > .side-label { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--fg); }
+.setting { display: flex; flex-direction: column; gap: 8px; padding-top: 28px; border-top: 2px solid var(--fg); }
+.settings-page > h1 { margin-bottom: 4px; }
+.setting > .side-label { font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; text-transform: none; color: var(--fg); margin-bottom: 4px; }
 .setting .empty { font-size: 12.5px; line-height: 1.45; }
 .dance-btn { align-self: flex-start; width: 170px; padding: 14px; border-radius: 4px; }
 .dance-btn:hover { background: var(--hover); }
@@ -180,8 +181,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .gate-note { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
 .gate-message { margin: 0; text-align: center; color: var(--muted); }
 .sub-setting { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
-.sub-title { margin: 0; font-size: 14px; font-weight: 600; }
-.group-title { margin: 8px 0 0; font-size: 14px; font-weight: 700; }
+.sub-title { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.group-title { margin: 20px 0 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
 .comment-modes { margin-top: 6px; }
 .sub-setting .bump-clients { margin-top: 6px; }
 .timing-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
@@ -221,7 +222,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; letter-spacing: -.03em; }
 .brand span { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--faint); }
 .brand-row { display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 0; border-radius: 4px; text-align: left; }
-.settings-page { display: flex; flex-direction: column; gap: 32px; min-width: 0; max-width: 560px; }
+.settings-page { display: flex; flex-direction: column; gap: 44px; min-width: 0; max-width: 560px; }
 .logo { flex: none; display: block; width: 46px; height: auto; }
 .side-group { display: flex; flex-direction: column; gap: 8px; }
 .side-label {
@@ -520,6 +521,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       <div class="side-label">Notifications</div>
       <h3 class="group-title">This device</h3>
       <p class="empty" id="push-status">Checking this device.</p>
+      <p class="empty">Notifications don't work in private browsing windows.</p>
       <div class="theme-options push-options">
         <div class="mode-options" id="push-toggle" role="group" aria-label="Notifications on this device">
           <button class="quiet" id="push-on" type="button" aria-pressed="false">On</button>
@@ -1044,6 +1046,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         await refreshPush();
+        window.showToast("Your browser didn't allow notifications. Private windows can't use them.");
         return;
       }
       const { data: publicKey, error } = await sb.rpc("get_push_key");
