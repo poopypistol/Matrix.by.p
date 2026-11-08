@@ -1874,22 +1874,31 @@ function renderSearch() {
   });
 }
 
+/* The calendar filters group the five stages into three. */
+const FILTER_GROUPS = [
+  { id: "internal", label: "Internal", stages: ["draft", "internal"] },
+  { id: "client", label: "Client", stages: ["ready", "client"] },
+  { id: "approved", label: "Approved", stages: ["approved"] }
+];
+
 function renderCount(counts) {
-  const buttons = STAGES.map((stage) => {
-    const shown = state.showStages[stage.id];
-    const button = el("button", "count-btn" + (stage.id === "draft" ? " is-draft" : ""));
+  const isOn = (group) => group.stages.every((stage) => state.showStages[stage]);
+  const setGroup = (group, on) => group.stages.forEach((stage) => { state.showStages[stage] = on; });
+  const buttons = FILTER_GROUPS.map((group) => {
+    const shown = isOn(group);
+    const total = group.stages.reduce((sum, stage) => sum + counts[stage], 0);
+    const button = el("button", "count-btn" + (group.id === "internal" ? " is-draft" : ""));
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
-    button.title = (shown ? "Hide " : "Show ") + stage.name + " posts. Double-click to show only these.";
-    button.append(el("i", "key " + (stage.id === "approved" ? "filled" : "dashed"), shown ? "✓" : ""), counts[stage.id] + " " + stage.short);
+    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
+    button.append(el("i", "key " + (group.id === "approved" ? "filled" : "dashed"), shown ? "✓" : ""), total + " " + group.label);
     button.addEventListener("click", () => {
-      const solo = shown && STAGES.every((other) => other.id === stage.id || !state.showStages[other.id]);
-      const tap = doubleTap("stage-" + stage.id, solo);
+      const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
+      const tap = doubleTap("group-" + group.id, solo);
       if (tap) {
-        state.showStages = ALL_STAGES_ON();
-        if (!tap.wasSolo) STAGES.forEach((other) => { state.showStages[other.id] = other.id === stage.id; });
+        FILTER_GROUPS.forEach((other) => setGroup(other, tap.wasSolo || other.id === group.id));
       } else {
-        state.showStages[stage.id] = !state.showStages[stage.id];
+        setGroup(group, !shown);
       }
       renderMonth();
     });
