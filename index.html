@@ -200,6 +200,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .count-btn.is-approved, .count-btn.is-approved[aria-pressed="true"] { color: var(--good); }
 .count-btn.is-approved .key { border-color: var(--good); }
 .count-btn.is-approved[aria-pressed="false"] { opacity: .65; }
+.bell-btn { position: relative; }
+.bell-btn .bump-count { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; font-size: 11px; }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
@@ -280,7 +282,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 24px; }
-.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 92px; }
+.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 136px; }
 .top-left { min-width: 0; }
 .top .nav { justify-content: flex-end; }
 h1 {
@@ -489,6 +491,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 <style id="client-colors"></style>
 <div class="app">
   <div class="top-icons">
+  <button class="settings-btn bell-btn" id="bumps" type="button" aria-label="Notifications" title="Notifications"></button>
   <div class="search">
     <button class="settings-btn" id="open-search" type="button" aria-label="Search posts" title="Search posts" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></svg>
@@ -520,7 +523,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <p class="start-note" id="start-note" hidden>Add your first client, then click any day to add a post.</p>
       </div>
       <div class="nav">
-        <button class="bump-btn" id="bumps" type="button">Notifications</button>
         <button class="new-btn" id="new-post" type="button">New post</button>
         <button class="today-btn" id="today" type="button">Today</button>
         <button class="arrow" id="prev" type="button" aria-label="Previous month">&#8249;</button>
@@ -1486,8 +1488,8 @@ function renderBumps() {
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
-  button.replaceChildren("Notifications");
-  if (total) button.append(el("span", "bump-count", String(total)));
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  if (total) button.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
   button.setAttribute("aria-label", total + (total === 1 ? " notification" : " notifications"));
   button.hidden = state.readOnly;
 
