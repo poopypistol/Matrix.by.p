@@ -152,7 +152,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 @media (prefers-reduced-motion: reduce) {
   .dance-btn.dancing .dude-fig, .dance-btn.dancing .arm-left, .dance-btn.dancing .arm-right, .dance-btn.dancing .leg-left, .dance-btn.dancing .leg-right, .dance-btn.dancing .bit { animation: none; }
 }
-.bump-swatch.unapproved { background: none; border: 1.5px dashed var(--cbg); }
 .search { position: relative; }
 .search-panel {
   position: absolute; top: calc(100% + 6px); right: -42px; z-index: 5;
@@ -173,16 +172,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .push-options { align-items: center; }
 .see-more { align-self: flex-start; margin-top: 6px; }
 .setting > .admin-title { color: var(--danger); }
-.tracker { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
-.stage-step { min-height: 30px; padding: 0 9px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface); }
-.stage-step.done { color: var(--fg); cursor: pointer; }
-.stage-step.done:hover { background: var(--hover); }
-.stage-step.current { background: var(--accent); border-color: var(--accent); color: var(--on-accent); cursor: default; }
-.stage-step.ahead { opacity: .45; cursor: default; }
-.stage-arrow { color: var(--faint); font-size: 12px; }
-.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
+.tracker { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.phase-steps { display: flex; align-items: center; gap: 8px; }
+.phase { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 2px; font-size: 13px; font-weight: 600; color: var(--faint); background: none; }
+.phase-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; }
+.phase.done { color: var(--fg); cursor: pointer; }
+.phase.done .phase-dot, .phase.current .phase-dot { background: currentColor; }
+.phase.done:hover span { text-decoration: underline; }
+.phase.current { color: var(--fg); }
+.phase:disabled { cursor: default; opacity: 1; }
+.phase-line { width: 22px; height: 1.5px; background: var(--line); }
+.phase-line.done { background: var(--fg); }
+.phase-status { margin: 0; font-size: 13px; color: var(--muted); }
+.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .post-actions select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); max-width: 100%; }
-.post-actions .action-status { flex: 1 1 260px; margin: 0; font-size: 13px; color: var(--muted); }
 .post-actions .action-note { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
 .post-actions .bump-action { margin-left: auto; }
 .history-line { color: var(--muted); font-size: 12px; font-style: italic; }
@@ -287,7 +290,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .top .nav { justify-content: flex-end; }
 h1 {
   margin: 0; font-family: var(--display); font-weight: 800;
-  font-size: clamp(34px, 7vw, 76px); line-height: 1; letter-spacing: -.05em;
+  font-size: clamp(28px, 3.8vw, 44px); line-height: 1; letter-spacing: -.05em;
 }
 h1 em { color: var(--faint); font-style: normal; }
 .count { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 0 -8px; color: var(--muted); font-size: 14px; }
@@ -298,9 +301,6 @@ h1 em { color: var(--faint); font-style: normal; }
 .key.filled { border: 1.5px solid var(--faint); }
 .key.dashed { border: 1.5px dashed var(--faint); }
 .count-btn[aria-pressed="true"] .key { border-color: var(--fg); }
-.count-btn.is-unapproved, .count-btn.is-unapproved[aria-pressed="true"] { color: var(--danger); }
-.count-btn.is-unapproved .key, .count-btn.is-unapproved[aria-pressed="true"] .key { border-color: var(--danger); }
-.count-btn.is-unapproved[aria-pressed="false"] { opacity: .65; }
 .nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .nav button {
   min-width: 40px; height: 40px; padding: 0 12px; border-radius: 4px;
@@ -378,11 +378,9 @@ h1 em { color: var(--faint); font-style: normal; }
 .post[draggable="true"] { cursor: grab; }
 .post.dragging { opacity: .4; }
 .day.drop-target { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
-.post.unapproved { background: none; color: var(--fg); border-style: dashed; }
 .post small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 500; opacity: .8; }
 .dots { position: relative; z-index: 1; pointer-events: none; display: none; flex-wrap: wrap; gap: 3px; }
 .dots i { width: 8px; height: 8px; border-radius: 2px; background: var(--cbg); }
-.dots i.unapproved { background: none; border: 1.5px dashed var(--cbg); }
 .start-note { margin: 0; font-size: 14px; color: var(--muted); }
 
 .agenda { display: none; flex-direction: column; gap: 16px; }
@@ -412,7 +410,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   letter-spacing: .05em; text-transform: uppercase;
 }
 .pill.approved { background: var(--accent); color: var(--on-accent); }
-.pill.unapproved { border: 1.5px dashed var(--muted); color: var(--muted); }
 .close { width: 40px; height: 40px; border-radius: 4px; font-size: 20px; line-height: 1; }
 .close:hover { background: var(--hover); }
 .title-input {
@@ -1244,12 +1241,21 @@ function isComplete(post) {
 }
 
 const STAGES = [
-  { id: "draft", name: "Draft", short: "Draft" },
-  { id: "internal", name: "Internal Review", short: "Internal" },
-  { id: "ready", name: "Ready for Client", short: "Ready" },
-  { id: "client", name: "Client Review", short: "Client" },
-  { id: "approved", name: "Approved", short: "Approved" }
+  { id: "draft", name: "Drafting", phase: "internal" },
+  { id: "internal", name: "In review", phase: "internal" },
+  { id: "ready", name: "Ready to send", phase: "client" },
+  { id: "client", name: "Sent to client", phase: "client" },
+  { id: "approved", name: "Approved", phase: "approved" }
 ];
+/* What people see: three phases. The five steps above stay underneath. */
+const PHASES = [
+  { id: "internal", name: "Internal", start: "draft" },
+  { id: "client", name: "Client", start: "ready" },
+  { id: "approved", name: "Approved", start: "approved" }
+];
+const phaseOf = (stage) => (STAGES.find((item) => item.id === stage) || STAGES[0]).phase;
+const phaseIndex = (stage) => PHASES.findIndex((phase) => phase.id === phaseOf(stage));
+const phaseName = (stage) => PHASES[phaseIndex(stage)].name;
 const ALL_STAGES_ON = () => ({ draft: true, internal: true, ready: true, client: true, approved: true });
 const stageOf = (post) => post.stage || "draft";
 const stageIndex = (id) => STAGES.findIndex((stage) => stage.id === id);
@@ -1341,11 +1347,11 @@ function colorClass(color) {
 function postCard(post) {
   const approved = isApproved(post);
   const client = clientById(post.client);
-  const stage = STAGES[stageIndex(stageOf(post))];
-  const card = el("button", "post " + colorClass(client.color) + (approved ? "" : " unapproved"), post.title);
+  const card = el("button", "post " + colorClass(client.color), post.title);
   card.type = "button";
-  card.append(el("small", "", client.name + " · " + formatTime(post.time) + (approved ? "" : " · " + stage.short)));
-  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + stage.name);
+  card.append(el("small", "", formatTime(post.time) + (approved ? "" : " · " + phaseName(stageOf(post)))));
+  card.title = client.name;
+  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + phaseName(stageOf(post)));
   card.addEventListener("click", () => openPost(post));
   if (!state.readOnly) {
     card.draggable = true;
@@ -1470,10 +1476,10 @@ function noticeItem(post, label, extra) {
   item.type = "button";
   const text = el("span", "bump-text", post.title);
   text.prepend(el("small", "", label));
-  const meta = el("small", "", client.name + " · " + shortDate(post.date) + " · " + stageName(stageOf(post)));
+  const meta = el("small", "", client.name + " · " + shortDate(post.date) + " · " + phaseName(stageOf(post)));
   if (extra) meta.append(" · ", el("span", "due", extra));
   text.append(meta);
-  item.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
+  item.append(el("span", "bump-swatch"), text);
   item.addEventListener("click", () => openPost(post));
   return item;
 }
@@ -1836,7 +1842,7 @@ function renderSearch() {
     const date = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const text = el("span", "bump-text", post.title);
     text.append(el("small", "", client.name + " · " + date));
-    row.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
+    row.append(el("span", "bump-swatch"), text);
     row.addEventListener("mousedown", (event) => event.preventDefault());
     row.addEventListener("click", () => goToPost(post));
     results.append(row);
@@ -1860,7 +1866,7 @@ function renderCount(counts) {
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
     button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
-    button.append(el("i", "key " + (group.id === "approved" ? "filled" : "dashed"), shown ? "✓" : ""), total + " " + group.label);
+    button.append(el("i", "key filled", shown ? "✓" : ""), total + " " + group.label);
     button.addEventListener("click", () => {
       const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
       const tap = doubleTap("group-" + group.id, solo);
@@ -1928,7 +1934,7 @@ function renderMonth() {
       const dots = el("div", "dots");
       posts.forEach((post) => {
         dayCell.append(postCard(post));
-        dots.append(el("i", colorClass(clientById(post.client).color) + (isApproved(post) ? "" : " unapproved")));
+        dots.append(el("i", colorClass(clientById(post.client).color)));
       });
       dayCell.append(dots);
 
@@ -1982,12 +1988,12 @@ function historyText(entry) {
   const who = displayName(entry.by);
   const note = entry.note ? ": " + entry.note : "";
   switch (entry.type) {
-    case "sent": return (entry.to || [])[0] === entry.by ? who + " sent this for Internal Review" : who + " sent to " + displayName((entry.to || [])[0]) + " for Internal Review";
+    case "sent": return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + displayName((entry.to || [])[0]) + " for review";
     case "approved_internal": return who + " approved internally";
     case "changes": return who + " requested changes" + note;
     case "client": return who + " sent to client";
     case "approved": return who + " marked client approved";
-    case "back": return who + " moved back to " + stageName(entry.stage);
+    case "back": return who + " moved back to " + phaseName(entry.stage);
     case "bump": return who + " bumped " + (entry.to || []).map(displayName).join(", ") + note;
     case "auto": return "Moved back to Draft because info was missing";
     default: return who + " updated this post";
@@ -2036,7 +2042,7 @@ function updateHint() {
   } else {
     hint.replaceChildren(
       el("strong", "", "Still needed: " + missing.join(", ") + "."),
-      stage === "draft" ? " Fill these in to send it to a manager." : " Saving now will move this post back to Draft."
+      stage === "draft" ? " Fill these in to send it to a manager." : " Saving now will move this post back to drafting."
     );
   }
   renderActions();
@@ -2045,24 +2051,45 @@ function updateHint() {
 function renderTracker() {
   const tracker = $("tracker");
   tracker.replaceChildren();
-  const current = stageIndex(editing ? stageOf(editing) : "draft");
-  STAGES.forEach((stage, index) => {
-    if (index) tracker.append(el("span", "stage-arrow", "→"));
-    const step = el("button", "stage-step " + (index < current ? "done" : index === current ? "current" : "ahead"), stage.name);
+  const stage = editing ? stageOf(editing) : "draft";
+  const current = phaseIndex(stage);
+  const steps = el("div", "phase-steps");
+  PHASES.forEach((phase, index) => {
+    if (index) steps.append(el("span", "phase-line" + (index <= current ? " done" : "")));
+    const step = el("button", "phase " + (index < current ? "done" : index === current ? "current" : "ahead"));
     step.type = "button";
+    step.append(el("i", "phase-dot"), el("span", "", phase.name));
     const canMove = index < current && editing && !state.readOnly;
-    step.disabled = !canMove && index !== current;
+    step.disabled = !canMove;
     if (index === current) step.setAttribute("aria-current", "step");
     if (canMove) {
-      step.title = "Move this post back to " + stage.name;
+      step.title = "Move this post back to " + phase.name;
       step.addEventListener("click", () => {
-        pendingBack = stage.id;
-        $("stage-title").textContent = "Move this post back to " + stage.name + "?";
+        pendingBack = phase.start;
+        $("stage-title").textContent = "Move this post back to " + phase.name + "?";
         $("stage-dialog").showModal();
       });
     }
-    tracker.append(step);
+    steps.append(step);
   });
+  tracker.append(steps, el("p", "phase-status", statusText(editing)));
+}
+
+/* One plain sentence: where this post is inside its phase. */
+function statusText(post) {
+  if (!post) return "New post";
+  const stage = stageOf(post);
+  const step = lastStep(post);
+  const when = step ? " · " + stampText(step.at) : "";
+  if (stage === "draft") {
+    if (step && step.type === "changes") return displayName(step.by) + " requested changes" + (step.note ? ": " + step.note : "") + when;
+    if (step && step.type === "auto") return "Back to drafting because info was missing" + when;
+    return "Drafting";
+  }
+  if (stage === "internal") return (post.manager === myId ? "With you for review" : "With " + displayName(post.manager) + " for review") + when;
+  if (stage === "ready") return "Ready to send to client" + when;
+  if (stage === "client") return "Sent to client" + (step && step.type === "client" ? " by " + displayName(step.by) : "") + when;
+  return "Approved" + when;
 }
 
 function bumpWait(post) {
@@ -2088,11 +2115,6 @@ function renderActions() {
     item.addEventListener("click", handler);
     return item;
   };
-  const step = editing ? lastStep(editing) : null;
-  if (step && (stage !== "draft" || step.type === "changes" || step.type === "back")) {
-    box.append(el("p", "action-status", historyText(step) + " · " + stampText(step.at)));
-  }
-
   if (stage === "draft") {
     const pick = el("select");
     pick.id = "manager-pick";
@@ -2202,7 +2224,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   $("post-dialog").close();
   state.hidden.delete(fields.client);
   render();
-  const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + stageName(nextStage) : "Moved to " + stageName(nextStage));
+  const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
   showToast(message, isNew ? null : async () => {
     try {
       await db.collection("posts").doc(id).update(before);
