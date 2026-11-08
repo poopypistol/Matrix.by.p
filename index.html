@@ -1243,14 +1243,14 @@ function isComplete(post) {
 const STAGES = [
   { id: "draft", name: "Drafting", phase: "internal" },
   { id: "internal", name: "In review", phase: "internal" },
-  { id: "ready", name: "Ready to send", phase: "client" },
+  { id: "ready", name: "Ready to send", phase: "internal" },
   { id: "client", name: "Sent to client", phase: "client" },
   { id: "approved", name: "Approved", phase: "approved" }
 ];
 /* What people see: three phases. The five steps above stay underneath. */
 const PHASES = [
   { id: "internal", name: "Internal", start: "draft" },
-  { id: "client", name: "Client", start: "ready" },
+  { id: "client", name: "Client", start: "client" },
   { id: "approved", name: "Approved", start: "approved" }
 ];
 const phaseOf = (stage) => (STAGES.find((item) => item.id === stage) || STAGES[0]).phase;
@@ -1851,8 +1851,8 @@ function renderSearch() {
 
 /* The calendar filters group the five stages into three. */
 const FILTER_GROUPS = [
-  { id: "internal", label: "Internal", stages: ["draft", "internal"] },
-  { id: "client", label: "Client", stages: ["ready", "client"] },
+  { id: "internal", label: "Internal", stages: ["draft", "internal", "ready"] },
+  { id: "client", label: "Client", stages: ["client"] },
   { id: "approved", label: "Approved", stages: ["approved"] }
 ];
 
@@ -2087,7 +2087,7 @@ function statusText(post) {
     return "Drafting";
   }
   if (stage === "internal") return (post.manager === myId ? "With you for review" : "With " + displayName(post.manager) + " for review") + when;
-  if (stage === "ready") return "Ready to send to client" + when;
+  if (stage === "ready") return (step && step.type === "approved_internal" ? "Approved by " + displayName(step.by) + " · ready to send to client" : "Ready to send to client") + when;
   if (stage === "client") return "Sent to client" + (step && step.type === "client" ? " by " + displayName(step.by) : "") + when;
   return "Approved" + when;
 }
