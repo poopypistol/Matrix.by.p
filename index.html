@@ -20,7 +20,7 @@
 :root {
   --bg: #ffffff; --surface: #ffffff; --hover: #f3f3f3; --line: #e4e4e4;
   --fg: #0f0f0f; --muted: #6a6a6a; --faint: #b8b8b8;
-  --accent: #0f0f0f; --on-accent: #ffffff; --danger: #c62828;
+  --accent: #0f0f0f; --on-accent: #ffffff; --danger: #c62828; --good: #1e8e3e;
   --c0-bg: #ff7043; --c0-fg: #0f0f0f;
   --c1-bg: #ffc933; --c1-fg: #0f0f0f;
   --c2-bg: #b5e550; --c2-fg: #0f0f0f;
@@ -53,14 +53,14 @@
   :root:not([data-theme="light"]) {
     --bg: #101010; --surface: #101010; --hover: #222222; --line: #2d2d2d;
     --fg: #f5f5f5; --muted: #a6a6a6; --faint: #5c5c5c;
-    --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80;
+    --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80; --good: #5ad07a;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #101010; --surface: #101010; --hover: #222222; --line: #2d2d2d;
   --fg: #f5f5f5; --muted: #a6a6a6; --faint: #5c5c5c;
-  --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80;
+  --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80; --good: #5ad07a;
   color-scheme: dark;
 }
 
@@ -197,12 +197,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .column { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; }
 .column h2 { margin: 0 0 6px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
 .column h2 span { color: var(--muted); font-weight: 500; }
-.count-btn.is-draft, .count-btn.is-draft[aria-pressed="true"] { color: var(--danger); }
-.count-btn.is-draft .key { border-color: var(--danger); }
-.count-btn.is-draft[aria-pressed="false"] { opacity: .65; }
-.role-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.role-row .quiet { min-height: 30px; padding: 0 10px; font-size: 12.5px; }
-.role-row .quiet[aria-pressed="true"], #my-roles .quiet[aria-pressed="true"], #invite-roles .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.count-btn.is-approved, .count-btn.is-approved[aria-pressed="true"] { color: var(--good); }
+.count-btn.is-approved .key { border-color: var(--good); }
+.count-btn.is-approved[aria-pressed="false"] { opacity: .65; }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
@@ -629,8 +626,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     </div>
     <div class="setting" id="admin-setting" hidden>
       <div class="side-label admin-title">Admin</div>
-      <p class="empty">Your roles. Managers can approve posts in Internal Review.</p>
-      <div class="mode-options" id="my-roles" role="group" aria-label="Your roles"></div>
       <p class="empty">See who has finished setting up and what's still missing.</p>
       <div class="invite-list" id="invite-list"></div>
     </div>
@@ -695,13 +690,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       <button class="close" id="close-invite" type="button" aria-label="Close">&times;</button>
     </div>
     <div class="field"><label for="invite-email">Email</label><input id="invite-email" type="email" autocomplete="off" placeholder="name@company.com"></div>
-    <div class="field" id="invite-roles-field">
-      <label id="invite-roles-label">Roles</label>
-      <div class="mode-options" id="invite-roles" role="group" aria-labelledby="invite-roles-label">
-        <button class="quiet" type="button" data-role="coordinator" aria-pressed="true">Coordinator</button>
-        <button class="quiet" type="button" data-role="manager" aria-pressed="false">Manager</button>
-      </div>
-    </div>
     <div class="field" id="invite-calendars-field">
       <label id="invite-calendars-label">Calendars they can view</label>
       <div class="calendar-picks" id="invite-calendars" role="group" aria-labelledby="invite-calendars-label"></div>
@@ -1222,7 +1210,6 @@ let lastTap = {};
 let searchMatches = [];
 let searchIndex = -1;
 let inviteRole = "team";
-let inviteRoles = new Set(["coordinator"]);
 let pendingBack = null;
 let noteAction = null;
 let inviteCalendars = new Set();
@@ -1286,11 +1273,13 @@ function rolesOf(email) {
 }
 
 function managers() {
-  return state.invites.filter((person) => person.role !== "client" && (person.roles || []).includes("manager"));
+  return state.invites
+    .filter((person) => person.role !== "client")
+    .sort((a, b) => (a.email === myId ? -1 : b.email === myId ? 1 : a.email.localeCompare(b.email)));
 }
 
 function canApprove() {
-  return isOwner || rolesOf(myId).includes("manager");
+  return !state.readOnly;
 }
 
 /* Who a post is waiting on at its current stage. */
@@ -1573,38 +1562,6 @@ function renderBumpSettings() {
   }
 }
 
-async function setRoles(email, roles) {
-  try {
-    await db.collection("invites").doc(email).update({ roles });
-    const person = state.invites.find((item) => item.email === email);
-    if (person) person.roles = roles;
-    render();
-    loadAccess();
-  } catch (failure) {
-    showToast("Roles didn't save. Try again.");
-  }
-}
-
-function roleButtons(email) {
-  const row = el("div", "role-row");
-  const roles = rolesOf(email);
-  [["coordinator", "Coordinator"], ["manager", "Manager"]].forEach(([role, label]) => {
-    const on = roles.includes(role);
-    const button = el("button", "quiet", label);
-    button.type = "button";
-    button.setAttribute("aria-pressed", String(on));
-    button.addEventListener("click", () => setRoles(email, on ? roles.filter((item) => item !== role) : [...roles, role]));
-    row.append(button);
-  });
-  return row;
-}
-
-function renderMyRoles() {
-  if (!isOwner) return;
-  const holder = $("my-roles");
-  holder.replaceChildren(...roleButtons(myId).children);
-}
-
 function accessStatus(person) {
   if (!person.on_list) return { text: "Signed up, but has no access", missing: true };
   if (!person.has_account) return { text: "Has access, hasn't signed up yet", missing: true };
@@ -1636,7 +1593,7 @@ function renderInvites() {
     const role = person.role === "client" ? "Client" + (names ? " · " + names : "") : person.role === "team" ? "Team member" : "Not added";
     info.append(el("small", "", role));
     info.append(el("small", status.missing ? "status-missing" : "", status.text));
-    if (person.on_list && person.role === "team") info.append(roleButtons(person.email));
+
     if (person.on_list && person.role !== "client") {
       info.append(el("small", "", person.devices ? "Notifications on" : "Notifications not turned on"));
     }
@@ -1690,9 +1647,7 @@ function openInvite(role) {
   inviteCalendars = new Set();
   $("invite-title").textContent = role === "client" ? "Add client access" : "Add team member";
   $("invite-calendars-field").hidden = role !== "client";
-  $("invite-roles-field").hidden = role === "client";
-  inviteRoles = new Set(["coordinator"]);
-  document.querySelectorAll("#invite-roles [data-role]").forEach((button) => button.setAttribute("aria-pressed", String(inviteRoles.has(button.dataset.role))));
+
   $("invite-email").value = "";
   $("invite-error").hidden = true;
   renderInviteCalendars();
@@ -1713,7 +1668,7 @@ async function saveInvite(event) {
     return;
   }
   const id = newId();
-  const invite = { email, role: inviteRole, calendars: inviteRole === "client" ? [...inviteCalendars] : [], roles: inviteRole === "client" ? [] : [...inviteRoles], invitedAt: Date.now() };
+  const invite = { email, role: inviteRole, calendars: inviteRole === "client" ? [...inviteCalendars] : [], invitedAt: Date.now() };
   $("save-invite").disabled = true;
   try {
     if (db) await db.collection("invites").doc(id).set(invite);
@@ -1887,7 +1842,7 @@ function renderCount(counts) {
   const buttons = FILTER_GROUPS.map((group) => {
     const shown = isOn(group);
     const total = group.stages.reduce((sum, stage) => sum + counts[stage], 0);
-    const button = el("button", "count-btn" + (group.id === "internal" ? " is-draft" : ""));
+    const button = el("button", "count-btn" + (group.id === "approved" ? " is-approved" : ""));
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
     button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
@@ -1985,7 +1940,6 @@ function render() {
   $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
   $("invite-buttons").hidden = !isOwner;
   $("admin-setting").hidden = !isOwner;
-  renderMyRoles();
 
 }
 
@@ -2104,7 +2058,7 @@ function renderActions() {
   if (stage === "draft") {
     const list = managers();
     if (!list.length) {
-      box.append(el("p", "action-text", "No managers yet. The admin can give someone the Manager role in Settings."));
+      box.append(el("p", "action-text", "Add your team in Settings to send posts for review."));
     } else {
       const pick = el("select");
       pick.id = "manager-pick";
@@ -2778,12 +2732,6 @@ document.querySelectorAll("[data-tab]").forEach((tab) => tab.addEventListener("c
   state.tab = tab.dataset.tab;
   renderBumps();
 }));
-$("invite-roles").addEventListener("click", (event) => {
-  const role = event.target.dataset.role;
-  if (!role) return;
-  if (inviteRoles.has(role)) inviteRoles.delete(role); else inviteRoles.add(role);
-  event.target.setAttribute("aria-pressed", String(inviteRoles.has(role)));
-});
 $("close-note").addEventListener("click", () => $("note-dialog").close());
 $("cancel-note").addEventListener("click", () => $("note-dialog").close());
 $("note-form").addEventListener("submit", (event) => {
