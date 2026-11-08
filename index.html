@@ -373,6 +373,9 @@ h1 em { color: var(--faint); font-style: normal; }
   transition: transform .12s ease;
 }
 .post:hover { transform: translateY(-1px); }
+.post[draggable="true"] { cursor: grab; }
+.post.dragging { opacity: .4; }
+.day.drop-target { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
 .post.unapproved { background: none; color: var(--fg); border-style: dashed; }
 .post small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 500; opacity: .8; }
 .dots { position: relative; z-index: 1; pointer-events: none; display: none; flex-wrap: wrap; gap: 3px; }
@@ -1342,6 +1345,15 @@ function postCard(post) {
   card.append(el("small", "", client.name + " · " + formatTime(post.time) + (approved ? "" : " · " + stage.short)));
   card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + stage.name);
   card.addEventListener("click", () => openPost(post));
+  if (!state.readOnly) {
+    card.draggable = true;
+    card.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("text/plain", post.id);
+      event.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  }
   return card;
 }
 
@@ -1891,6 +1903,20 @@ function renderMonth() {
       dayCell.append(add);
     }
     dayCell.append(el("span", "date", String(date.getDate())));
+    if (!state.readOnly) {
+      dayCell.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dayCell.classList.add("drop-target");
+      });
+      dayCell.addEventListener("dragleave", (event) => {
+        if (!dayCell.contains(event.relatedTarget)) dayCell.classList.remove("drop-target");
+      });
+      dayCell.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dayCell.classList.remove("drop-target");
+        movePost(event.dataTransfer.getData("text/plain"), key);
+      });
+    }
 
     if (inMonth) {
       const dayPosts = postsOn(key);
@@ -2556,6 +2582,32 @@ async function savePost(event) {
   showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
 }
 
+/* Moves a post to a new day after it's dragged on the calendar. */
+async function movePost(id, newDate) {
+  const post = state.posts.find((item) => item.id === id);
+  if (!post || post.date === newDate) return;
+  const oldDate = post.date;
+  const save = async (date) => {
+    await db.collection("posts").doc(id).update({ date });
+    post.date = date;
+    renderMonth();
+  };
+  try {
+    await save(newDate);
+  } catch (failure) {
+    showToast(saveProblem(failure));
+    return;
+  }
+  showToast("Moved to " + shortDate(newDate), async () => {
+    try {
+      await save(oldDate);
+      showToast("Undone");
+    } catch (failure) {
+      showToast("That didn't undo. Drag it back instead.");
+    }
+  });
+}
+
 async function deletePost() {
   const button = $("delete-post");
   if (button.textContent === "Delete post") {
@@ -2715,6 +2767,15 @@ $("today").addEventListener("click", () => {
 $("new-post").addEventListener("click", () => openNewPost());
 $("add-client").addEventListener("click", () => openClientDialog());
 $("bumps").addEventListener("click", () => showView("notifications"));
+/* Clicking outside a pop-up closes it. */
+document.querySelectorAll("dialog").forEach((dialog) => {
+  dialog.addEventListener("mousedown", (event) => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) dialog.close();
+  });
+});
 function showView(view) {
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
