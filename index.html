@@ -182,7 +182,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .stage-arrow { color: var(--faint); font-size: 12px; }
 .post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
 .post-actions select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); max-width: 100%; }
-.post-actions .action-text { margin: 0; font-size: 14px; color: var(--fg); }
+.post-actions .action-status { flex: 1 1 260px; margin: 0; font-size: 13px; color: var(--muted); }
 .post-actions .action-note { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
 .post-actions .bump-action { margin-left: auto; }
 .history-line { color: var(--muted); font-size: 12px; font-style: italic; }
@@ -1954,7 +1954,7 @@ function historyText(entry) {
   const who = displayName(entry.by);
   const note = entry.note ? ": " + entry.note : "";
   switch (entry.type) {
-    case "sent": return who + " sent to " + displayName((entry.to || [])[0]) + " for Internal Review";
+    case "sent": return (entry.to || [])[0] === entry.by ? who + " sent this for Internal Review" : who + " sent to " + displayName((entry.to || [])[0]) + " for Internal Review";
     case "approved_internal": return who + " approved internally";
     case "changes": return who + " requested changes" + note;
     case "client": return who + " sent to client";
@@ -2042,6 +2042,12 @@ function bumpWait(post) {
   return Math.max(0, post.lastBump.at + 2 * 3600000 - Date.now());
 }
 
+/* The latest step on a post, shown in gray so anyone can see it's on track. */
+function lastStep(post) {
+  const steps = (post.history || []).filter((entry) => entry.type !== "bump");
+  return steps.length ? steps[steps.length - 1] : null;
+}
+
 function renderActions() {
   const box = $("post-actions");
   box.replaceChildren();
@@ -2054,36 +2060,32 @@ function renderActions() {
     item.addEventListener("click", handler);
     return item;
   };
+  const step = editing ? lastStep(editing) : null;
+  if (step && (stage !== "draft" || step.type === "changes" || step.type === "back")) {
+    box.append(el("p", "action-status", historyText(step) + " · " + stampText(step.at)));
+  }
 
   if (stage === "draft") {
-    const list = managers();
-    if (!list.length) {
-      box.append(el("p", "action-text", "Add your team in Settings to send posts for review."));
-    } else {
-      const pick = el("select");
-      pick.id = "manager-pick";
-      pick.setAttribute("aria-label", "Choose a manager");
-      list.forEach((person) => {
-        const option = el("option", "", displayName(person.email) === "You" ? "You" : displayName(person.email));
-        option.value = person.email;
-        pick.append(option);
-      });
-      if (draft.manager && list.some((person) => person.email === draft.manager)) pick.value = draft.manager;
-      const send = button("Send to manager", true, () => {
-        changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
-      });
-      send.disabled = missingFields(draft).length > 0;
-      box.append(pick, send);
-      if (send.disabled) box.append(el("p", "action-note", "Fill in Asset, Copy, and Tags to send this to a manager."));
-    }
+    const pick = el("select");
+    pick.id = "manager-pick";
+    pick.setAttribute("aria-label", "Choose who reviews this");
+    managers().forEach((person) => {
+      const option = el("option", "", displayName(person.email));
+      option.value = person.email;
+      pick.append(option);
+    });
+    if (draft.manager && managers().some((person) => person.email === draft.manager)) pick.value = draft.manager;
+    const send = button("Send to manager", true, () => {
+      changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
+    });
+    send.disabled = missingFields(draft).length > 0 || !pick.options.length;
+    box.append(pick, send);
   } else if (stage === "internal") {
-    if (canApprove()) {
+    if (editing.manager === myId) {
       box.append(
         button("Approve", true, () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
         button("Request changes", false, () => openNote("changes"))
       );
-    } else {
-      box.append(el("p", "action-text", "Waiting on " + displayName(editing.manager) + " for Internal Review."));
     }
   } else if (stage === "ready") {
     box.append(button("Send to client", true, () => changeStage("client", { type: "client", to: [] })));
@@ -2092,29 +2094,22 @@ function renderActions() {
       const to = [creatorOf(editing), editing.manager].filter((email, index, all) => email && all.indexOf(email) === index);
       changeStage("approved", { type: "approved", to });
     }));
-  } else {
-    box.append(el("p", "action-text", "Approved. This post is green lit."));
   }
 
   if (editing && stage !== "approved") {
     const targets = waitingOn(editing).filter((email) => email !== myId);
     if (targets.length) {
       const wait = bumpWait(editing);
-      const bump = button("Bump", false, () => openNote("bump"));
+      const minutes = Math.ceil(wait / 60000);
+      const label = wait > 0 ? "Bump again in " + (minutes >= 60 ? Math.floor(minutes / 60) + "h " : "") + (minutes % 60) + "m" : "Bump";
+      const bump = button(label, false, () => openNote("bump"));
       bump.classList.add("bump-action");
       bump.disabled = wait > 0;
+      if (editing.lastBump) bump.title = "Last bumped by " + displayName(editing.lastBump.by) + " " + stampText(editing.lastBump.at);
       box.append(bump);
-      if (wait > 0) {
-        const minutes = Math.ceil(wait / 60000);
-        box.append(el("p", "action-note", "You can bump again in " + (minutes >= 60 ? Math.floor(minutes / 60) + "h " : "") + (minutes % 60) + "m."));
-      }
-    }
-    if (editing.lastBump) {
-      const ago = Math.max(1, Math.round((Date.now() - editing.lastBump.at) / 60000));
-      const agoText = ago < 60 ? ago + (ago === 1 ? " minute" : " minutes") : Math.round(ago / 60) + (Math.round(ago / 60) === 1 ? " hour" : " hours");
-      box.append(el("p", "action-note", "Last bumped by " + displayName(editing.lastBump.by) + ", " + agoText + " ago."));
     }
   }
+  box.hidden = !box.children.length;
 }
 
 function openNote(kind) {
