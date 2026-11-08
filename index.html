@@ -173,6 +173,36 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .push-options { align-items: center; }
 .see-more { align-self: flex-start; margin-top: 6px; }
 .setting > .admin-title { color: var(--danger); }
+.tracker { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.stage-step { min-height: 30px; padding: 0 9px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface); }
+.stage-step.done { color: var(--fg); cursor: pointer; }
+.stage-step.done:hover { background: var(--hover); }
+.stage-step.current { background: var(--accent); border-color: var(--accent); color: var(--on-accent); cursor: default; }
+.stage-step.ahead { opacity: .45; cursor: default; }
+.stage-arrow { color: var(--faint); font-size: 12px; }
+.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 4px; }
+.post-actions select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); max-width: 100%; }
+.post-actions .action-text { margin: 0; font-size: 14px; color: var(--fg); }
+.post-actions .action-note { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
+.post-actions .bump-action { margin-left: auto; }
+.history-line { color: var(--muted); font-size: 12px; font-style: italic; }
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast button { padding: 2px 8px; border: 1px solid currentColor; border-radius: 3px; font-weight: 700; }
+.settings-page.notify-page { max-width: none; width: 100%; gap: 24px; }
+.notify-tabs { margin-top: -8px; }
+.needs-group { display: flex; flex-direction: column; gap: 4px; max-width: 640px; }
+.needs-group h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.bump-text .due { color: var(--danger); font-weight: 600; }
+.board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.column { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; }
+.column h2 { margin: 0 0 6px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
+.column h2 span { color: var(--muted); font-weight: 500; }
+.count-btn.is-draft, .count-btn.is-draft[aria-pressed="true"] { color: var(--danger); }
+.count-btn.is-draft .key { border-color: var(--danger); }
+.count-btn.is-draft[aria-pressed="false"] { opacity: .65; }
+.role-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.role-row .quiet { min-height: 30px; padding: 0 10px; font-size: 12.5px; }
+.role-row .quiet[aria-pressed="true"], #my-roles .quiet[aria-pressed="true"], #invite-roles .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
 .gate .brand-row { align-self: center; }
 .gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
@@ -508,6 +538,16 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <section class="agenda" id="agenda" aria-label="Posts this month"></section>
   </main>
 
+  <section class="settings-page notify-page" id="notify-view" aria-labelledby="notify-title" hidden>
+    <h1 id="notify-title">Notifications</h1>
+    <div class="mode-options notify-tabs" role="group" aria-label="Notification views">
+      <button class="quiet" type="button" data-tab="needs" aria-pressed="true">Needs me</button>
+      <button class="quiet" type="button" data-tab="pipeline" aria-pressed="false">Pipeline</button>
+    </div>
+    <div id="needs-view"></div>
+    <div class="board" id="pipeline-view" hidden></div>
+  </section>
+
   <section class="settings-page" id="settings-view" aria-labelledby="settings-title" hidden>
     <h1 id="settings-title">Settings</h1>
     <div class="setting">
@@ -540,13 +580,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <button class="quiet" id="slack-test" type="button" hidden>Send a Slack test</button>
       </div>
       <h3 class="group-title">Bumps</h3>
-      <p class="empty">Bumps remind you when a post is still unapproved close to its post date.</p>
+      <p class="empty">Bumps remind you when a post is still waiting on someone close to its post date.</p>
       <div class="sub-setting">
         <h3 class="sub-title" id="bump-calendar-title">Bumps by calendar</h3>
         <p class="empty">Choose which posts bump you on each calendar.</p>
         <p class="empty"><strong>Off:</strong> No bumps from this calendar.</p>
-        <p class="empty"><strong>My posts:</strong> Only posts you added.</p>
-        <p class="empty"><strong>Whole calendar:</strong> Every unapproved post on this calendar, no matter who added it.</p>
+        <p class="empty"><strong>My posts:</strong> Only posts waiting on you.</p>
+        <p class="empty"><strong>Whole calendar:</strong> Every post on this calendar that isn't approved yet, no matter who it's waiting on.</p>
         <div class="bump-clients" id="bump-clients" role="group" aria-labelledby="bump-calendar-title"></div>
       </div>
       <div class="sub-setting">
@@ -589,6 +629,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     </div>
     <div class="setting" id="admin-setting" hidden>
       <div class="side-label admin-title">Admin</div>
+      <p class="empty">Your roles. Managers can approve posts in Internal Review.</p>
+      <div class="mode-options" id="my-roles" role="group" aria-label="Your roles"></div>
       <p class="empty">See who has finished setting up and what's still missing.</p>
       <div class="invite-list" id="invite-list"></div>
     </div>
@@ -603,9 +645,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 <dialog id="post-dialog" aria-label="Post details">
   <form id="post-form" novalidate>
     <div class="dlg-head">
-      <span class="pill" id="status-pill"></span>
+      <div class="tracker" id="tracker" role="group" aria-label="Post stage"></div>
       <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
     </div>
+    <div class="post-actions" id="post-actions"></div>
     <fieldset id="post-fields">
     <input class="title-input" id="f-title" type="text" placeholder="Post title" aria-label="Post title" autocomplete="off">
     <div class="meta-row">
@@ -652,6 +695,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       <button class="close" id="close-invite" type="button" aria-label="Close">&times;</button>
     </div>
     <div class="field"><label for="invite-email">Email</label><input id="invite-email" type="email" autocomplete="off" placeholder="name@company.com"></div>
+    <div class="field" id="invite-roles-field">
+      <label id="invite-roles-label">Roles</label>
+      <div class="mode-options" id="invite-roles" role="group" aria-labelledby="invite-roles-label">
+        <button class="quiet" type="button" data-role="coordinator" aria-pressed="true">Coordinator</button>
+        <button class="quiet" type="button" data-role="manager" aria-pressed="false">Manager</button>
+      </div>
+    </div>
     <div class="field" id="invite-calendars-field">
       <label id="invite-calendars-label">Calendars they can view</label>
       <div class="calendar-picks" id="invite-calendars" role="group" aria-labelledby="invite-calendars-label"></div>
@@ -664,14 +714,30 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   </form>
 </dialog>
 
-<dialog class="small" id="bump-dialog" aria-labelledby="bump-title">
-  <div class="bump-panel">
+<dialog class="small" id="note-dialog" aria-labelledby="note-title">
+  <form id="note-form" novalidate>
     <div class="dlg-head">
-      <h2 class="dlg-title" id="bump-title">Notifications</h2>
-      <button class="close" id="close-bumps" type="button" aria-label="Close">&times;</button>
+      <h2 class="dlg-title" id="note-title">Bump</h2>
+      <button class="close" id="close-note" type="button" aria-label="Close">&times;</button>
     </div>
-    <div class="bump-list" id="bump-list"></div>
-  </div>
+    <p class="hint" id="note-help"></p>
+    <div class="field"><label for="note-text">Note (optional)</label><textarea id="note-text" placeholder="Need this by 3pm"></textarea></div>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-note" type="button">Cancel</button>
+      <button class="primary" id="send-note" type="submit">Send bump</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="stage-dialog" aria-labelledby="stage-title">
+  <form id="stage-form" novalidate>
+    <h2 class="dlg-title" id="stage-title">Move back?</h2>
+    <p class="hint">The post's history will show who moved it.</p>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-stage" type="button">Cancel</button>
+      <button class="primary" type="submit">Move back</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog class="small" id="client-dialog" aria-labelledby="client-title">
@@ -910,18 +976,20 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     },
     invites: {
       table: "members", key: "email", watch: ["members"],
-      row: (d) => strip({ email: d.email, role: d.role, calendars: d.calendars, invited_at: d.invitedAt }),
-      doc: (r) => ({ email: r.email, role: r.role, calendars: r.calendars, invitedAt: r.invited_at })
+      row: (d) => strip({ email: d.email, role: d.role, calendars: d.calendars, roles: d.roles, invited_at: d.invitedAt }),
+      doc: (r) => ({ email: r.email, role: r.role, calendars: r.calendars, roles: r.roles || [], invitedAt: r.invited_at })
     },
     posts: {
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, created_by: d.createdBy
+        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, created_by: d.createdBy,
+        stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, createdBy: r.created_by || undefined
+        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, createdBy: r.created_by || undefined,
+        stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
   };
@@ -1130,7 +1198,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 
 const now = new Date();
 const state = {
-  year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStatus: { approved: true, unapproved: true },
+  year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStages: { draft: true, internal: true, ready: true, client: true, approved: true }, tab: "needs",
   clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {},
   bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
 };
@@ -1154,6 +1222,9 @@ let lastTap = {};
 let searchMatches = [];
 let searchIndex = -1;
 let inviteRole = "team";
+let inviteRoles = new Set(["coordinator"]);
+let pendingBack = null;
+let noteAction = null;
 let inviteCalendars = new Set();
 let preferences = null;
 let preferenceWrite = Promise.resolve();
@@ -1178,6 +1249,60 @@ function formatTime(value) {
 
 function isComplete(post) {
   return [post.asset, post.copy, post.tags].every((value) => (value || "").trim() !== "");
+}
+
+const STAGES = [
+  { id: "draft", name: "Draft", short: "Draft" },
+  { id: "internal", name: "Internal Review", short: "Internal" },
+  { id: "ready", name: "Ready for Client", short: "Ready" },
+  { id: "client", name: "Client Review", short: "Client" },
+  { id: "approved", name: "Approved", short: "Approved" }
+];
+const ALL_STAGES_ON = () => ({ draft: true, internal: true, ready: true, client: true, approved: true });
+const stageOf = (post) => post.stage || "draft";
+const stageIndex = (id) => STAGES.findIndex((stage) => stage.id === id);
+const stageName = (id) => (STAGES.find((stage) => stage.id === id) || STAGES[0]).name;
+const isApproved = (post) => stageOf(post) === "approved";
+
+function displayName(email) {
+  if (!email) return "Someone";
+  if (email === myId) return "You";
+  const name = String(email).split("@")[0].replace(/[._-]+/g, " ");
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function adminEmail() {
+  const admin = state.invites.find((person) => person.role === "admin");
+  return admin ? admin.email : (isOwner ? myId : "");
+}
+
+function creatorOf(post) {
+  return post.createdBy || adminEmail();
+}
+
+function rolesOf(email) {
+  const person = state.invites.find((item) => item.email === email);
+  return person ? person.roles || [] : [];
+}
+
+function managers() {
+  return state.invites.filter((person) => person.role !== "client" && (person.roles || []).includes("manager"));
+}
+
+function canApprove() {
+  return isOwner || rolesOf(myId).includes("manager");
+}
+
+/* Who a post is waiting on at its current stage. */
+function waitingOn(post, stage = stageOf(post)) {
+  if (stage === "approved") return [];
+  if (stage === "internal") return post.manager ? [post.manager] : [];
+  const creator = creatorOf(post);
+  return creator ? [creator] : [];
+}
+
+function isWaitingOnMe(post) {
+  return waitingOn(post).includes(myId);
 }
 
 function missingFields(post) {
@@ -1220,12 +1345,13 @@ function colorClass(color) {
 }
 
 function postCard(post) {
-  const approved = isComplete(post);
+  const approved = isApproved(post);
   const client = clientById(post.client);
+  const stage = STAGES[stageIndex(stageOf(post))];
   const card = el("button", "post " + colorClass(client.color) + (approved ? "" : " unapproved"), post.title);
   card.type = "button";
-  card.append(el("small", "", client.name + " · " + formatTime(post.time)));
-  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + (approved ? "approved" : "unapproved"));
+  card.append(el("small", "", client.name + " · " + formatTime(post.time) + (approved ? "" : " · " + stage.short)));
+  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + stage.name);
   card.addEventListener("click", () => openPost(post));
   return card;
 }
@@ -1306,12 +1432,12 @@ function bumpTimes(post) {
 
 function bumpPosts(time = new Date()) {
   return state.posts
-    .filter((post) => clientById(post.client) && !isComplete(post))
+    .filter((post) => clientById(post.client) && !isApproved(post))
     .filter((post) => {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
       if (mode === "all") return true;
-      return post.createdBy === undefined ? isOwner : post.createdBy === myId;
+      return isWaitingOnMe(post);
     })
     .filter((post) => bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -1331,10 +1457,31 @@ function unreadComments() {
       comment.at && comment.by !== myId && comment.at > (state.commentSeen[post.id] || 0)));
 }
 
+function shortDate(date) {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function noticeItem(post, label, extra) {
+  const client = clientById(post.client);
+  const item = el("button", "bump-item " + colorClass(client.color));
+  item.type = "button";
+  const text = el("span", "bump-text", post.title);
+  text.prepend(el("small", "", label));
+  const meta = el("small", "", client.name + " · " + shortDate(post.date) + " · " + stageName(stageOf(post)));
+  if (extra) meta.append(" · ", el("span", "due", extra));
+  text.append(meta);
+  item.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
+  item.addEventListener("click", () => openPost(post));
+  return item;
+}
+
 function renderBumps() {
-  const bumps = bumpPosts();
   const unread = unreadComments();
-  const total = bumps.length + unread.length;
+  const due = new Set(bumpPosts().map((post) => post.id));
+  const mine = state.posts
+    .filter((post) => clientById(post.client) && !isApproved(post) && isWaitingOnMe(post))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const total = mine.length + unread.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
@@ -1343,32 +1490,42 @@ function renderBumps() {
   button.setAttribute("aria-label", total + (total === 1 ? " notification" : " notifications"));
   button.hidden = state.readOnly;
 
-  const list = $("bump-list");
-  list.replaceChildren();
-  if (!total) list.append(el("p", "empty", "Nothing needs you right now."));
-  unread.forEach((post) => {
-    const item = el("button", "bump-item " + colorClass(clientById(post.client).color));
-    item.type = "button";
-    const text = el("span", "bump-text", post.title);
-    text.prepend(el("small", "", "New comment · " + clientById(post.client).name));
-    item.append(el("span", "bump-swatch" + (isComplete(post) ? "" : " unapproved")), text);
-    item.addEventListener("click", () => {
-      $("bump-dialog").close();
-      openPost(post);
+  document.querySelectorAll("[data-tab]").forEach((tab) => tab.setAttribute("aria-pressed", String(tab.dataset.tab === state.tab)));
+  $("needs-view").hidden = state.tab !== "needs";
+  $("pipeline-view").hidden = state.tab !== "pipeline";
+
+  const needs = $("needs-view");
+  needs.replaceChildren();
+  if (!total) needs.append(el("p", "empty", "Nothing needs you right now."));
+  if (mine.length) {
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", "Waiting on you"));
+    mine.forEach((post) => group.append(noticeItem(post, clientById(post.client).name, due.has(post.id) ? "Bump due" : "")));
+    needs.append(group);
+  }
+  if (unread.length) {
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", "New comments"));
+    unread.forEach((post) => group.append(noticeItem(post, "New comment · " + clientById(post.client).name)));
+    needs.append(group);
+  }
+
+  const board = $("pipeline-view");
+  board.replaceChildren();
+  STAGES.filter((stage) => stage.id !== "approved").forEach((stage) => {
+    const posts = state.posts
+      .filter((post) => clientById(post.client) && stageOf(post) === stage.id)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const column = el("div", "column");
+    const heading = el("h2", "", stage.name);
+    heading.append(el("span", "", String(posts.length)));
+    column.append(heading);
+    if (!posts.length) column.append(el("p", "empty", "Nothing here."));
+    posts.forEach((post) => {
+      const waiting = waitingOn(post).map(displayName).join(", ");
+      column.append(noticeItem(post, waiting ? "Waiting on " + waiting : "Needs a manager", due.has(post.id) ? "Bump due" : ""));
     });
-    list.append(item);
-  });
-  bumps.forEach((post) => {
-    const item = el("button", "bump-item " + colorClass(clientById(post.client).color));
-    item.type = "button";
-    const text = el("span", "bump-text", post.title);
-    text.prepend(el("small", "", clientById(post.client).name));
-    item.append(el("span", "bump-swatch unapproved"), text);
-    item.addEventListener("click", () => {
-      $("bump-dialog").close();
-      openPost(post);
-    });
-    list.append(item);
+    board.append(column);
   });
 }
 
@@ -1416,6 +1573,38 @@ function renderBumpSettings() {
   }
 }
 
+async function setRoles(email, roles) {
+  try {
+    await db.collection("invites").doc(email).update({ roles });
+    const person = state.invites.find((item) => item.email === email);
+    if (person) person.roles = roles;
+    render();
+    loadAccess();
+  } catch (failure) {
+    showToast("Roles didn't save. Try again.");
+  }
+}
+
+function roleButtons(email) {
+  const row = el("div", "role-row");
+  const roles = rolesOf(email);
+  [["coordinator", "Coordinator"], ["manager", "Manager"]].forEach(([role, label]) => {
+    const on = roles.includes(role);
+    const button = el("button", "quiet", label);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(on));
+    button.addEventListener("click", () => setRoles(email, on ? roles.filter((item) => item !== role) : [...roles, role]));
+    row.append(button);
+  });
+  return row;
+}
+
+function renderMyRoles() {
+  if (!isOwner) return;
+  const holder = $("my-roles");
+  holder.replaceChildren(...roleButtons(myId).children);
+}
+
 function accessStatus(person) {
   if (!person.on_list) return { text: "Signed up, but has no access", missing: true };
   if (!person.has_account) return { text: "Has access, hasn't signed up yet", missing: true };
@@ -1447,6 +1636,7 @@ function renderInvites() {
     const role = person.role === "client" ? "Client" + (names ? " · " + names : "") : person.role === "team" ? "Team member" : "Not added";
     info.append(el("small", "", role));
     info.append(el("small", status.missing ? "status-missing" : "", status.text));
+    if (person.on_list && person.role === "team") info.append(roleButtons(person.email));
     if (person.on_list && person.role !== "client") {
       info.append(el("small", "", person.devices ? "Notifications on" : "Notifications not turned on"));
     }
@@ -1500,6 +1690,9 @@ function openInvite(role) {
   inviteCalendars = new Set();
   $("invite-title").textContent = role === "client" ? "Add client access" : "Add team member";
   $("invite-calendars-field").hidden = role !== "client";
+  $("invite-roles-field").hidden = role === "client";
+  inviteRoles = new Set(["coordinator"]);
+  document.querySelectorAll("#invite-roles [data-role]").forEach((button) => button.setAttribute("aria-pressed", String(inviteRoles.has(button.dataset.role))));
   $("invite-email").value = "";
   $("invite-error").hidden = true;
   renderInviteCalendars();
@@ -1520,7 +1713,7 @@ async function saveInvite(event) {
     return;
   }
   const id = newId();
-  const invite = { email, role: inviteRole, calendars: inviteRole === "client" ? [...inviteCalendars] : [], invitedAt: Date.now() };
+  const invite = { email, role: inviteRole, calendars: inviteRole === "client" ? [...inviteCalendars] : [], roles: inviteRole === "client" ? [] : [...inviteRoles], invitedAt: Date.now() };
   $("save-invite").disabled = true;
   try {
     if (db) await db.collection("invites").doc(id).set(invite);
@@ -1640,7 +1833,7 @@ function goToPost(post) {
   state.year = year;
   state.month = month - 1;
   state.hidden.delete(post.client);
-  state.showStatus = { approved: true, unapproved: true };
+  state.showStages = ALL_STAGES_ON();
   $("post-search").value = "";
   closeSearch();
   showView("calendar");
@@ -1674,34 +1867,35 @@ function renderSearch() {
     const date = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const text = el("span", "bump-text", post.title);
     text.append(el("small", "", client.name + " · " + date));
-    row.append(el("span", "bump-swatch" + (isComplete(post) ? "" : " unapproved")), text);
+    row.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
     row.addEventListener("mousedown", (event) => event.preventDefault());
     row.addEventListener("click", () => goToPost(post));
     results.append(row);
   });
 }
 
-function renderCount(approved, unapproved) {
-  const item = (type, number, label) => {
-    const button = el("button", "count-btn" + (label === "unapproved" ? " is-unapproved" : ""));
+function renderCount(counts) {
+  const buttons = STAGES.map((stage) => {
+    const shown = state.showStages[stage.id];
+    const button = el("button", "count-btn" + (stage.id === "draft" ? " is-draft" : ""));
     button.type = "button";
-    const shown = state.showStatus[label];
     button.setAttribute("aria-pressed", String(shown));
-    button.title = (shown ? "Hide " : "Show ") + label + " posts";
-    button.append(el("i", "key " + type, shown ? "✓" : ""), number + " " + label);
+    button.title = (shown ? "Hide " : "Show ") + stage.name + " posts. Double-click to show only these.";
+    button.append(el("i", "key " + (stage.id === "approved" ? "filled" : "dashed"), shown ? "✓" : ""), counts[stage.id] + " " + stage.short);
     button.addEventListener("click", () => {
-      const other = label === "approved" ? "unapproved" : "approved";
-      const tap = doubleTap("status-" + label, shown && !state.showStatus[other]);
+      const solo = shown && STAGES.every((other) => other.id === stage.id || !state.showStages[other.id]);
+      const tap = doubleTap("stage-" + stage.id, solo);
       if (tap) {
-        state.showStatus = tap.wasSolo ? { approved: true, unapproved: true } : { [label]: true, [other]: false };
+        state.showStages = ALL_STAGES_ON();
+        if (!tap.wasSolo) STAGES.forEach((other) => { state.showStages[other.id] = other.id === stage.id; });
       } else {
-        state.showStatus[label] = !state.showStatus[label];
+        state.showStages[stage.id] = !state.showStages[stage.id];
       }
       renderMonth();
     });
     return button;
-  };
-  $("count").replaceChildren(item("filled", approved, "approved"), item("dashed", unapproved, "unapproved"));
+  });
+  $("count").replaceChildren(...buttons);
 }
 
 function renderMonth() {
@@ -1715,8 +1909,7 @@ function renderMonth() {
   const agenda = $("agenda");
   grid.replaceChildren();
   agenda.replaceChildren();
-  let approved = 0;
-  let unapproved = 0;
+  const counts = { draft: 0, internal: 0, ready: 0, client: 0, approved: 0 };
   let shownTotal = 0;
 
   for (let cell = 0; cell < cellCount; cell++) {
@@ -1737,15 +1930,13 @@ function renderMonth() {
 
     if (inMonth) {
       const dayPosts = postsOn(key);
-      dayPosts.forEach((post) => {
-        if (isComplete(post)) approved++; else unapproved++;
-      });
-      const posts = dayPosts.filter((post) => state.showStatus[isComplete(post) ? "approved" : "unapproved"]);
+      dayPosts.forEach((post) => { counts[stageOf(post)]++; });
+      const posts = dayPosts.filter((post) => state.showStages[stageOf(post)]);
       shownTotal += posts.length;
       const dots = el("div", "dots");
       posts.forEach((post) => {
         dayCell.append(postCard(post));
-        dots.append(el("i", colorClass(clientById(post.client).color) + (isComplete(post) ? "" : " unapproved")));
+        dots.append(el("i", colorClass(clientById(post.client).color) + (isApproved(post) ? "" : " unapproved")));
       });
       dayCell.append(dots);
 
@@ -1761,7 +1952,7 @@ function renderMonth() {
     grid.append(dayCell);
   }
 
-  renderCount(approved, unapproved);
+  renderCount(counts);
   $("start-note").hidden = !(state.loaded && !state.clients.length && !state.readOnly);
   if (!shownTotal) agenda.append(el("p", "empty", state.clients.length ? "No posts to show this month." : "No clients yet."));
 }
@@ -1785,6 +1976,7 @@ function render() {
   $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
   $("invite-buttons").hidden = !isOwner;
   $("admin-setting").hidden = !isOwner;
+  renderMyRoles();
 
 }
 
@@ -1795,28 +1987,46 @@ function moveMonth(step) {
   renderMonth();
 }
 
+function historyText(entry) {
+  const who = displayName(entry.by);
+  const note = entry.note ? ": " + entry.note : "";
+  switch (entry.type) {
+    case "sent": return who + " sent to " + displayName((entry.to || [])[0]) + " for Internal Review";
+    case "approved_internal": return who + " approved internally";
+    case "changes": return who + " requested changes" + note;
+    case "client": return who + " sent to client";
+    case "approved": return who + " marked client approved";
+    case "back": return who + " moved back to " + stageName(entry.stage);
+    case "bump": return who + " bumped " + (entry.to || []).map(displayName).join(", ") + note;
+    case "auto": return "Moved back to Draft because info was missing";
+    default: return who + " updated this post";
+  }
+}
+
+function stampText(at) {
+  return new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(" AM", "am").replace(" PM", "pm");
+}
+
 function renderComments() {
   const list = $("comment-list");
-  const paint = (names) => {
-    list.replaceChildren();
-    if (!draft.comments.length) {
-      list.append(el("p", "comment-empty", "No comments yet."));
+  list.replaceChildren();
+  const entries = [
+    ...draft.comments.map((comment) => ({ kind: "comment", at: comment.at || 0, comment })),
+    ...(draft.history || []).map((entry) => ({ kind: "history", at: entry.at || 0, entry }))
+  ].sort((a, b) => a.at - b.at);
+  if (!entries.length) {
+    list.append(el("p", "comment-empty", "No comments yet."));
+    return;
+  }
+  entries.forEach((item) => {
+    if (item.kind === "history") {
+      list.append(el("p", "history-line", historyText(item.entry) + " · " + stampText(item.at)));
       return;
     }
-    draft.comments.forEach((comment) => {
-      const line = el("p", "", comment.text);
-      const name = comment.by && comment.by === myId ? "You" : (names[comment.by] && names[comment.by].name) || "Someone";
-      line.prepend(el("b", "", name));
-      list.append(line);
-    });
-  };
-  paint({});
-  const ids = [...new Set(draft.comments.map((comment) => comment.by).filter(Boolean))];
-  if (!user || !ids.length) return;
-  const ticket = ++commentRender;
-  user.profiles(ids).then((names) => {
-    if (ticket === commentRender && draft) paint(names);
-  }).catch(() => {});
+    const line = el("p", "", item.comment.text);
+    line.prepend(el("b", "", displayName(item.comment.by)));
+    list.append(line);
+  });
 }
 
 function readTemplate() {
@@ -1829,21 +2039,195 @@ function updateHint() {
   readTemplate();
   const hint = $("hint");
   const missing = missingFields(draft);
-  const wasApproved = editing && isComplete(editing);
+  const stage = editing ? stageOf(editing) : "draft";
   if (!missing.length) {
-    hint.replaceChildren(el("strong", "", "Everything is filled in."), " Saving will approve this post.");
+    hint.replaceChildren(stage === "draft" ? el("strong", "", "Everything is filled in. ") : "", stage === "draft" ? "Send it to a manager when it's ready." : "");
   } else {
     hint.replaceChildren(
       el("strong", "", "Still needed: " + missing.join(", ") + "."),
-      wasApproved ? " Saving now will move this post back to unapproved." : " This post stays unapproved until they're filled in."
+      stage === "draft" ? " Fill these in to send it to a manager." : " Saving now will move this post back to Draft."
     );
+  }
+  renderActions();
+}
+
+function renderTracker() {
+  const tracker = $("tracker");
+  tracker.replaceChildren();
+  const current = stageIndex(editing ? stageOf(editing) : "draft");
+  STAGES.forEach((stage, index) => {
+    if (index) tracker.append(el("span", "stage-arrow", "→"));
+    const step = el("button", "stage-step " + (index < current ? "done" : index === current ? "current" : "ahead"), stage.name);
+    step.type = "button";
+    const canMove = index < current && editing && !state.readOnly;
+    step.disabled = !canMove && index !== current;
+    if (index === current) step.setAttribute("aria-current", "step");
+    if (canMove) {
+      step.title = "Move this post back to " + stage.name;
+      step.addEventListener("click", () => {
+        pendingBack = stage.id;
+        $("stage-title").textContent = "Move this post back to " + stage.name + "?";
+        $("stage-dialog").showModal();
+      });
+    }
+    tracker.append(step);
+  });
+}
+
+function bumpWait(post) {
+  if (!post || !post.lastBump) return 0;
+  return Math.max(0, post.lastBump.at + 2 * 3600000 - Date.now());
+}
+
+function renderActions() {
+  const box = $("post-actions");
+  box.replaceChildren();
+  box.hidden = state.readOnly;
+  if (state.readOnly) return;
+  const stage = editing ? stageOf(editing) : "draft";
+  const button = (label, primary, handler) => {
+    const item = el("button", primary ? "primary" : "quiet", label);
+    item.type = "button";
+    item.addEventListener("click", handler);
+    return item;
+  };
+
+  if (stage === "draft") {
+    const list = managers();
+    if (!list.length) {
+      box.append(el("p", "action-text", "No managers yet. The admin can give someone the Manager role in Settings."));
+    } else {
+      const pick = el("select");
+      pick.id = "manager-pick";
+      pick.setAttribute("aria-label", "Choose a manager");
+      list.forEach((person) => {
+        const option = el("option", "", displayName(person.email) === "You" ? "You" : displayName(person.email));
+        option.value = person.email;
+        pick.append(option);
+      });
+      if (draft.manager && list.some((person) => person.email === draft.manager)) pick.value = draft.manager;
+      const send = button("Send to manager", true, () => {
+        changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
+      });
+      send.disabled = missingFields(draft).length > 0;
+      box.append(pick, send);
+      if (send.disabled) box.append(el("p", "action-note", "Fill in Asset, Copy, and Tags to send this to a manager."));
+    }
+  } else if (stage === "internal") {
+    if (canApprove()) {
+      box.append(
+        button("Approve", true, () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
+        button("Request changes", false, () => openNote("changes"))
+      );
+    } else {
+      box.append(el("p", "action-text", "Waiting on " + displayName(editing.manager) + " for Internal Review."));
+    }
+  } else if (stage === "ready") {
+    box.append(button("Send to client", true, () => changeStage("client", { type: "client", to: [] })));
+  } else if (stage === "client") {
+    box.append(button("Client approved", true, () => {
+      const to = [creatorOf(editing), editing.manager].filter((email, index, all) => email && all.indexOf(email) === index);
+      changeStage("approved", { type: "approved", to });
+    }));
+  } else {
+    box.append(el("p", "action-text", "Approved. This post is green lit."));
+  }
+
+  if (editing && stage !== "approved") {
+    const targets = waitingOn(editing).filter((email) => email !== myId);
+    if (targets.length) {
+      const wait = bumpWait(editing);
+      const bump = button("Bump", false, () => openNote("bump"));
+      bump.classList.add("bump-action");
+      bump.disabled = wait > 0;
+      box.append(bump);
+      if (wait > 0) {
+        const minutes = Math.ceil(wait / 60000);
+        box.append(el("p", "action-note", "You can bump again in " + (minutes >= 60 ? Math.floor(minutes / 60) + "h " : "") + (minutes % 60) + "m."));
+      }
+    }
+    if (editing.lastBump) {
+      const ago = Math.max(1, Math.round((Date.now() - editing.lastBump.at) / 60000));
+      const agoText = ago < 60 ? ago + (ago === 1 ? " minute" : " minutes") : Math.round(ago / 60) + (Math.round(ago / 60) === 1 ? " hour" : " hours");
+      box.append(el("p", "action-note", "Last bumped by " + displayName(editing.lastBump.by) + ", " + agoText + " ago."));
+    }
   }
 }
 
-function setPill(approved) {
-  const pill = $("status-pill");
-  pill.className = "pill " + (approved ? "approved" : "unapproved");
-  pill.textContent = approved ? "Approved" : "Unapproved";
+function openNote(kind) {
+  noteAction = kind;
+  const targets = waitingOn(editing).filter((email) => email !== myId).map(displayName).join(", ");
+  $("note-title").textContent = kind === "bump" ? "Bump " + targets : "Request changes";
+  $("note-help").textContent = kind === "bump" ? "Matrix Bot will remind them about this post." : "This sends the post back to Draft.";
+  $("note-text").placeholder = kind === "bump" ? "Need this by 3pm" : "What needs to change?";
+  $("send-note").textContent = kind === "bump" ? "Send bump" : "Request changes";
+  $("note-text").value = "";
+  $("note-dialog").showModal();
+  $("note-text").focus();
+}
+
+function postFields() {
+  readTemplate();
+  return {
+    title: $("f-title").value.trim(), client: $("f-client").value,
+    date: $("f-date").value, time: $("f-time").value,
+    asset: draft.asset, copy: draft.copy, tags: draft.tags,
+    assetFile: draft.assetFile || null
+  };
+}
+
+function fieldProblem(fields) {
+  return !fields.title ? "Add a title first."
+    : !fields.client || fields.client === "__new" ? "Choose a client first."
+    : !fields.date ? "Choose a date first." : "";
+}
+
+/* Saves the post and moves it to a new stage, then offers Undo. */
+async function changeStage(nextStage, entry, extra = {}, toast) {
+  const fields = postFields();
+  const error = $("form-error");
+  const problem = fieldProblem(fields);
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+  const isNew = !editing;
+  const before = isNew ? null : { stage: stageOf(editing), manager: editing.manager || null, history: [...(editing.history || [])], lastBump: editing.lastBump || null };
+  const record = { ...entry, by: myId, at: Date.now() };
+  const update = {
+    ...fields, stage: nextStage,
+    history: [...(isNew ? [] : editing.history || []), record],
+    ...extra
+  };
+  try {
+    const ref = db.collection("posts").doc(draft.id);
+    if (isNew) await ref.set({ ...update, comments: draft.comments, createdBy: myId });
+    else await ref.update(update);
+  } catch (failure) {
+    error.textContent = saveProblem(failure);
+    error.hidden = false;
+    return;
+  }
+  const local = state.posts.find((post) => post.id === draft.id);
+  if (local) Object.assign(local, update);
+  else state.posts.push({ id: draft.id, ...update, comments: draft.comments, createdBy: myId });
+  const id = draft.id;
+  $("post-dialog").close();
+  state.hidden.delete(fields.client);
+  render();
+  const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + stageName(nextStage) : "Moved to " + stageName(nextStage));
+  showToast(message, isNew ? null : async () => {
+    try {
+      await db.collection("posts").doc(id).update(before);
+      const post = state.posts.find((item) => item.id === id);
+      if (post) Object.assign(post, before);
+      render();
+      showToast("Undone");
+    } catch (failure) {
+      showToast("That didn't undo. Try moving it back from the post.");
+    }
+  });
 }
 
 function fillClientOptions() {
@@ -1888,7 +2272,7 @@ function openDialog() {
   $("delete-post").textContent = "Delete post";
   $("comment-input").hidden = state.readOnly;
   $("add-comment").hidden = state.readOnly;
-  setPill(editing ? isComplete(editing) : false);
+  renderTracker();
   renderComments();
   updateHint();
   $("post-dialog").showModal();
@@ -1913,7 +2297,8 @@ function openNewPost(date) {
   editing = null;
   draft = {
     id: newId(), client: shownClients.length === 1 ? shownClients[0].id : "", title: "",
-    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", comments: []
+    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", comments: [],
+    stage: "draft", manager: "", history: []
   };
   openDialog();
 }
@@ -2080,12 +2465,21 @@ function openClientDialog(client) {
   $("c-name").focus();
 }
 
-function showToast(message) {
+function showToast(message, undo) {
   const toast = $("toast");
-  toast.textContent = message;
+  toast.replaceChildren(el("span", "", message));
+  if (undo) {
+    const button = el("button", "", "Undo");
+    button.type = "button";
+    button.addEventListener("click", () => {
+      toast.hidden = true;
+      undo();
+    });
+    toast.append(button);
+  }
   toast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.hidden = true; }, 2800);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, undo ? 7000 : 2800);
 }
 
 function saveProblem(error) {
@@ -2173,10 +2567,17 @@ async function savePost(event) {
   try {
     if (db) {
       const ref = db.collection("posts").doc(draft.id);
-      if (isNew) await ref.set({ ...fields, comments: draft.comments, createdBy: myId });
-      else await ref.update(fields);
+      if (isNew) {
+        await ref.set({ ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
+      } else {
+        if (stageOf(editing) !== "draft" && !isComplete(fields)) {
+          fields.stage = "draft";
+          fields.history = [...(editing.history || []), { type: "auto", by: myId, at: Date.now(), to: [] }];
+        }
+        await ref.update(fields);
+      }
     } else if (isNew) {
-      state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId });
+      state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
     } else {
       Object.assign(state.posts.find((post) => post.id === draft.id), fields);
     }
@@ -2188,13 +2589,13 @@ async function savePost(event) {
   }
   $("save-post").disabled = false;
   state.hidden.delete(fields.client);
-  if (isNew) state.showStatus = { approved: true, unapproved: true };
+  if (isNew) state.showStages = ALL_STAGES_ON();
   const [year, month] = fields.date.split("-").map(Number);
   state.year = year;
   state.month = month - 1;
   $("post-dialog").close();
   render();
-  showToast(isComplete(fields) ? "Post approved" : "Saved as unapproved");
+  showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
 }
 
 async function deletePost() {
@@ -2355,16 +2756,46 @@ $("today").addEventListener("click", () => {
 });
 $("new-post").addEventListener("click", () => openNewPost());
 $("add-client").addEventListener("click", () => openClientDialog());
-$("bumps").addEventListener("click", () => $("bump-dialog").showModal());
-$("close-bumps").addEventListener("click", () => $("bump-dialog").close());
+$("bumps").addEventListener("click", () => showView("notifications"));
 function showView(view) {
-  const onSettings = view === "settings";
-  $("settings-view").hidden = !onSettings;
-  $("calendar-view").hidden = onSettings;
-  $("client-panel").hidden = onSettings;
-  history.replaceState(null, "", onSettings ? "#settings" : location.pathname);
+  $("settings-view").hidden = view !== "settings";
+  $("notify-view").hidden = view !== "notifications";
+  $("calendar-view").hidden = view !== "calendar";
+  $("client-panel").hidden = view !== "calendar";
+  history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
   window.scrollTo(0, 0);
 }
+document.querySelectorAll("[data-tab]").forEach((tab) => tab.addEventListener("click", () => {
+  state.tab = tab.dataset.tab;
+  renderBumps();
+}));
+$("invite-roles").addEventListener("click", (event) => {
+  const role = event.target.dataset.role;
+  if (!role) return;
+  if (inviteRoles.has(role)) inviteRoles.delete(role); else inviteRoles.add(role);
+  event.target.setAttribute("aria-pressed", String(inviteRoles.has(role)));
+});
+$("close-note").addEventListener("click", () => $("note-dialog").close());
+$("cancel-note").addEventListener("click", () => $("note-dialog").close());
+$("note-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const note = $("note-text").value.trim();
+  $("note-dialog").close();
+  if (noteAction === "changes") {
+    changeStage("draft", { type: "changes", note, to: [creatorOf(editing)] });
+  } else {
+    const to = waitingOn(editing).filter((email) => email !== myId);
+    changeStage(stageOf(editing), { type: "bump", note, to }, { lastBump: { by: myId, at: Date.now() } }, "Bump sent");
+  }
+});
+$("cancel-stage").addEventListener("click", () => $("stage-dialog").close());
+$("stage-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  $("stage-dialog").close();
+  const target = pendingBack;
+  const extra = target === "draft" ? {} : {};
+  changeStage(target, { type: "back", stage: target, to: waitingOn(editing, target).filter((email) => email !== myId) }, extra);
+});
 $("settings").addEventListener("click", () => {
   showView("settings");
   loadAccess();
@@ -2540,6 +2971,7 @@ setInterval(() => {
 }, 60000);
 
 if (location.hash === "#settings") showView("settings");
+if (location.hash === "#notifications") showView("notifications");
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
