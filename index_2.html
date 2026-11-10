@@ -1,0 +1,3159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="matrix">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>matrix.by.p</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: a black and white page with one heavy month headline and flat, square client blocks as the only color. */
+:root {
+  --bg: #ffffff; --surface: #ffffff; --hover: #f3f3f3; --line: #e4e4e4;
+  --fg: #0f0f0f; --muted: #6a6a6a; --faint: #b8b8b8;
+  --accent: #0f0f0f; --on-accent: #ffffff; --danger: #c62828; --good: #1e8e3e;
+  --c0-bg: #ff7043; --c0-fg: #0f0f0f;
+  --c1-bg: #ffc933; --c1-fg: #0f0f0f;
+  --c2-bg: #b5e550; --c2-fg: #0f0f0f;
+  --c3-bg: #3fd0c0; --c3-fg: #0f0f0f;
+  --c4-bg: #74adff; --c4-fg: #0f0f0f;
+  --c5-bg: #ff8fb3; --c5-fg: #0f0f0f;
+  --c6-bg: #d6bd98; --c6-fg: #0f0f0f;
+  --c7-bg: #bdbdbd; --c7-fg: #0f0f0f;
+  --c8-bg: #ffab91; --c8-fg: #0f0f0f;
+  --c9-bg: #ffe082; --c9-fg: #0f0f0f;
+  --c10-bg: #8bd17c; --c10-fg: #0f0f0f;
+  --c11-bg: #00c2a8; --c11-fg: #0f0f0f;
+  --c12-bg: #a7d8ff; --c12-fg: #0f0f0f;
+  --c13-bg: #ffc4dc; --c13-fg: #0f0f0f;
+  --c14-bg: #e8d9c0; --c14-fg: #0f0f0f;
+  --c15-bg: #dcdcdc; --c15-fg: #0f0f0f;
+  --c16-bg: #ff9f1c; --c16-fg: #0f0f0f;
+  --c17-bg: #e6ee9c; --c17-fg: #0f0f0f;
+  --c18-bg: #66d9e8; --c18-fg: #0f0f0f;
+  --c19-bg: #c5b3ff; --c19-fg: #0f0f0f;
+  --c20-bg: #e599f7; --c20-fg: #0f0f0f;
+  --c21-bg: #a3b18a; --c21-fg: #0f0f0f;
+  --c22-bg: #f4a6a6; --c22-fg: #0f0f0f;
+  --c23-bg: #9ad0c2; --c23-fg: #0f0f0f;
+  --c24-bg: #b0bec5; --c24-fg: #0f0f0f;
+  --display: "Geist", "Helvetica Neue", Arial, sans-serif;
+  --body: "Geist", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101010; --surface: #101010; --hover: #222222; --line: #2d2d2d;
+    --fg: #f5f5f5; --muted: #a6a6a6; --faint: #5c5c5c;
+    --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80; --good: #5ad07a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101010; --surface: #101010; --hover: #222222; --line: #2d2d2d;
+  --fg: #f5f5f5; --muted: #a6a6a6; --faint: #5c5c5c;
+  --accent: #f5f5f5; --on-accent: #101010; --danger: #ff8a80; --good: #5ad07a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--body); font-size: 15px; line-height: 1.4;
+  padding-block: 32px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.c0 { --cbg: var(--c0-bg); --cfg: var(--c0-fg); }
+.c1 { --cbg: var(--c1-bg); --cfg: var(--c1-fg); }
+.c2 { --cbg: var(--c2-bg); --cfg: var(--c2-fg); }
+.c3 { --cbg: var(--c3-bg); --cfg: var(--c3-fg); }
+.c4 { --cbg: var(--c4-bg); --cfg: var(--c4-fg); }
+.c5 { --cbg: var(--c5-bg); --cfg: var(--c5-fg); }
+.c6 { --cbg: var(--c6-bg); --cfg: var(--c6-fg); }
+.c7 { --cbg: var(--c7-bg); --cfg: var(--c7-fg); }
+.c8 { --cbg: var(--c8-bg); --cfg: var(--c8-fg); }
+.c9 { --cbg: var(--c9-bg); --cfg: var(--c9-fg); }
+.c10 { --cbg: var(--c10-bg); --cfg: var(--c10-fg); }
+.c11 { --cbg: var(--c11-bg); --cfg: var(--c11-fg); }
+.c12 { --cbg: var(--c12-bg); --cfg: var(--c12-fg); }
+.c13 { --cbg: var(--c13-bg); --cfg: var(--c13-fg); }
+.c14 { --cbg: var(--c14-bg); --cfg: var(--c14-fg); }
+.c15 { --cbg: var(--c15-bg); --cfg: var(--c15-fg); }
+.c16 { --cbg: var(--c16-bg); --cfg: var(--c16-fg); }
+.c17 { --cbg: var(--c17-bg); --cfg: var(--c17-fg); }
+.c18 { --cbg: var(--c18-bg); --cfg: var(--c18-fg); }
+.c19 { --cbg: var(--c19-bg); --cfg: var(--c19-fg); }
+.c20 { --cbg: var(--c20-bg); --cfg: var(--c20-fg); }
+.c21 { --cbg: var(--c21-bg); --cfg: var(--c21-fg); }
+.c22 { --cbg: var(--c22-bg); --cfg: var(--c22-fg); }
+.c23 { --cbg: var(--c23-bg); --cfg: var(--c23-fg); }
+.c24 { --cbg: var(--c24-bg); --cfg: var(--c24-fg); }
+
+.app {
+  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 40px;
+  max-width: 1320px; margin-inline: auto;
+}
+
+.app { position: relative; }
+.top-icons { position: absolute; top: 0; right: 0; z-index: 6; display: flex; gap: 2px; }
+.settings-btn {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 4px; transition: background .15s ease;
+}
+.settings-btn:hover { background: var(--hover); }
+.settings-btn svg { width: 22px; height: 22px; }
+.setting { display: flex; flex-direction: column; gap: 8px; padding-top: 28px; border-top: 3px solid var(--line); }
+.settings-page > h1 { margin-bottom: 4px; }
+.settings-page > h1 + .setting { padding-top: 0; border-top: 0; }
+.setting > .side-label { font-size: 24px; font-weight: 800; line-height: 1.15; letter-spacing: -.03em; text-transform: none; color: var(--fg); margin-bottom: 4px; }
+.setting .empty { font-size: 12.5px; line-height: 1.45; }
+.dance-btn { align-self: flex-start; width: 170px; padding: 14px; border-radius: 4px; }
+.dance-btn:hover { background: var(--hover); }
+.dance-btn svg { display: block; width: 100%; height: auto; overflow: visible; }
+.dance-btn .dude-m { transform-origin: 100px 110px; transition: transform .35s ease, opacity .25s ease .1s; }
+.dance-btn .dude-cube { opacity: 0; transition: opacity .3s ease; }
+.dance-btn .dude-wrap { transform: scale(0); transform-origin: 100px 112px; transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.dance-btn .dude-confetti { opacity: 0; transition: opacity .25s ease; }
+.dance-btn.dancing .dude-m { transform: scale(0); opacity: 0; }
+.dance-btn.dancing path[opacity] { opacity: 0; }
+.dance-btn.dancing .dude-cube { opacity: .38; }
+.dance-btn.dancing .dude-wrap { transform: scale(.68); transition-delay: .25s; }
+.dance-btn.dancing .dude-confetti { opacity: 1; }
+.dance-btn.dancing .dude-fig { transform-origin: 100px 152px; animation: boogie .5s ease-in-out infinite; }
+.dance-btn.dancing .arm-left { transform-origin: 100px 100px; animation: wave .25s ease-in-out infinite alternate; }
+.dance-btn.dancing .arm-right { transform-origin: 100px 100px; animation: wave .25s ease-in-out infinite alternate-reverse; }
+.dance-btn.dancing .leg-left { transform-origin: 100px 126px; animation: kick .25s ease-in-out infinite alternate; }
+.dance-btn.dancing .leg-right { transform-origin: 100px 126px; animation: kick .25s ease-in-out infinite alternate-reverse; }
+.dance-btn.dancing .bit { transform-box: fill-box; transform-origin: center; animation: confetti var(--fall) linear infinite; animation-delay: var(--delay); }
+@keyframes boogie {
+  0%, 100% { transform: rotate(-9deg); }
+  25% { transform: translateY(-8px); }
+  50% { transform: rotate(9deg); }
+  75% { transform: translateY(-8px); }
+}
+@keyframes wave { from { transform: rotate(-30deg); } to { transform: rotate(22deg); } }
+@keyframes kick { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes confetti { from { transform: translateY(-16px) rotate(0deg); } to { transform: translateY(204px) rotate(560deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .dance-btn.dancing .dude-fig, .dance-btn.dancing .arm-left, .dance-btn.dancing .arm-right, .dance-btn.dancing .leg-left, .dance-btn.dancing .leg-right, .dance-btn.dancing .bit { animation: none; }
+}
+.search { position: static; }
+.icon-gap { margin-left: 10px; }
+.notif-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; display: flex; flex-direction: column; gap: 2px; width: 290px; padding: 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .14); }
+.notif-menu[hidden] { display: none; }
+.notif-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 6px 10px; border-radius: 4px; text-align: left; font-weight: 600; font-size: 14px; }
+.notif-menu button:hover { background: var(--hover); }
+.notif-menu svg { width: 20px; height: 20px; flex: none; }
+.notif-menu .menu-label { flex: 1; }
+.notif-menu .menu-label small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.notif-menu .bump-count { flex: none; }
+@media (max-width: 560px) { .top-icons .settings-btn { width: 32px; height: 36px; } .top-icons .settings-btn svg { width: 20px; height: 20px; } .icon-gap { margin-left: 4px; } .top-icons .bell-btn .bump-count { top: -4px; right: -6px; min-width: 16px; height: 16px; font-size: 10px; } }
+.settings-btn.is-active { background: var(--hover); }
+.search-panel {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 5;
+  display: flex; flex-direction: column; gap: 4px;
+  width: min(340px, calc(100vw - 32px)); padding: 8px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+}
+#post-search { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+#post-search::placeholder { color: var(--muted); }
+.search-results { max-height: 340px; overflow: auto; }
+.search-result { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px; border-radius: 3px; text-align: left; font-weight: 600; }
+.search-result:hover, .search-result.active { background: var(--hover); }
+.search-result small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.search-empty { margin: 0; padding: 8px; color: var(--muted); font-size: 14px; }
+.password-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.password-row input { flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.admin-note { margin: 0; color: var(--danger); font-size: 12.5px; font-weight: 500; }
+.push-options { align-items: center; }
+.see-more { align-self: flex-start; margin-top: 6px; }
+.setting > .admin-title { color: var(--danger); }
+.tracker { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.phase-steps { display: flex; align-items: center; gap: 8px; }
+.phase { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 2px; font-size: 13px; font-weight: 600; color: var(--faint); background: none; }
+.phase-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; }
+.phase.done { color: var(--fg); cursor: pointer; }
+.phase.done .phase-dot, .phase.current .phase-dot { background: currentColor; }
+.phase.done:hover span { text-decoration: underline; }
+.phase.current { color: var(--fg); }
+button:disabled { opacity: .35; cursor: not-allowed; }
+.phase:disabled { cursor: default; opacity: 1; }
+.phase-line { width: 22px; height: 1.5px; background: var(--line); }
+.phase-line.done { background: var(--fg); }
+.phase-status { margin: 0; font-size: 13px; color: var(--muted); }
+.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.post-actions select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); max-width: 100%; }
+.post-actions .action-note { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
+.post-actions .bump-action { margin-left: auto; }
+.history-line { color: var(--muted); font-size: 12px; font-style: italic; }
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast button { padding: 2px 8px; border: 1px solid currentColor; border-radius: 3px; font-weight: 700; }
+.settings-page.notify-page { max-width: none; width: 100%; gap: 24px; }
+.notify-tabs { margin-top: -8px; }
+.needs-group { display: flex; flex-direction: column; gap: 4px; max-width: 640px; }
+.needs-group h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.bump-text .due { color: var(--danger); font-weight: 600; }
+.side-note.bump-intro { max-width: 560px; margin-top: -8px; }
+.bump-status { display: block; margin-top: 2px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.bump-view-count { background: var(--danger) !important; color: #fff !important; }
+.top-icons .bell-btn .bump-count { top: -3px; right: -6px; }
+.board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.column { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; }
+.column h2 { margin: 0 0 6px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
+.column h2 span { color: var(--muted); font-weight: 500; }
+.count-btn.is-approved, .count-btn.is-approved[aria-pressed="true"] { color: var(--good); }
+.count-btn.is-approved .key { border-color: var(--good); }
+.count-btn.is-approved[aria-pressed="false"] { opacity: .65; }
+.bell-btn { position: relative; }
+.bell-btn .bump-count { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; font-size: 11px; }
+.gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
+.gate .brand-row { align-self: center; }
+.gate-form { display: flex; flex-direction: column; gap: 8px; width: min(320px, 100%); }
+.gate-form input { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.gate-text { min-height: 34px; color: var(--muted); font-size: 13.5px; font-weight: 500; }
+.gate-text:hover { color: var(--fg); }
+.gate-note { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.gate-message { margin: 0; text-align: center; color: var(--muted); }
+.sub-setting { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; }
+.sub-title { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.group-title { margin: 20px 0 0; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.comment-modes { margin-top: 6px; }
+.sub-setting .bump-clients { margin-top: 6px; }
+.timing-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.timing-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.timing-row select, .timing-row input { min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+.timing-row select { flex: 1 1 170px; min-width: 0; }
+.timing-row .at { color: var(--muted); font-size: 13px; }
+.add-timing { align-self: flex-start; margin-top: 4px; }
+#invite-form { display: flex; flex-direction: column; gap: 16px; }
+.calendar-picks { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow: auto; }
+.calendar-pick { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 38px; padding: 0 4px; border-radius: 4px; text-align: left; font-weight: 500; }
+.calendar-pick:hover { background: var(--hover); }
+.calendar-pick[aria-pressed="false"] { color: var(--muted); }
+.calendar-pick[aria-pressed="false"] .check { background: none; color: transparent; border-color: var(--faint); }
+.invite-list { display: flex; flex-direction: column; }
+.invite-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.invite-info { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.invite-info small.status-missing { color: var(--danger); font-weight: 500; }
+.invite-info small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.setting strong { color: var(--muted); font-weight: 600; }
+.bump-clients { display: flex; flex-direction: column; gap: 2px; }
+.bump-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding: 8px 0; border-top: 1px solid var(--line); }
+.bump-row:first-child { border-top: 0; }
+.bump-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.bump-name .bump-swatch { margin-top: 0; }
+.mode-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.mode-options .quiet { min-height: 34px; padding: 0 10px; font-size: 13px; }
+.mode-options .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.danger-btn { color: var(--danger); margin-right: auto; }
+.client-edit { flex: none; min-height: 40px; padding: 0 8px; border-radius: 4px; font-size: 13px; font-weight: 600; color: var(--muted); opacity: 0; }
+.client:hover .client-edit, .client-edit:focus-visible { opacity: 1; }
+.client-edit:hover { color: var(--fg); }
+@media (hover: none) { .client-edit { opacity: 1; } }
+.theme-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.theme-options .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.side { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; letter-spacing: -.03em; }
+.brand span { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--faint); }
+.brand-row { display: flex; align-items: center; gap: 10px; align-self: flex-start; padding: 0; border-radius: 4px; text-align: left; }
+.settings-page { display: flex; flex-direction: column; gap: 44px; min-width: 0; max-width: 560px; }
+.logo { flex: none; display: block; width: 46px; height: auto; }
+.side-group { display: flex; flex-direction: column; gap: 8px; }
+.side-label {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.clients { display: flex; flex-direction: column; gap: 4px; }
+.client { display: flex; align-items: stretch; width: 100%; min-height: 40px; margin-left: -8px; border-radius: 4px; transition: background .15s ease; }
+.client:hover { background: var(--hover); }
+.client-check { flex: none; display: grid; place-items: center; width: 36px; min-height: 40px; border-radius: 4px; }
+.client-name { flex: 1; min-width: 0; min-height: 40px; padding: 0 8px 0 2px; border-radius: 4px; text-align: left; font-weight: 500; }
+.client-name[aria-pressed="true"] { font-weight: 700; }
+.check {
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px;
+  border-radius: 3px; background: var(--cbg); color: var(--cfg);
+  border: 1.5px solid var(--cbg);
+  font-size: 12px; font-weight: 700; line-height: 1;
+}
+.client.off .client-name { color: var(--muted); }
+.client.off .check { background: none; color: transparent; border-color: var(--faint); }
+.add-client {
+  align-self: flex-start; min-height: 36px; margin-left: -8px; padding: 0 8px; border-radius: 4px;
+  font-size: 14px; font-weight: 600; color: var(--muted);
+}
+.add-client:hover { background: var(--hover); color: var(--fg); }
+.side-note { margin: 0; font-size: 13px; color: var(--muted); }
+
+.main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 24px; }
+.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 250px; }
+.top-left { min-width: 0; }
+.top .nav { justify-content: flex-end; }
+h1 {
+  margin: 0; font-family: var(--display); font-weight: 800;
+  font-size: clamp(28px, 3.8vw, 44px); line-height: 1; letter-spacing: -.05em;
+}
+h1 em { color: var(--faint); font-style: normal; }
+.count { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 0 -8px; color: var(--muted); font-size: 14px; }
+.count-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 8px; border-radius: 4px; color: var(--muted); transition: background .15s ease; }
+.count-btn:hover { background: var(--hover); }
+.count-btn[aria-pressed="true"] { color: var(--fg); }
+.key { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; font-size: 11px; font-style: normal; font-weight: 700; line-height: 1; }
+.key.filled { border: 1.5px solid var(--faint); }
+.key.dashed { border: 1.5px dashed var(--faint); }
+.count-btn[aria-pressed="true"] .key { border-color: var(--fg); }
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.nav button {
+  min-width: 40px; height: 40px; padding: 0 12px; border-radius: 4px;
+  font-weight: 600; transition: background .15s ease;
+}
+.nav button:hover { background: var(--hover); }
+.nav .today-btn { border: 1px solid var(--line); background: var(--surface); }
+.nav .today-btn:hover { background: var(--hover); }
+.nav .arrow { font-size: 20px; line-height: 1; padding: 0; }
+.nav .new-btn, .primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.nav .new-btn { margin-right: 4px; }
+.nav .new-btn:hover, .primary:hover { background: var(--accent); opacity: .82; }
+
+.nav .bump-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); margin-right: 4px; }
+.nav .bump-btn:hover { background: var(--hover); }
+.bump-count {
+  display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 3px; background: var(--accent); color: var(--on-accent);
+  font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.bump-panel, .bump-list { display: flex; flex-direction: column; gap: 12px; }
+.bump-list { gap: 4px; }
+.bump-item {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 8px;
+  border-radius: 4px; text-align: left; font-weight: 600;
+}
+.bump-item:hover { background: var(--hover); }
+.bump-swatch { flex: none; width: 12px; height: 12px; margin-top: 4px; border-radius: 2px; background: var(--cbg); }
+.bump-text { min-width: 0; overflow-wrap: anywhere; }
+.bump-text small { display: block; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+
+.grid-wrap { border-top: 2px solid var(--fg); border-bottom: 1px solid var(--line); background: var(--surface); }
+.weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays div {
+  padding: 10px 10px 8px; font-size: 12px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.day {
+  position: relative;
+  min-height: 132px; padding: 8px; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  border-top: 1px solid var(--line); border-left: 1px solid var(--line);
+}
+.day:nth-child(7n + 1) { border-left: 0; }
+.day-add {
+  position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%;
+  border-radius: 0; transition: background .12s ease;
+}
+.day-add::after {
+  content: "+"; position: absolute; top: 8px; right: 10px;
+  font-size: 18px; font-weight: 500; line-height: 1; color: var(--muted); opacity: 0;
+}
+.day-add:hover { background: var(--hover); }
+.day-add:hover::after, .day-add:focus-visible::after { opacity: 1; }
+.day-add:focus-visible { outline-offset: -2px; }
+.date {
+  position: relative; z-index: 1; pointer-events: none;
+  align-self: flex-start; display: grid; place-items: center;
+  min-width: 26px; height: 26px; padding: 0 4px; border-radius: 3px;
+  font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.day.out .date { color: var(--faint); font-weight: 500; }
+.day.today .date { background: var(--accent); color: var(--on-accent); }
+
+.post {
+  position: relative; z-index: 1;
+  display: block; width: 100%; text-align: left;
+  background: var(--cbg); color: var(--cfg);
+  border: 1.5px solid var(--cbg);
+  padding: 4px 6px; border-radius: 3px; min-width: 0;
+  font-size: 13px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere;
+  transition: transform .12s ease;
+}
+.post:hover { transform: translateY(-1px); }
+.post[draggable="true"] { cursor: grab; }
+.post.dragging { opacity: .4; }
+.post.unapproved { background: none; color: var(--fg); border-style: dashed; border-width: 2px; }
+.dots i.unapproved { background: none; border: 1.5px dashed var(--cbg); }
+.bump-swatch.unapproved { background: none; border: 1.5px dashed var(--cbg); }
+.day.drop-target { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
+.post small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 500; opacity: .8; }
+.dots { position: relative; z-index: 1; pointer-events: none; display: none; flex-wrap: wrap; gap: 3px; }
+.dots i { width: 8px; height: 8px; border-radius: 2px; background: var(--cbg); }
+.start-note { margin: 0; font-size: 14px; color: var(--muted); }
+
+.agenda { display: none; flex-direction: column; gap: 16px; }
+.agenda h2 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.agenda .list { display: flex; flex-direction: column; gap: 4px; }
+.empty { margin: 0; color: var(--muted); }
+
+dialog {
+  width: min(920px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 24px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--fg); overflow: auto;
+}
+dialog.small { width: min(420px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+#post-form, #client-form, #post-fields { display: flex; flex-direction: column; gap: 16px; }
+#post-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.dlg-title { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
+.wheel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.wheel { width: 180px; height: 180px; flex: none; border-radius: 50%; cursor: crosshair; touch-action: none; }
+.wheel-side { display: flex; flex: 1 1 120px; flex-direction: column; gap: 6px; min-width: 0; }
+.wheel-preview { height: 40px; border-radius: 4px; border: 1px solid var(--line); }
+.wheel-side input[type="text"] { width: 100%; }
+.dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pill {
+  display: inline-flex; align-items: center; height: 26px; padding: 0 10px;
+  border-radius: 3px; font-size: 12px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.pill.approved { background: var(--accent); color: var(--on-accent); }
+.close { width: 40px; height: 40px; border-radius: 4px; font-size: 20px; line-height: 1; }
+.close:hover { background: var(--hover); }
+.title-input {
+  width: 100%; padding: 2px 0; border: 0; border-bottom: 1px solid var(--line);
+  background: none; font-family: var(--display); font-size: clamp(26px, 4vw, 36px);
+  font-weight: 800; letter-spacing: -.03em; line-height: 1.15; border-radius: 0;
+}
+.title-input::placeholder, .field input::placeholder, .field textarea::placeholder, #comment-input::placeholder { color: var(--faint); }
+.meta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label, .notes h2 {
+  margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.field input, .field select, .field textarea, #comment-input {
+  width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--surface);
+}
+.field textarea { min-height: 148px; resize: vertical; }
+.asset-row { display: flex; gap: 8px; min-width: 0; }
+.asset-row input { flex: 1; min-width: 0; }
+.asset-row .quiet { flex: none; }
+.asset-preview { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px; font-size: 13px; }
+.asset-preview img, .asset-preview video { display: block; max-width: 100%; max-height: 180px; border-radius: 3px; background: var(--hover); }
+.asset-preview a { color: inherit; font-weight: 600; }
+.meta-row .field { flex: 1 1 140px; }
+.dlg-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; }
+.template { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hint { margin: 0; font-size: 14px; color: var(--muted); }
+.hint strong { color: var(--fg); font-weight: 600; }
+.notes { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-left: 24px; border-left: 1px solid var(--line); }
+.comment-list { display: flex; flex-direction: column; gap: 10px; flex: 1; font-size: 13px; }
+.comment-list p { margin: 0; overflow-wrap: anywhere; }
+.comment-list b { display: block; font-size: 12px; font-weight: 600; }
+.comment-empty { color: var(--muted); }
+#comment-input { min-height: 72px; resize: vertical; font-size: 13px; }
+.quiet { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px; font-weight: 600; background: var(--surface); }
+.quiet:hover { background: var(--hover); }
+.primary { min-height: 40px; padding: 0 18px; border-radius: 4px; }
+.dlg-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.error { margin: 0 auto 0 0; color: var(--danger); font-size: 14px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100vw - 32px); padding: 10px 14px; border-radius: 4px;
+  background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .side { gap: 12px; }
+  .clients { flex-direction: row; flex-wrap: wrap; gap: 4px 8px; }
+  .client { width: auto; margin-left: 0; }
+}
+@media (max-width: 680px) {
+  body { padding-block: 20px 32px; }
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .top .nav { justify-content: flex-start; }
+  .weekdays div { padding: 8px 2px 6px; text-align: center; font-size: 11px; letter-spacing: .02em; }
+  .day { min-height: 58px; padding: 5px 2px; align-items: center; }
+  .date { align-self: center; }
+  .day .post { display: none; }
+  .dots { display: flex; justify-content: center; }
+  .agenda { display: flex; }
+  dialog { padding: 16px; }
+  .dlg-body { grid-template-columns: minmax(0, 1fr); }
+  .notes { padding-left: 0; padding-top: 16px; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+
+<style id="client-colors"></style>
+<div class="app">
+  <div class="top-icons">
+  <div class="search">
+    <button class="settings-btn" id="open-search" type="button" aria-label="Search posts" title="Search posts" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></svg>
+    </button>
+    <div class="search-panel" id="search-panel" hidden>
+      <input id="post-search" type="search" placeholder="Search posts" aria-label="Search posts" autocomplete="off">
+      <div class="search-results" id="search-results" hidden></div>
+    </div>
+  </div>
+  <button class="settings-btn" id="cal-btn" type="button" aria-label="Calendar" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></button>
+  <button class="settings-btn" id="pipe-btn" type="button" aria-label="Pipeline" title="Pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M9 4.5v15M15 4.5v15"/></svg></button>
+  <button class="settings-btn bell-btn icon-gap" id="bumps" type="button" aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false"></button>
+  <div class="notif-menu" id="notif-menu" role="menu" hidden>
+    <button type="button" role="menuitem" id="menu-notifs"></button>
+    <button type="button" role="menuitem" id="menu-bumps"></button>
+  </div>
+  <button class="settings-btn icon-gap" id="settings" type="button" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+  </div>
+  <aside class="side">
+    <button class="brand-row" id="home" type="button" aria-label="Go to the calendar" title="Go to the calendar"><svg class="logo" viewBox="0 0 200 202" role="img" aria-label="MATRIX logo"><defs><mask id="mxc"><rect width="200" height="202" fill="#fff"/><path d="M200.0 52.8L199.8 52.3L198.9 49.4L198.4 47.8L197.7 46.2L196.8 44.6L195.6 42.9L194.3 41.4L192.8 40.0L191.2 38.7L189.4 37.6L187.6 36.8L185.6 36.1L183.6 35.6L181.6 35.3L179.4 35.3L177.2 35.5L175.2 35.9L173.2 36.5L171.4 37.2L169.4 38.3L167.2 39.8L165.4 41.1L163.5 42.6L155.9 49.2L153.8 50.8L151.7 52.2L112.8 74.6L111.4 75.3L110.2 75.8L108.8 76.3L107.2 76.7L105.6 77.0L103.8 77.2L100.0 77.4L96.2 77.2L94.4 77.0L92.8 76.7L91.2 76.3L89.8 75.8L88.6 75.3L87.2 74.6L48.3 52.2L46.2 50.8L44.1 49.2L36.5 42.6L34.6 41.1L32.8 39.8L30.6 38.3L28.6 37.2L26.8 36.5L24.8 35.9L22.8 35.5L20.6 35.3L18.4 35.3L16.4 35.6L14.4 36.1L12.4 36.8L10.6 37.6L8.8 38.7L7.2 40.0L5.7 41.4L4.4 42.9L3.2 44.6L2.3 46.2L1.6 47.8L1.1 49.4L0.2 52.3ZM0.0 59.2L0.4 60.7L1.9 69.6L2.3 72.6L2.6 75.4L2.6 78.8L1.9 97.2L0.6 129.3L0.2 135.5ZM200.0 136.8L199.8 135.5L199.4 129.3L198.1 97.2L197.4 78.8L197.4 75.4L197.7 72.6L198.1 69.6L199.6 60.7ZM0.0 150.9L0.4 151.6L1.7 155.0L2.6 156.8L4.0 159.0L5.8 161.1L7.8 162.8L9.0 163.7L10.2 164.4L11.4 165.0L12.8 165.6L15.4 166.5L16.8 166.7L18.2 166.9L21.0 167.0L23.8 166.6L25.2 166.3L26.6 165.9L28.0 165.3L29.2 164.7L30.5 164.0L31.7 163.2L33.9 161.4L34.8 160.4L35.8 159.2L36.7 158.0L37.5 156.6L38.2 155.2L38.8 153.8L39.2 152.4L39.6 150.8L39.8 149.4L40.0 147.8L40.0 145.8L38.2 100.0L38.2 97.2L38.4 95.0L38.8 93.3L39.4 91.8L40.1 90.8L41.0 90.0L41.6 89.7L42.2 89.5L43.4 89.3L45.0 89.4L46.6 89.8L48.8 90.7L51.2 92.0L70.4 103.0L73.0 104.7L74.2 105.7L75.4 106.8L76.6 108.1L77.9 109.6L80.5 113.2L83.0 117.4L84.8 120.8L86.2 124.2L87.3 127.6L87.7 129.4L87.9 130.8L88.1 133.6L87.9 136.4L87.5 139.2L85.9 147.0L85.7 148.6L85.7 150.4L85.9 152.0L86.2 154.0L86.6 155.6L87.2 157.0L87.9 158.4L88.6 159.6L89.5 160.8L91.0 162.4L91.3 163.0L91.2 163.6L90.5 165.2L90.0 166.6L89.7 167.8L89.5 169.2L89.4 170.6L89.5 172.2L89.6 173.6L89.9 175.0L90.6 177.0L91.4 178.8L92.5 180.4L93.8 181.7L95.2 182.8L96.8 183.6L98.4 184.1L100.0 184.2L101.6 184.1L103.2 183.6L104.8 182.8L106.2 181.7L107.5 180.4L108.6 178.8L109.4 177.0L110.1 175.0L110.4 173.6L110.5 172.2L110.6 170.6L110.5 169.2L110.3 167.8L110.0 166.6L109.5 165.2L108.8 163.6L108.7 163.0L109.0 162.4L110.5 160.8L111.4 159.6L112.1 158.4L112.8 157.0L113.4 155.6L113.8 154.0L114.1 152.0L114.3 150.4L114.3 148.6L114.1 147.0L112.5 139.2L112.1 136.4L111.9 133.6L112.1 130.8L112.3 129.4L112.7 127.6L113.8 124.2L115.2 120.8L117.0 117.4L119.5 113.2L122.1 109.6L123.4 108.1L124.6 106.8L125.8 105.7L127.0 104.7L129.6 103.0L148.8 92.0L151.2 90.7L153.4 89.8L155.0 89.4L156.6 89.3L157.8 89.5L158.4 89.7L159.0 90.0L159.9 90.8L160.6 91.8L161.2 93.3L161.6 95.0L161.8 97.2L161.8 100.0L160.0 145.8L160.0 147.8L160.2 149.4L160.4 150.8L160.8 152.4L161.2 153.8L161.8 155.2L162.5 156.6L163.3 158.0L164.2 159.2L165.2 160.4L166.1 161.4L168.3 163.2L169.5 164.0L170.8 164.7L172.0 165.3L173.4 165.9L174.8 166.3L176.2 166.6L179.0 167.0L181.8 166.9L183.2 166.7L184.6 166.5L187.2 165.6L188.6 165.0L189.8 164.4L191.0 163.7L192.2 162.8L194.2 161.1L196.0 159.0L197.4 156.8L198.3 155.0L199.6 151.6Z" fill="#000"/></mask></defs><path d="M20 55L100 9L180 55M20 147L100 193L180 147M100 101V193" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" opacity=".38" mask="url(#mxc)"/><path d="M18.2 41.4L17.0 41.6L15.8 41.9L14.6 42.4L13.6 42.8L12.6 43.4L11.6 44.1L10.6 45.0L9.8 45.8L9.0 46.8L8.3 47.8L7.7 48.8L7.2 50.0L6.8 51.2L6.5 52.4L6.3 53.6L6.3 54.8L6.3 57.0L6.5 59.4L6.9 62.0L8.3 69.4L8.6 72.0L8.7 74.4L6.0 146.0L6.1 148.2L6.4 150.2L7.0 152.2L7.9 154.0L9.0 155.6L10.2 157.0L11.8 158.3L13.5 159.4L15.4 160.2L16.8 160.6L18.2 160.9L19.6 161.0L21.2 160.9L22.6 160.7L24.0 160.4L25.4 159.9L26.8 159.2L28.0 158.5L29.2 157.5L30.2 156.6L31.2 155.4L32.0 154.2L32.6 153.0L33.2 151.6L33.6 150.2L33.9 148.4L34.0 146.4L31.9 90.6L31.8 87.2L32.0 84.4L32.2 83.2L32.6 82.1L33.0 81.2L33.5 80.4L34.1 79.8L34.8 79.3L35.6 78.9L36.6 78.7L37.6 78.7L38.6 78.8L39.8 79.1L41.0 79.5L43.8 80.8L77.2 100.0L78.6 101.0L79.8 102.0L81.2 103.4L82.4 104.8L84.1 107.0L86.1 110.0L88.2 113.4L89.8 116.1L90.9 118.4L91.8 120.6L92.5 122.6L93.1 124.8L93.5 127.0L94.3 133.4L94.5 135.2L94.5 136.8L94.4 138.8L94.0 140.8L93.5 142.8L92.3 146.8L92.0 148.6L91.9 149.8L92.0 151.0L92.2 152.4L92.6 153.8L93.0 155.0L93.6 156.1L94.3 157.0L95.2 157.9L96.2 158.6L97.2 159.1L98.4 159.5L99.6 159.7L101.0 159.6L102.2 159.4L103.4 158.9L104.4 158.2L105.4 157.3L106.3 156.2L107.0 155.0L107.5 153.6L107.9 152.0L108.0 150.8L108.1 149.6L108.0 148.4L107.7 146.8L106.5 142.8L106.0 141.0L105.7 139.2L105.5 137.4L105.5 135.8L105.6 134.2L106.4 127.8L106.8 125.6L107.1 123.8L107.7 122.0L108.4 120.0L109.3 118.0L110.4 115.8L113.2 111.0L115.8 107.2L117.7 104.6L119.6 102.6L121.6 100.8L123.8 99.4L146.2 86.5L156.6 80.6L159.0 79.5L161.0 78.9L162.2 78.7L163.2 78.7L164.2 78.9L165.0 79.2L165.8 79.7L166.4 80.3L166.9 81.0L167.4 82.0L167.8 83.4L168.0 84.8L168.2 86.6L168.2 88.6L166.0 146.0L166.1 148.4L166.4 150.4L167.0 152.2L167.9 154.0L169.0 155.6L170.4 157.2L171.9 158.4L173.6 159.4L175.4 160.2L176.8 160.6L178.4 160.9L180.0 161.0L181.6 160.9L183.2 160.6L184.6 160.2L186.0 159.6L187.4 158.9L188.6 158.0L189.8 157.0L190.9 155.8L191.8 154.5L192.6 153.1L193.2 151.6L193.6 150.2L193.9 148.6L194.0 147.4L194.0 146.0L191.3 74.4L191.4 72.0L191.7 69.4L193.1 61.8L193.5 59.2L193.7 56.8L193.7 54.4L193.6 52.8L193.3 51.4L192.8 50.0L192.2 48.6L191.3 47.2L190.4 46.0L189.4 45.0L188.2 44.0L186.7 43.0L185.0 42.2L183.4 41.7L181.6 41.4L179.8 41.3L178.0 41.4L176.2 41.8L174.4 42.5L172.2 43.7L169.6 45.5L167.4 47.4L161.6 52.8L159.8 54.2L157.8 55.6L112.8 81.5L111.4 82.2L110.0 82.8L108.6 83.2L107.0 83.6L105.4 83.8L103.4 84.0L98.8 84.0L95.2 83.9L92.4 83.5L90.0 82.8L88.8 82.3L87.6 81.7L42.2 55.6L40.2 54.2L38.2 52.6L32.8 47.6L31.0 46.0L29.0 44.5L27.0 43.2L25.0 42.2L22.8 41.6L20.6 41.3L19.4 41.3ZM99.2 165.4L98.4 165.7L97.5 166.2L96.8 166.9L96.2 167.8L95.8 168.8L95.5 169.8L95.4 170.8L95.5 172.0L95.7 173.0L96.1 174.0L96.7 175.0L97.4 175.7L98.2 176.2L99.0 176.6L99.8 176.7L100.8 176.6L101.6 176.3L102.5 175.8L103.2 175.1L103.8 174.2L104.2 173.2L104.5 172.2L104.6 171.2L104.5 170.0L104.3 169.0L103.9 168.0L103.3 167.0L102.6 166.3L101.8 165.8L101.0 165.4L100.2 165.3Z" fill="currentColor"/></svg><span class="brand">matrix<span>.by.p</span></span></button>
+    <div class="side-group" id="client-panel">
+      <div class="side-label" id="clients-label">Clients</div>
+      <div class="clients" id="clients" role="group" aria-labelledby="clients-label"></div>
+      <button class="add-client" id="add-client" type="button">+ Add client</button>
+    </div>
+    <p class="side-note" id="data-note" hidden></p>
+  </aside>
+
+  <main class="main" id="calendar-view">
+    <header class="top">
+      <h1 id="month-title" aria-live="polite"></h1>
+      <div class="top-left">
+        <p class="count" id="count"></p>
+        <p class="start-note" id="start-note" hidden>Add your first client, then click any day to add a post.</p>
+      </div>
+      <div class="nav">
+        <button class="new-btn" id="new-post" type="button">New post</button>
+        <button class="today-btn" id="today" type="button">Today</button>
+        <button class="arrow" id="prev" type="button" aria-label="Previous month">&#8249;</button>
+        <button class="arrow" id="next" type="button" aria-label="Next month">&#8250;</button>
+      </div>
+    </header>
+
+    <section class="grid-wrap" aria-label="Month calendar">
+      <div class="weekdays" aria-hidden="true">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section class="agenda" id="agenda" aria-label="Posts this month"></section>
+  </main>
+
+  <section class="settings-page notify-page" id="notify-view" aria-labelledby="notify-title" hidden>
+    <h1 id="notify-title">Notifications</h1>
+    <p class="side-note bump-intro">What’s happening: posts sent your way and new comments.</p>
+    <div id="needs-view"></div>
+  </section>
+
+  <section class="settings-page notify-page" id="pipe-view" aria-labelledby="pipe-title" hidden>
+    <h1 id="pipe-title">Pipeline</h1>
+    <p class="side-note bump-intro">Every post that isn’t approved yet, by step.</p>
+    <div class="board" id="pipeline-view"></div>
+  </section>
+
+  <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
+    <h1 id="bump-title">Bumps</h1>
+    <p class="side-note bump-intro">Your posts coming up that aren’t approved yet. Follow up, or finish them. They leave this list once they’re approved.</p>
+    <div id="bump-list"></div>
+  </section>
+
+  <section class="settings-page" id="settings-view" aria-labelledby="settings-title" hidden>
+    <h1 id="settings-title">Settings</h1>
+    <div class="setting">
+      <div class="side-label" id="theme-label">Appearance</div>
+      <div class="theme-options" id="theme-options" role="group" aria-labelledby="theme-label">
+        <button class="quiet" type="button" data-theme-choice="light">Light</button>
+        <button class="quiet" type="button" data-theme-choice="dark">Dark</button>
+        <button class="quiet" type="button" data-theme-choice="system">Auto</button>
+      </div>
+    </div>
+    <div class="setting" id="bump-setting">
+      <div class="side-label">Notifications</div>
+      <h3 class="group-title">This device</h3>
+      <p class="empty" id="push-status">Checking this device.</p>
+      <p class="empty">Notifications don't work in private browsing windows.</p>
+      <div class="theme-options push-options">
+        <div class="mode-options" id="push-toggle" role="group" aria-label="Notifications on this device">
+          <button class="quiet" id="push-on" type="button" aria-pressed="false">On</button>
+          <button class="quiet" id="push-off" type="button" aria-pressed="true">Off</button>
+        </div>
+        <button class="quiet" id="push-test" type="button" hidden>Send a test</button>
+      </div>
+      <h3 class="group-title" id="slack-title">Slack</h3>
+      <p class="empty">DMA team only. Get your notifications from Matrix Bot in a Slack direct message. Your matrix email must match your Slack email.</p>
+      <div class="theme-options push-options">
+        <div class="mode-options" id="slack-modes" role="group" aria-labelledby="slack-title">
+          <button class="quiet" type="button" data-slack="on">On</button>
+          <button class="quiet" type="button" data-slack="off">Off</button>
+        </div>
+        <button class="quiet" id="slack-test" type="button" hidden>Send a Slack test</button>
+      </div>
+      <h3 class="group-title">Bumps</h3>
+      <p class="empty">Bumps remind you when a post is still waiting on someone close to its post date.</p>
+      <div class="sub-setting">
+        <h3 class="sub-title" id="bump-calendar-title">Bumps by calendar</h3>
+        <p class="empty">Choose which posts bump you on each calendar.</p>
+        <p class="empty"><strong>Off:</strong> No bumps from this calendar.</p>
+        <p class="empty"><strong>My posts:</strong> Only posts waiting on you.</p>
+        <p class="empty"><strong>Whole calendar:</strong> Every post on this calendar that isn't approved yet, no matter who it's waiting on.</p>
+        <div class="bump-clients" id="bump-clients" role="group" aria-labelledby="bump-calendar-title"></div>
+      </div>
+      <div class="sub-setting">
+        <h3 class="sub-title" id="bump-timing-title">Bump timing</h3>
+        <p class="empty">Choose when you get bumped, based on each post's date. All times are Pacific Time.</p>
+        <div class="timing-list" id="bump-timing" role="group" aria-labelledby="bump-timing-title"></div>
+        <button class="quiet add-timing" id="add-timing" type="button">+ Add bump time</button>
+      </div>
+      <h3 class="group-title" id="comment-setting-title">Comments</h3>
+      <p class="empty">Get notified when someone else leaves a comment.</p>
+      <div class="sub-setting">
+        <p class="empty"><strong>Off:</strong> No comment notifications.</p>
+        <p class="empty"><strong>My posts:</strong> Comments on posts you added.</p>
+        <p class="empty"><strong>All posts:</strong> Comments on every post.</p>
+        <div class="mode-options comment-modes" id="comment-modes" role="group" aria-labelledby="comment-setting-title">
+          <button class="quiet" type="button" data-comment-mode="off">Off</button>
+          <button class="quiet" type="button" data-comment-mode="mine">My posts</button>
+          <button class="quiet" type="button" data-comment-mode="all">All posts</button>
+        </div>
+      </div>
+    </div>
+    <div class="setting" id="people-setting">
+      <div class="side-label">Add people</div>
+      <p class="admin-note" id="people-note"></p>
+      <p class="empty"><strong>Team member:</strong> Can add and change everything.</p>
+      <p class="empty"><strong>Client:</strong> Can only view the calendars you choose.</p>
+      <div class="theme-options" id="invite-buttons">
+        <button class="quiet" id="invite-team" type="button">Add team member</button>
+        <button class="quiet" id="invite-client" type="button">Add client access</button>
+      </div>
+    </div>
+    <div class="setting">
+      <div class="side-label">Account</div>
+      <p class="empty">Signed in as <span id="account-email"></span>.</p>
+      <form class="password-row" id="password-form">
+        <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password">
+        <button class="quiet" type="submit">Change password</button>
+      </form>
+      <div class="theme-options"><button class="quiet" id="sign-out" type="button">Sign out</button></div>
+    </div>
+    <div class="setting" id="admin-setting" hidden>
+      <div class="side-label admin-title">Admin</div>
+      <p class="empty">See who has finished setting up and what's still missing.</p>
+      <div class="invite-list" id="invite-list"></div>
+    </div>
+    <div class="setting">
+      <div class="side-label">Dance</div>
+      <p class="empty">Tap to make him dance.</p>
+      <button class="dance-btn" id="dance" type="button" aria-label="Make him dance"></button>
+    </div>
+  </section>
+</div>
+
+<dialog id="post-dialog" aria-label="Post details">
+  <form id="post-form" novalidate>
+    <div class="dlg-head">
+      <div class="tracker" id="tracker" role="group" aria-label="Post stage"></div>
+      <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div class="post-actions" id="post-actions"></div>
+    <fieldset id="post-fields">
+    <input class="title-input" id="f-title" type="text" placeholder="Post title" aria-label="Post title" autocomplete="off">
+    <div class="meta-row">
+      <div class="field"><label for="f-client">Client</label><select id="f-client"></select></div>
+      <div class="field"><label for="f-date">Date</label><input id="f-date" type="date"></div>
+      <div class="field"><label for="f-time">Time</label><input id="f-time" type="time"></div>
+    </div>
+    <div class="dlg-body">
+      <section class="template" aria-label="Post template">
+        <div class="field">
+          <label for="f-asset">Asset</label>
+          <div class="asset-row">
+            <input id="f-asset" type="text" placeholder="Paste a link or upload a file" autocomplete="off">
+            <button class="quiet" id="upload-asset" type="button">Upload</button>
+            <input id="asset-file" type="file" accept="image/*,video/*,application/pdf" aria-label="Choose a file to upload" hidden>
+          </div>
+          <div class="asset-preview" id="asset-preview" hidden></div>
+        </div>
+        <div class="field"><label for="f-copy">Copy</label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
+        <div class="field"><label for="f-tags">Tags</label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
+        <p class="hint" id="hint"></p>
+      </section>
+      <aside class="notes" aria-label="Comments">
+        <h2>Comments</h2>
+        <div class="comment-list" id="comment-list"></div>
+        <textarea id="comment-input" placeholder="Extra instructions or notes" aria-label="Add a comment"></textarea>
+        <button class="quiet" id="add-comment" type="button">Add comment</button>
+      </aside>
+    </div>
+    </fieldset>
+    <div class="dlg-foot">
+      <p class="error" id="form-error" hidden></p>
+      <button class="quiet danger-btn" id="delete-post" type="button">Delete post</button>
+      <button class="quiet" id="cancel" type="button">Cancel</button>
+      <button class="primary" id="save-post" type="submit">Save post</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="invite-dialog" aria-labelledby="invite-title">
+  <form id="invite-form" novalidate>
+    <div class="dlg-head">
+      <h2 class="dlg-title" id="invite-title">Add team member</h2>
+      <button class="close" id="close-invite" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div class="field"><label for="invite-email">Email</label><input id="invite-email" type="email" autocomplete="off" placeholder="name@company.com"></div>
+    <div class="field" id="invite-calendars-field">
+      <label id="invite-calendars-label">Calendars they can view</label>
+      <div class="calendar-picks" id="invite-calendars" role="group" aria-labelledby="invite-calendars-label"></div>
+    </div>
+    <div class="dlg-foot">
+      <p class="error" id="invite-error" hidden></p>
+      <button class="quiet" id="cancel-invite" type="button">Cancel</button>
+      <button class="primary" id="save-invite" type="submit">Add person</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="note-dialog" aria-labelledby="note-title">
+  <form id="note-form" novalidate>
+    <div class="dlg-head">
+      <h2 class="dlg-title" id="note-title">Bump</h2>
+      <button class="close" id="close-note" type="button" aria-label="Close">&times;</button>
+    </div>
+    <p class="hint" id="note-help"></p>
+    <div class="field"><label for="note-text">Note (optional)</label><textarea id="note-text" placeholder="Need this by 3pm"></textarea></div>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-note" type="button">Cancel</button>
+      <button class="primary" id="send-note" type="submit">Send bump</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="stage-dialog" aria-labelledby="stage-title">
+  <form id="stage-form" novalidate>
+    <h2 class="dlg-title" id="stage-title">Move back?</h2>
+    <p class="hint">The post's history will show who moved it.</p>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-stage" type="button">Cancel</button>
+      <button class="primary" type="submit">Move back</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="client-dialog" aria-labelledby="client-title">
+  <form id="client-form" novalidate>
+    <div class="dlg-head">
+      <h2 class="dlg-title" id="client-title">Add client</h2>
+      <button class="close" id="close-client" type="button" aria-label="Close">&times;</button>
+    </div>
+    <div class="field"><label for="c-name">Client name</label><input id="c-name" type="text" autocomplete="off"></div>
+    <div class="field">
+      <label id="color-label">Calendar color</label>
+      <div class="wheel-row">
+        <canvas class="wheel" id="color-wheel" width="360" height="360" role="slider" tabindex="0" aria-labelledby="color-label" aria-valuetext="Color"></canvas>
+        <div class="wheel-side">
+          <div class="wheel-preview" id="color-preview"></div>
+          <label class="side-label" for="color-shade">Shade</label>
+          <input id="color-shade" type="range" min="35" max="100" value="100">
+          <label class="side-label" for="color-hex">Color code</label>
+          <input id="color-hex" type="text" maxlength="7" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <p class="error" id="client-error" hidden></p>
+      <button class="quiet danger-btn" id="delete-client" type="button">Delete client</button>
+      <button class="quiet" id="cancel-client" type="button">Cancel</button>
+      <button class="primary" id="save-client" type="submit">Create client</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="gate" id="gate">
+  <form class="gate-form" id="gate-form" hidden>
+    <label class="side-label" for="gate-email">Email</label>
+    <input id="gate-email" type="email" autocomplete="email" placeholder="name@company.com">
+    <label class="side-label" id="gate-password-label" for="gate-password">Password</label>
+    <input id="gate-password" type="password" autocomplete="current-password">
+    <label class="side-label" id="gate-confirm-label" for="gate-confirm" hidden>Confirm password</label>
+    <input id="gate-confirm" type="password" autocomplete="new-password" hidden>
+    <button class="primary" id="gate-submit" type="submit">Log in</button>
+    <button class="gate-text" id="gate-switch" type="button">New here? Sign up</button>
+    <button class="gate-text" id="gate-link" type="button">Forgot password?</button>
+  </form>
+  <form class="gate-form" id="gate-new" hidden>
+    <label class="side-label" for="gate-new-password">Create a password</label>
+    <input id="gate-new-password" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+    <button class="primary" type="submit">Save password</button>
+    <p class="gate-note">You'll use this to log in on any device.</p>
+  </form>
+  <p class="gate-message" id="gate-message">Loading.</p>
+  <button class="quiet" id="gate-out" type="button" hidden>Sign out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+/* Connects the page to Supabase: sign-in, saved data, live updates, and file storage. */
+(function () {
+  const sb = window.supabase.createClient(
+    "https://wwehsdjcgvkbteeahpkv.supabase.co",
+    "sb_publishable_5mU_95igaMC4Kr8QwuECbw_rH_bte4A"
+  );
+  const gate = document.getElementById("gate");
+  const gateForm = document.getElementById("gate-form");
+  const gateMessage = document.getElementById("gate-message");
+  const gateEmail = document.getElementById("gate-email");
+  let me = null;
+  let finishReady;
+  const ready = new Promise((resolve) => { finishReady = resolve; });
+
+  gate.prepend(document.querySelector(".brand-row").cloneNode(true));
+  gate.querySelector("#home")?.removeAttribute("id");
+
+  const gateNew = document.getElementById("gate-new");
+  let entering = false;
+  let signingUp = false;
+
+  function showGate(message, formVisible) {
+    gate.hidden = false;
+    gateForm.hidden = !formVisible;
+    gateNew.hidden = true;
+    gateMessage.textContent = message;
+  }
+
+  function finishEntry() {
+    gate.hidden = true;
+    document.getElementById("account-email").textContent = me.email;
+    finishReady();
+  }
+
+  async function enter(session) {
+    if (me || entering || !session) return;
+    entering = true;
+    const email = session.user.email.toLowerCase();
+    const { data, error } = await sb.from("members").select("email, role").eq("email", email).maybeSingle();
+    entering = false;
+    if (error) {
+      showGate("We couldn't load your account. Refresh the page to try again.", false);
+      return;
+    }
+    if (!data) {
+      showGate(email + " doesn't have access yet. Ask your admin to add you.", false);
+      document.getElementById("gate-out").hidden = false;
+      return;
+    }
+    me = { email, role: data.role };
+    if (session.user.user_metadata && session.user.user_metadata.has_password) {
+      finishEntry();
+      return;
+    }
+    showGate("", false);
+    gateNew.hidden = false;
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) setTimeout(() => enter(session), 0);
+  });
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      enter(data.session);
+      return;
+    }
+    showGate("", true);
+    if (location.hash === "#settings") {
+      history.replaceState(null, "", location.pathname);
+      if (window.showView) window.showView("calendar");
+    }
+  });
+
+  gateForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = gateEmail.value.trim().toLowerCase();
+    const password = document.getElementById("gate-password").value;
+    if (!email || !password) {
+      showGate("Enter your email and password.", true);
+      return;
+    }
+    if (signingUp) {
+      if (password.length < 8) {
+        showGate("Use at least 8 characters for your password.", true);
+        return;
+      }
+      if (password !== document.getElementById("gate-confirm").value) {
+        showGate("Those passwords don't match.", true);
+        return;
+      }
+      const { data, error } = await sb.auth.signUp({
+        email, password,
+        options: { emailRedirectTo: location.origin, data: { has_password: true } }
+      });
+      if (error) {
+        const reason = (error.message || "").toLowerCase();
+        if (reason.includes("already")) showGate("That email already has an account. Log in instead.", true);
+        else if (reason.includes("rate") || reason.includes("seconds")) showGate("Too many tries. Wait a minute and try again.", true);
+        else if (reason.includes("password")) showGate("Choose a stronger password.", true);
+        else showGate("Sign up didn't work: " + error.message, true);
+      }
+      else if (data.session) enter(data.session);
+      else showGate("Check your email to confirm your account.", false);
+      return;
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showGate("That email or password isn't right.", true);
+    else enter(data.session);
+  });
+
+  document.getElementById("gate-switch").addEventListener("click", () => {
+    signingUp = !signingUp;
+    document.getElementById("gate-submit").textContent = signingUp ? "Sign up" : "Log in";
+    document.getElementById("gate-switch").textContent = signingUp ? "Already have an account? Log in" : "New here? Sign up";
+    document.getElementById("gate-link").hidden = signingUp;
+    document.getElementById("gate-password").autocomplete = signingUp ? "new-password" : "current-password";
+    document.getElementById("gate-password").placeholder = signingUp ? "At least 8 characters" : "";
+    document.getElementById("gate-password-label").textContent = signingUp ? "Create a password" : "Password";
+    document.getElementById("gate-confirm-label").hidden = !signingUp;
+    document.getElementById("gate-confirm").hidden = !signingUp;
+    gateMessage.textContent = "";
+  });
+
+  document.getElementById("gate-link").addEventListener("click", async () => {
+    const email = gateEmail.value.trim().toLowerCase();
+    if (!email) {
+      showGate("Enter your email first.", true);
+      return;
+    }
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin } });
+    if (error) showGate("We may have already sent your link. Check your email, or wait a minute and try again.", true);
+    else showGate("Check your email for a link to get back in.", false);
+  });
+
+  gateNew.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const password = document.getElementById("gate-new-password").value;
+    if (password.length < 8) {
+      gateMessage.textContent = "Use at least 8 characters.";
+      return;
+    }
+    const { error } = await sb.auth.updateUser({ password, data: { has_password: true } });
+    if (error) gateMessage.textContent = "That password didn't save. Try a different one.";
+    else finishEntry();
+  });
+
+  document.getElementById("password-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("new-password");
+    if (input.value.length < 8) {
+      window.showToast("Use at least 8 characters.");
+      return;
+    }
+    const { error } = await sb.auth.updateUser({ password: input.value, data: { has_password: true } });
+    input.value = "";
+    window.showToast(error ? "That password didn't save. Try a different one." : "Password changed");
+  });
+
+  async function signOut() {
+    await sb.auth.signOut();
+    location.replace(location.pathname);
+  }
+  document.getElementById("gate-out").addEventListener("click", signOut);
+  document.getElementById("sign-out").addEventListener("click", signOut);
+
+  function strip(object) {
+    return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+  }
+  const check = ({ error, data }) => {
+    if (error) throw error;
+    return data;
+  };
+
+  const models = {
+    clients: {
+      table: "clients", key: "id", watch: ["clients"],
+      row: (d) => strip({ name: d.name, color: d.color, created_at: d.createdAt }),
+      doc: (r) => ({ name: r.name, color: r.color, createdAt: r.created_at })
+    },
+    invites: {
+      table: "members", key: "email", watch: ["members"],
+      row: (d) => strip({ email: d.email, role: d.role, calendars: d.calendars, roles: d.roles, invited_at: d.invitedAt }),
+      doc: (r) => ({ email: r.email, role: r.role, calendars: r.calendars, roles: r.roles || [], invitedAt: r.invited_at })
+    },
+    posts: {
+      table: "posts", key: "id", watch: ["posts", "post_comments"],
+      row: (d) => strip({
+        client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
+        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, created_by: d.createdBy,
+        stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
+      }),
+      doc: (r) => ({
+        client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
+        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, createdBy: r.created_by || undefined,
+        stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
+      })
+    }
+  };
+
+  async function loadRows(model) {
+    const rows = check(await sb.from(model.table).select("*"));
+    if (model.table !== "posts") return rows.map((row) => ({ id: row[model.key], ...model.doc(row) }));
+    let notes = [];
+    if (me.role !== "client") notes = check(await sb.from("post_comments").select("*"));
+    const byPost = Object.fromEntries(notes.map((note) => [note.post_id, note.comments]));
+    return rows.map((row) => ({ id: row.id, ...model.doc(row), comments: byPost[row.id] || [] }));
+  }
+
+  function collection(name) {
+    const model = models[name];
+    return {
+      doc(id) {
+        return {
+          id,
+          async set(data) {
+            const row = model.row(data);
+            if (model.key === "id") row.id = id;
+            check(await sb.from(model.table).upsert(row));
+            if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+          },
+          async update(data) {
+            const row = model.row(data);
+            if (Object.keys(row).length) check(await sb.from(model.table).update(row).eq(model.key, id));
+            if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+          },
+          async delete() {
+            check(await sb.from(model.table).delete().eq(model.key, id));
+          }
+        };
+      },
+      onSnapshot(next, onError) {
+        let timer;
+        const send = async () => {
+          try {
+            const rows = await loadRows(model);
+            next({ docs: rows.map(({ id, ...rest }) => ({ id, data: () => rest })), metadata: { fromCache: false } });
+          } catch (problem) {
+            if (onError) onError(problem);
+          }
+        };
+        const later = () => {
+          clearTimeout(timer);
+          timer = setTimeout(send, 150);
+        };
+        const channel = sb.channel("live-" + name);
+        model.watch.forEach((table) => {
+          channel.on("postgres_changes", { event: "*", schema: "public", table }, later);
+        });
+        channel.subscribe();
+        send();
+        return () => sb.removeChannel(channel);
+      }
+    };
+  }
+
+  const db = {
+    collection,
+    doc() {
+      return {
+        async get() {
+          const row = check(await sb.from("preferences").select("data").eq("email", me.email).maybeSingle());
+          return { exists: Boolean(row), data: () => (row ? row.data : undefined) };
+        },
+        async set(data) {
+          check(await sb.from("preferences").upsert({ email: me.email, data }));
+        }
+      };
+    }
+  };
+
+  const user = {
+    id: async () => me.email,
+    isOwner: async () => me.role === "admin",
+    can: async () => me.role !== "client",
+    accessStatus: async () => check(await sb.rpc("admin_access_status")),
+    profiles: async (ids) => Object.fromEntries(ids.map((id) => [id, { name: String(id).split("@")[0] }]))
+  };
+
+  const assets = {
+    async upload(file) {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const path = crypto.randomUUID() + "-" + safe;
+      const { error } = await sb.storage.from("assets").upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      return { id: path, contentType: file.type };
+    },
+    async signedUrl(id) {
+      const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600);
+      if (error) throw error;
+      return data.signedUrl;
+    }
+  };
+
+  function keyBytes(base64) {
+    const text = atob(base64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(base64.length / 4) * 4, "="));
+    return Uint8Array.from(text, (letter) => letter.charCodeAt(0));
+  }
+
+  const pushStatus = document.getElementById("push-status");
+  const pushOn = document.getElementById("push-on");
+  const pushOff = document.getElementById("push-off");
+  const pushToggle = document.getElementById("push-toggle");
+  const pushTest = document.getElementById("push-test");
+  const pushSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const registration = pushSupported ? navigator.serviceWorker.register("/sw.js") : null;
+  if (pushSupported) {
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data && event.data.openUrl) location.href = event.data.openUrl;
+    });
+  }
+
+  async function refreshPush() {
+    if (!pushSupported) {
+      pushStatus.textContent = "This browser can't show notifications. On iPhone, add matrix to your Home Screen first, then open it from there.";
+      pushToggle.hidden = true;
+      return;
+    }
+    if (Notification.permission === "denied") {
+      pushStatus.textContent = "Notifications are blocked here. In your browser, click the icon next to the web address and set Notifications to Allow, then refresh. On a Mac, also allow your browser in System Settings, Notifications.";
+      pushOn.setAttribute("aria-pressed", "false");
+      pushOff.setAttribute("aria-pressed", "true");
+      pushTest.hidden = true;
+      return;
+    }
+    const worker = await registration;
+    const subscription = await worker.pushManager.getSubscription();
+    pushOn.setAttribute("aria-pressed", String(Boolean(subscription)));
+    pushOff.setAttribute("aria-pressed", String(!subscription));
+    pushStatus.textContent = subscription ? "Notifications are on for this device." : "Notifications are off for this device. Turn them on for each phone or computer you use.";
+    pushTest.hidden = !subscription;
+  }
+
+  pushOn.addEventListener("click", async () => {
+    try {
+      if (Notification.permission === "denied") {
+        window.showToast("Your browser is blocking notifications. Follow the steps above.");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        await refreshPush();
+        window.showToast("Your browser didn't allow notifications. Private windows can't use them.");
+        return;
+      }
+      const { data: publicKey, error } = await sb.rpc("get_push_key");
+      if (error) throw error;
+      if (!publicKey) {
+        window.showToast("Notifications are still starting up. Try again in a minute.");
+        return;
+      }
+      const worker = await navigator.serviceWorker.ready;
+      const subscription = await worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
+      check(await sb.from("push_subscriptions").upsert({ endpoint: subscription.endpoint, email: me.email, subscription: subscription.toJSON() }));
+      await refreshPush();
+      window.showToast("Notifications are on");
+    } catch (problem) {
+      window.showToast("Notifications didn't turn on. Try again.");
+    }
+  });
+
+  pushOff.addEventListener("click", async () => {
+    try {
+      const worker = await registration;
+      const subscription = await worker.pushManager.getSubscription();
+      if (subscription) {
+        check(await sb.from("push_subscriptions").delete().eq("endpoint", subscription.endpoint));
+        await subscription.unsubscribe();
+      }
+      await refreshPush();
+      window.showToast("Notifications are off");
+    } catch (problem) {
+      window.showToast("Notifications didn't turn off. Try again.");
+    }
+  });
+
+  pushTest.addEventListener("click", async () => {
+    const { data, error } = await sb.functions.invoke("send-notification", { body: { test: true } });
+    window.showToast(error || !data || !data.delivered ? "The test didn't send. Try again." : "Test sent");
+  });
+
+  document.getElementById("slack-test").addEventListener("click", async () => {
+    const { data, error } = await sb.functions.invoke("send-notification", { body: { test: "slack" } });
+    window.showToast(error || !data || !data.slack ? "The Slack test didn't send. Check that your Slack email matches." : "Slack test sent");
+  });
+
+  ready.then(refreshPush);
+
+  const capabilities = { db, user, assets };
+  window.claude = {
+    async use(name) {
+      await ready;
+      return capabilities[name] || null;
+    }
+  };
+})();
+</script>
+<script>
+const PRESET_COLORS = ["#ff7043", "#ffc933", "#b5e550", "#3fd0c0", "#74adff", "#ff8fb3", "#d6bd98", "#bdbdbd", "#ffab91", "#ffe082", "#8bd17c", "#00c2a8", "#a7d8ff", "#ffc4dc", "#e8d9c0", "#dcdcdc", "#ff9f1c", "#e6ee9c", "#66d9e8", "#c5b3ff", "#e599f7", "#a3b18a", "#f4a6a6", "#9ad0c2", "#b0bec5"];
+const OLD_COLOR_NAMES = ["Coral", "Yellow", "Lime", "Teal", "Blue", "Pink", "Sand", "Gray", "Peach", "Butter", "Green", "Jade", "Sky", "Blush", "Cream", "Silver", "Orange", "Pale lime", "Cyan", "Lavender", "Orchid", "Sage", "Rose", "Seafoam", "Slate"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+const now = new Date();
+const state = {
+  year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStages: { draft: true, internal: true, ready: true, client: true, approved: true }, tab: "needs",
+  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {},
+  bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
+};
+let db = null;
+let assets = null;
+let isOwner = false;
+let user = null;
+let myId = null;
+let draft = null;
+let editing = null;
+let pickedColor = PRESET_COLORS[0];
+let wheelHue = 0;
+let wheelSaturation = 1;
+const madeColors = new Set();
+let commentRender = 0;
+let editingClient = null;
+let showAllBumpCalendars = false;
+let notificationsReady = false;
+let lastUnread = 0;
+let lastTap = {};
+let searchMatches = [];
+let searchIndex = -1;
+let inviteRole = "team";
+let pendingBack = null;
+let passOpen = false;
+let bumpCount = 0;
+let noteAction = null;
+let inviteCalendars = new Set();
+let preferences = null;
+let preferenceWrite = Promise.resolve();
+let toastTimer;
+
+const $ = (id) => document.getElementById(id);
+const clientById = (id) => state.clients.find((client) => client.id === id);
+const isShown = (id) => !state.hidden.has(id);
+const newId = () => Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+
+function dateKey(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+
+function formatTime(value) {
+  if (!value) return "No time";
+  const [hour, minute] = value.split(":").map(Number);
+  const suffix = hour < 12 ? "am" : "pm";
+  const display = hour % 12 || 12;
+  return display + (minute ? ":" + String(minute).padStart(2, "0") : "") + suffix;
+}
+
+function isComplete(post) {
+  return [post.asset, post.copy, post.tags].every((value) => (value || "").trim() !== "");
+}
+
+const STAGES = [
+  { id: "draft", name: "Drafting", phase: "internal" },
+  { id: "internal", name: "In review", phase: "internal" },
+  { id: "ready", name: "Ready to send", phase: "internal" },
+  { id: "client", name: "Sent to client", phase: "client" },
+  { id: "approved", name: "Approved", phase: "approved" }
+];
+/* What people see: three phases. The five steps above stay underneath. */
+const PHASES = [
+  { id: "internal", name: "Internal", start: "draft" },
+  { id: "client", name: "Client", start: "client" },
+  { id: "approved", name: "Approved", start: "approved" }
+];
+const phaseOf = (stage) => (STAGES.find((item) => item.id === stage) || STAGES[0]).phase;
+const phaseIndex = (stage) => PHASES.findIndex((phase) => phase.id === phaseOf(stage));
+const phaseName = (stage) => PHASES[phaseIndex(stage)].name;
+const ALL_STAGES_ON = () => ({ draft: true, internal: true, ready: true, client: true, approved: true });
+const stageOf = (post) => post.stage || "draft";
+const stageIndex = (id) => STAGES.findIndex((stage) => stage.id === id);
+const stageName = (id) => (STAGES.find((stage) => stage.id === id) || STAGES[0]).name;
+const isApproved = (post) => stageOf(post) === "approved";
+
+function displayName(email) {
+  if (!email) return "Someone";
+  if (email === myId) return "You";
+  const name = String(email).split("@")[0].replace(/[._-]+/g, " ");
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+function adminEmail() {
+  const admin = state.invites.find((person) => person.role === "admin");
+  return admin ? admin.email : (isOwner ? myId : "");
+}
+
+function creatorOf(post) {
+  return post.createdBy || adminEmail();
+}
+
+function rolesOf(email) {
+  const person = state.invites.find((item) => item.email === email);
+  return person ? person.roles || [] : [];
+}
+
+function managers() {
+  return state.invites
+    .filter((person) => person.role !== "client")
+    .sort((a, b) => (a.email === myId ? -1 : b.email === myId ? 1 : a.email.localeCompare(b.email)));
+}
+
+function canApprove() {
+  return !state.readOnly;
+}
+
+/* Who a post is waiting on at its current stage. */
+function waitingOn(post, stage = stageOf(post)) {
+  if (stage === "approved") return [];
+  if (stage === "internal") return post.manager ? [post.manager] : [];
+  const creator = creatorOf(post);
+  return creator ? [creator] : [];
+}
+
+function isWaitingOnMe(post) {
+  return waitingOn(post).includes(myId);
+}
+
+function missingFields(post) {
+  const missing = [];
+  if (!(post.asset || "").trim()) missing.push("Asset");
+  if (!(post.copy || "").trim()) missing.push("Copy");
+  if (!(post.tags || "").trim()) missing.push("Tags");
+  return missing;
+}
+
+function postsOn(key) {
+  return state.posts
+    .filter((post) => post.date === key && clientById(post.client) && isShown(post.client))
+    .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+}
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function colorHex(color) {
+  const text = String(color);
+  return /^\d+$/.test(text) ? PRESET_COLORS[Number(text) % PRESET_COLORS.length] : text;
+}
+
+/* Makes one class per client color, with black or white text depending on how light the color is. */
+function colorClass(color) {
+  const hex = colorHex(color).toLowerCase();
+  const name = "cx" + hex.slice(1);
+  if (!madeColors.has(name)) {
+    madeColors.add(name);
+    const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16) / 255);
+    const light = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    $("client-colors").append("." + name + " { --cbg: " + hex + "; --cfg: " + (light > 0.42 ? "#0f0f0f" : "#ffffff") + "; }\n");
+  }
+  return name;
+}
+
+function postCard(post) {
+  const approved = isApproved(post);
+  const client = clientById(post.client);
+  const card = el("button", "post " + colorClass(client.color) + (approved ? "" : " unapproved"), post.title);
+  card.type = "button";
+  card.append(el("small", "", formatTime(post.time) + (approved ? "" : " · " + phaseName(stageOf(post)))));
+  card.title = client.name;
+  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + phaseName(stageOf(post)));
+  card.addEventListener("click", () => openPost(post));
+  if (!state.readOnly) {
+    card.draggable = true;
+    card.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("text/plain", post.id);
+      event.dataTransfer.effectAllowed = "move";
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+  }
+  return card;
+}
+
+function renderClients() {
+  const list = $("clients");
+  list.replaceChildren();
+  if (!state.clients.length) {
+    list.append(el("p", "side-note", state.loaded ? "No clients yet." : "Loading clients."));
+    return;
+  }
+  const shownCount = state.clients.filter((client) => isShown(client.id)).length;
+  state.clients.forEach((client) => {
+    const shown = isShown(client.id);
+    const solo = shown && shownCount === 1 && state.clients.length > 1;
+    const row = el("div", "client " + colorClass(client.color) + (shown ? "" : " off"));
+
+    const check = el("button", "client-check");
+    check.type = "button";
+    check.setAttribute("aria-pressed", String(shown));
+    check.setAttribute("aria-label", "Show " + client.name + " on the calendar");
+    check.title = shown ? "Hide this client" : "Show this client";
+    check.append(el("span", "check", "✓"));
+    check.addEventListener("click", () => {
+      const tap = doubleTap("client-" + client.id, solo);
+      if (tap) {
+        state.hidden = new Set(tap.wasSolo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id));
+      } else if (shown) {
+        state.hidden.add(client.id);
+      } else {
+        state.hidden.delete(client.id);
+      }
+      render();
+    });
+
+    const name = el("button", "client-name", client.name);
+    name.type = "button";
+    name.setAttribute("aria-pressed", String(solo));
+    name.title = solo ? "Show all clients" : "Show only this client";
+    name.addEventListener("click", () => {
+      if (doubleTap("name-" + client.id)) return;
+      state.hidden = new Set(solo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id));
+      render();
+    });
+
+    row.append(check, name);
+    if (!state.readOnly) {
+      const edit = el("button", "client-edit", "Edit");
+      edit.type = "button";
+      edit.setAttribute("aria-label", "Edit " + client.name);
+      edit.addEventListener("click", () => openClientDialog(client));
+      row.append(edit);
+    }
+    list.append(row);
+  });
+}
+
+/* Converts a Pacific Time date and hour to an exact moment, following daylight saving. */
+function pacificTime(year, month, day, hour) {
+  const guess = new Date(Date.UTC(year, month - 1, day, hour));
+  const parts = {};
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles", hourCycle: "h23",
+    year: "numeric", month: "numeric", day: "numeric", hour: "numeric"
+  }).formatToParts(guess).forEach((part) => { parts[part.type] = Number(part.value); });
+  const offset = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour) - guess.getTime();
+  return new Date(guess.getTime() - offset);
+}
+
+/* Bump times come from each person's schedule, in Pacific Time, counted back from the post date. */
+function bumpTimes(post) {
+  const [year, month, day] = post.date.split("-").map(Number);
+  return state.bumpSchedule.map(({ days, time }) => {
+    const [hour, minute] = time.split(":").map(Number);
+    return new Date(pacificTime(year, month, day - days, hour).getTime() + minute * 60000);
+  });
+}
+
+function bumpPosts(time = new Date()) {
+  return state.posts
+    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => {
+      const mode = state.bumpModes[post.client] || "mine";
+      if (mode === "off") return false;
+      if (mode === "all") return true;
+      return isWaitingOnMe(post);
+    })
+    .filter((post) => bumpTimes(post).some((slot) => slot <= time))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/* The Bumps list: my posts coming up that aren't approved yet, from the first bump time on. */
+function bumpListPosts(time = new Date()) {
+  return state.posts
+    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => {
+      const mode = state.bumpModes[post.client] || "mine";
+      if (mode === "off") return false;
+      if (mode === "all") return true;
+      return isMyPost(post) || post.manager === myId || isWaitingOnMe(post);
+    })
+    .filter((post) => bumpTimes(post).some((slot) => slot <= time))
+    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+}
+
+function renderBumpList() {
+  const posts = bumpListPosts();
+  bumpCount = posts.length;
+  const row = $("menu-bumps");
+  row.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="translate(0 -1.5)"><path d="M2 18c3 0 4.5-9 10-9s7 9 10 9"/><path d="M7 18c1.8 0 2.6-4.6 5-4.6s3.2 4.6 5 4.6"/></g></svg><span class="menu-label">Bumps<small>Coming up and not approved</small></span>';
+  if (posts.length) row.append(el("span", "bump-count bump-view-count", posts.length > 99 ? "99+" : String(posts.length)));
+
+  const list = $("bump-list");
+  list.replaceChildren();
+  if (!posts.length) {
+    list.append(el("p", "empty", "Nothing coming up. You’re all caught up."));
+    return;
+  }
+  const today = dateKey(new Date());
+  const tomorrow = dateKey(new Date(Date.now() + 86400000));
+  const groups = [
+    ["Past due", (post) => post.date < today],
+    ["Today", (post) => post.date === today],
+    ["Tomorrow", (post) => post.date === tomorrow],
+    ["Coming up", (post) => post.date > tomorrow]
+  ];
+  groups.forEach(([name, test]) => {
+    const items = posts.filter(test);
+    if (!items.length) return;
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", name));
+    items.forEach((post) => {
+      const item = noticeItem(post, clientById(post.client).name);
+      item.querySelector(".bump-text").append(el("span", "bump-status", statusText(post)));
+      group.append(item);
+    });
+    list.append(group);
+  });
+}
+
+function isMyPost(post) {
+  return post.createdBy === undefined ? isOwner : post.createdBy === myId;
+}
+
+/* Posts with a comment from someone else that this person hasn't opened yet. */
+function unreadComments() {
+  if (state.commentMode === "off") return [];
+  return state.posts
+    .filter((post) => clientById(post.client))
+    .filter((post) => state.commentMode === "all" || isMyPost(post))
+    .filter((post) => (post.comments || []).some((comment) =>
+      comment.at && comment.by !== myId && comment.at > (state.commentSeen[post.id] || 0)));
+}
+
+function shortDate(date) {
+  return new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function noticeItem(post, label, extra) {
+  const client = clientById(post.client);
+  const item = el("button", "bump-item " + colorClass(client.color));
+  item.type = "button";
+  const text = el("span", "bump-text", post.title);
+  text.prepend(el("small", "", label));
+  const meta = el("small", "", (label === client.name ? "" : client.name + " · ") + shortDate(post.date) + " · " + phaseName(stageOf(post)));
+  if (extra) meta.append(" · ", el("span", "due", extra));
+  text.append(meta);
+  item.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
+  item.addEventListener("click", () => openPost(post));
+  return item;
+}
+
+function renderBumps() {
+  renderBumpList();
+  const unread = unreadComments();
+  const due = new Set(bumpPosts().map((post) => post.id));
+  const mine = state.posts
+    .filter((post) => clientById(post.client) && !isApproved(post) && isWaitingOnMe(post))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const total = mine.length + unread.length;
+  if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
+  lastUnread = unread.length;
+  const button = $("bumps");
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  if (bumpCount) button.append(el("span", "bump-count bump-view-count", bumpCount > 99 ? "99+" : String(bumpCount)));
+  else if (total) button.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
+  button.setAttribute("aria-label", "Notifications and bumps: " + total + " notifications, " + bumpCount + " bumps");
+  const menuRow = $("menu-notifs");
+  menuRow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="menu-label">Notifications<small>Sent to you and new comments</small></span>';
+  if (total) menuRow.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
+  button.hidden = state.readOnly;
+  $("pipe-btn").hidden = state.readOnly;
+
+
+  const needs = $("needs-view");
+  needs.replaceChildren();
+  if (!total) needs.append(el("p", "empty", "Nothing needs you right now."));
+  if (mine.length) {
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", "Waiting on you"));
+    mine.forEach((post) => group.append(noticeItem(post, clientById(post.client).name, due.has(post.id) ? "Bump due" : "")));
+    needs.append(group);
+  }
+  if (unread.length) {
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", "New comments"));
+    unread.forEach((post) => group.append(noticeItem(post, "New comment · " + clientById(post.client).name)));
+    needs.append(group);
+  }
+
+  const board = $("pipeline-view");
+  board.replaceChildren();
+  STAGES.filter((stage) => stage.id !== "approved").forEach((stage) => {
+    const posts = state.posts
+      .filter((post) => clientById(post.client) && stageOf(post) === stage.id)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const column = el("div", "column");
+    const heading = el("h2", "", stage.name);
+    heading.append(el("span", "", String(posts.length)));
+    column.append(heading);
+    if (!posts.length) column.append(el("p", "empty", "Nothing here."));
+    posts.forEach((post) => {
+      const waiting = waitingOn(post).map(objName).join(", ");
+      column.append(noticeItem(post, waiting ? "Waiting on " + waiting : "Needs a manager", due.has(post.id) ? "Bump due" : ""));
+    });
+    board.append(column);
+  });
+}
+
+function renderBumpSettings() {
+  const list = $("bump-clients");
+  list.replaceChildren();
+  $("bump-setting").hidden = state.readOnly;
+  if (!state.clients.length) {
+    list.append(el("p", "empty", "Add a client to choose bumps."));
+    return;
+  }
+  const limit = 3;
+  const visible = showAllBumpCalendars ? state.clients : state.clients.slice(0, limit);
+  visible.forEach((client) => {
+    const current = state.bumpModes[client.id] || "mine";
+    const row = el("div", "bump-row " + colorClass(client.color));
+    const name = el("span", "bump-name");
+    name.append(el("span", "bump-swatch"), el("span", "", client.name));
+    const options = el("div", "mode-options");
+    options.setAttribute("role", "group");
+    options.setAttribute("aria-label", "Bumps for " + client.name);
+    [["off", "Off"], ["mine", "My posts"], ["all", "Whole calendar"]].forEach(([mode, label]) => {
+      const button = el("button", "quiet", label);
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(mode === current));
+      button.addEventListener("click", () => {
+        state.bumpModes[client.id] = mode;
+        renderBumpSettings();
+        renderBumps();
+        savePreferences();
+      });
+      options.append(button);
+    });
+    row.append(name, options);
+    list.append(row);
+  });
+  if (state.clients.length > limit) {
+    const more = el("button", "quiet see-more", showAllBumpCalendars ? "See less" : "See " + (state.clients.length - limit) + " more");
+    more.type = "button";
+    more.addEventListener("click", () => {
+      showAllBumpCalendars = !showAllBumpCalendars;
+      renderBumpSettings();
+    });
+    list.append(more);
+  }
+}
+
+function accessStatus(person) {
+  if (!person.on_list) return { text: "Signed up, but has no access", missing: true };
+  if (!person.has_account) return { text: "Has access, hasn't signed up yet", missing: true };
+  if (!person.has_password) return { text: "Signed up, still needs a password", missing: true };
+  if (!person.has_logged_in) return { text: "Has a password, hasn't logged in yet", missing: true };
+  return { text: "Fully set up", missing: false };
+}
+
+async function loadAccess() {
+  if (!isOwner || !user) return;
+  try {
+    state.access = await user.accessStatus();
+    renderInvites();
+  } catch (problem) {
+    $("invite-list").replaceChildren(el("p", "empty", "Access details couldn't load. Refresh to try again."));
+  }
+}
+
+function renderInvites() {
+  const list = $("invite-list");
+  list.replaceChildren();
+  const people = state.access.filter((person) => person.role !== "admin");
+  if (!people.length) list.append(el("p", "empty", "Nobody else has been added yet."));
+  people.forEach((person) => {
+    const row = el("div", "invite-row");
+    const info = el("div", "invite-info", person.email);
+    const status = accessStatus(person);
+    const names = (person.calendars || []).map((id) => (clientById(id) || {}).name).filter(Boolean).join(", ");
+    const role = person.role === "client" ? "Client" + (names ? " · " + names : "") : person.role === "team" ? "Team member" : "Not added";
+    info.append(el("small", "", role));
+    info.append(el("small", status.missing ? "status-missing" : "", status.text));
+
+    if (person.on_list && person.role !== "client") {
+      info.append(el("small", "", person.devices ? "Notifications on" : "Notifications not turned on"));
+    }
+    row.append(info);
+    if (person.on_list) {
+      const remove = el("button", "quiet", "Remove");
+      remove.type = "button";
+      remove.setAttribute("aria-label", "Remove access for " + person.email);
+      remove.addEventListener("click", () => removeInvite(person.email));
+      row.append(remove);
+    }
+    list.append(row);
+  });
+}
+
+async function removeInvite(id) {
+  try {
+    if (db) await db.collection("invites").doc(id).delete();
+  } catch (problem) {
+    showToast(saveProblem(problem));
+    return;
+  }
+  state.invites = state.invites.filter((invite) => invite.id !== id);
+  loadAccess();
+  showToast("Access removed");
+}
+
+function renderInviteCalendars() {
+  const list = $("invite-calendars");
+  list.replaceChildren();
+  if (!state.clients.length) {
+    list.append(el("p", "empty", "Add a client calendar first."));
+    return;
+  }
+  state.clients.forEach((client) => {
+    const on = inviteCalendars.has(client.id);
+    const button = el("button", "calendar-pick " + colorClass(client.color));
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(on));
+    button.append(el("span", "check", "✓"), el("span", "", client.name));
+    button.addEventListener("click", () => {
+      if (on) inviteCalendars.delete(client.id); else inviteCalendars.add(client.id);
+      renderInviteCalendars();
+    });
+    list.append(button);
+  });
+}
+
+function openInvite(role) {
+  inviteRole = role;
+  inviteCalendars = new Set();
+  $("invite-title").textContent = role === "client" ? "Add client access" : "Add team member";
+  $("invite-calendars-field").hidden = role !== "client";
+
+  $("invite-email").value = "";
+  $("invite-error").hidden = true;
+  renderInviteCalendars();
+  $("invite-dialog").showModal();
+  $("invite-email").focus();
+}
+
+async function saveInvite(event) {
+  event.preventDefault();
+  const email = $("invite-email").value.trim().toLowerCase();
+  const error = $("invite-error");
+  const problem = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address."
+    : state.invites.some((invite) => invite.email === email) ? "That person is already added."
+    : inviteRole === "client" && !inviteCalendars.size ? "Choose at least one calendar." : "";
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+  const id = newId();
+  const invite = { email, role: inviteRole, calendars: inviteRole === "client" ? [...inviteCalendars] : [], invitedAt: Date.now() };
+  $("save-invite").disabled = true;
+  try {
+    if (db) await db.collection("invites").doc(id).set(invite);
+  } catch (failure) {
+    error.textContent = saveProblem(failure);
+    error.hidden = false;
+    $("save-invite").disabled = false;
+    return;
+  }
+  $("save-invite").disabled = false;
+  if (!state.invites.some((item) => item.id === id)) state.invites.push({ id, ...invite });
+  $("invite-dialog").close();
+  loadAccess();
+  showToast("Added. They can sign in now.");
+}
+
+function changeSchedule() {
+  renderBumps();
+  savePreferences();
+}
+
+function renderBumpTiming() {
+  const list = $("bump-timing");
+  list.replaceChildren();
+  $("add-timing").hidden = state.bumpSchedule.length >= 8;
+  if (!state.bumpSchedule.length) list.append(el("p", "empty", "No bump times set, so you won't get any bumps."));
+  state.bumpSchedule.forEach((slot, index) => {
+    const row = el("div", "timing-row");
+    const days = el("select");
+    days.id = "bump-days-" + index;
+    days.setAttribute("aria-label", "Days before the post");
+    for (let count = 7; count >= 0; count--) {
+      const option = el("option", "", count === 0 ? "On the post date" : count === 1 ? "1 day before" : count + " days before");
+      option.value = String(count);
+      days.append(option);
+    }
+    days.value = String(slot.days);
+    days.addEventListener("change", () => {
+      slot.days = Number(days.value);
+      changeSchedule();
+    });
+    const time = el("input");
+    time.id = "bump-time-" + index;
+    time.type = "time";
+    time.value = slot.time;
+    time.setAttribute("aria-label", "Bump time");
+    time.addEventListener("change", () => {
+      if (!time.value) {
+        time.value = slot.time;
+        return;
+      }
+      slot.time = time.value;
+      changeSchedule();
+    });
+    const remove = el("button", "quiet", "Remove");
+    remove.type = "button";
+    remove.addEventListener("click", () => {
+      state.bumpSchedule.splice(index, 1);
+      renderBumpTiming();
+      changeSchedule();
+    });
+    row.append(days, el("span", "at", "at"), time, remove);
+    list.append(row);
+  });
+}
+
+function savePreferences() {
+  if (!preferences) return;
+  const data = {
+    bumpModes: { ...state.bumpModes },
+    bumpSchedule: state.bumpSchedule.map((slot) => ({ ...slot })),
+    commentMode: state.commentMode,
+    slack: state.slackOn,
+    commentSeen: { ...state.commentSeen }
+  };
+  preferenceWrite = preferenceWrite
+    .then(() => preferences.set(data))
+    .catch(() => showToast("Your bump choice didn't save. Try again."));
+}
+
+/* The filters redraw on every click, so a double click is timed here instead of using the browser's event. */
+function doubleTap(key, wasSolo) {
+  const time = Date.now();
+  const previous = lastTap;
+  if (previous.key === key && time - previous.time < 350) {
+    lastTap = {};
+    return { wasSolo: previous.wasSolo };
+  }
+  lastTap = { key, time, wasSolo };
+  return null;
+}
+
+/* Opens the post named in a notification link, like #post-abc123. */
+function openLinkedPost() {
+  if (!location.hash.startsWith("#post-")) return;
+  const post = state.posts.find((item) => item.id === location.hash.slice(6));
+  if (post && clientById(post.client)) goToPost(post);
+  else history.replaceState(null, "", location.pathname);
+}
+
+function closeSearch() {
+  $("search-results").hidden = true;
+  $("search-panel").hidden = true;
+  $("open-search").setAttribute("aria-expanded", "false");
+  searchMatches = [];
+  searchIndex = -1;
+}
+
+function openSearch() {
+  $("search-panel").hidden = false;
+  $("open-search").setAttribute("aria-expanded", "true");
+  $("post-search").focus();
+}
+
+function goToPost(post) {
+  const [year, month] = post.date.split("-").map(Number);
+  state.year = year;
+  state.month = month - 1;
+  state.hidden.delete(post.client);
+  state.showStages = ALL_STAGES_ON();
+  $("post-search").value = "";
+  closeSearch();
+  showView("calendar");
+  render();
+  openPost(post);
+}
+
+function renderSearch() {
+  const query = $("post-search").value.trim().toLowerCase();
+  const results = $("search-results");
+  if (!query) {
+    results.hidden = true;
+    searchMatches = [];
+    searchIndex = -1;
+    return;
+  }
+  searchMatches = state.posts
+    .filter((post) => clientById(post.client) && post.title.toLowerCase().includes(query))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 20);
+  results.replaceChildren();
+  results.hidden = false;
+  if (!searchMatches.length) {
+    results.append(el("p", "search-empty", "No posts found."));
+    return;
+  }
+  searchMatches.forEach((post, index) => {
+    const client = clientById(post.client);
+    const row = el("button", "search-result " + colorClass(client.color) + (index === searchIndex ? " active" : ""));
+    row.type = "button";
+    const date = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const text = el("span", "bump-text", post.title);
+    text.append(el("small", "", client.name + " · " + date));
+    row.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
+    row.addEventListener("mousedown", (event) => event.preventDefault());
+    row.addEventListener("click", () => goToPost(post));
+    results.append(row);
+  });
+}
+
+/* The calendar filters group the five stages into three. */
+const FILTER_GROUPS = [
+  { id: "internal", label: "Internal", stages: ["draft", "internal", "ready"] },
+  { id: "client", label: "Client", stages: ["client"] },
+  { id: "approved", label: "Approved", stages: ["approved"] }
+];
+
+function renderCount(counts) {
+  const isOn = (group) => group.stages.every((stage) => state.showStages[stage]);
+  const setGroup = (group, on) => group.stages.forEach((stage) => { state.showStages[stage] = on; });
+  const buttons = FILTER_GROUPS.map((group) => {
+    const shown = isOn(group);
+    const total = group.stages.reduce((sum, stage) => sum + counts[stage], 0);
+    const button = el("button", "count-btn" + (group.id === "approved" ? " is-approved" : ""));
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(shown));
+    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
+    button.append(el("i", "key filled", shown ? "✓" : ""), total + " " + group.label);
+    button.addEventListener("click", () => {
+      const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
+      const tap = doubleTap("group-" + group.id, solo);
+      if (tap) {
+        FILTER_GROUPS.forEach((other) => setGroup(other, tap.wasSolo || other.id === group.id));
+      } else {
+        setGroup(group, !shown);
+      }
+      renderMonth();
+    });
+    return button;
+  });
+  $("count").replaceChildren(...buttons);
+}
+
+function renderMonth() {
+  const { year, month } = state;
+  $("month-title").replaceChildren(MONTHS[month] + " ", el("em", "", String(year)));
+
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+  const grid = $("grid");
+  const agenda = $("agenda");
+  grid.replaceChildren();
+  agenda.replaceChildren();
+  const counts = { draft: 0, internal: 0, ready: 0, client: 0, approved: 0 };
+  let shownTotal = 0;
+
+  for (let cell = 0; cell < cellCount; cell++) {
+    const date = new Date(year, month, cell - firstWeekday + 1);
+    const key = dateKey(date);
+    const inMonth = date.getMonth() === month;
+    const isToday = date.toDateString() === now.toDateString();
+    const dayCell = el("div", "day" + (inMonth ? "" : " out") + (isToday ? " today" : ""));
+
+    if (!state.readOnly) {
+      const add = el("button", "day-add");
+      add.type = "button";
+      add.setAttribute("aria-label", "Add a post on " + date.toLocaleDateString("en-US", { month: "long", day: "numeric" }));
+      add.addEventListener("click", () => openNewPost(key));
+      dayCell.append(add);
+    }
+    dayCell.append(el("span", "date", String(date.getDate())));
+    if (!state.readOnly) {
+      dayCell.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dayCell.classList.add("drop-target");
+      });
+      dayCell.addEventListener("dragleave", (event) => {
+        if (!dayCell.contains(event.relatedTarget)) dayCell.classList.remove("drop-target");
+      });
+      dayCell.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dayCell.classList.remove("drop-target");
+        movePost(event.dataTransfer.getData("text/plain"), key);
+      });
+    }
+
+    if (inMonth) {
+      const dayPosts = postsOn(key);
+      dayPosts.forEach((post) => { counts[stageOf(post)]++; });
+      const posts = dayPosts.filter((post) => state.showStages[stageOf(post)]);
+      shownTotal += posts.length;
+      const dots = el("div", "dots");
+      posts.forEach((post) => {
+        dayCell.append(postCard(post));
+        dots.append(el("i", colorClass(clientById(post.client).color) + (isApproved(post) ? "" : " unapproved")));
+      });
+      dayCell.append(dots);
+
+      if (posts.length) {
+        const group = el("div");
+        group.append(el("h2", "", date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })));
+        const list = el("div", "list");
+        posts.forEach((post) => list.append(postCard(post)));
+        group.append(list);
+        agenda.append(group);
+      }
+    }
+    grid.append(dayCell);
+  }
+
+  renderCount(counts);
+  $("start-note").hidden = !(state.loaded && !state.clients.length && !state.readOnly);
+  if (!shownTotal) agenda.append(el("p", "empty", state.clients.length ? "No posts to show this month." : "No clients yet."));
+}
+
+function render() {
+  renderClients();
+  renderMonth();
+  renderBumps();
+  renderBumpSettings();
+  renderBumpTiming();
+  document.querySelectorAll("[data-slack]").forEach((button) => {
+    button.setAttribute("aria-pressed", String((button.dataset.slack === "on") === state.slackOn));
+  });
+  $("slack-test").hidden = !state.slackOn;
+  document.querySelectorAll("[data-comment-mode]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.commentMode === state.commentMode));
+  });
+  $("add-client").hidden = state.readOnly;
+  $("new-post").hidden = state.readOnly;
+  $("people-setting").hidden = state.readOnly;
+  $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
+  $("invite-buttons").hidden = !isOwner;
+  $("admin-setting").hidden = !isOwner;
+
+}
+
+function moveMonth(step) {
+  const target = new Date(state.year, state.month + step, 1);
+  state.year = target.getFullYear();
+  state.month = target.getMonth();
+  renderMonth();
+}
+
+const objName = (email) => (email === myId ? "you" : displayName(email));
+
+function historyText(entry) {
+  const who = displayName(entry.by);
+  const note = entry.note ? ": " + entry.note : "";
+  switch (entry.type) {
+    case "sent": if (entry.passed) return who + " passed this to " + objName((entry.to || [])[0]) + " for review";
+      return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + objName((entry.to || [])[0]) + " for review";
+    case "approved_internal": return who + " approved internally";
+    case "changes": return who + " requested changes" + note;
+    case "client": return who + " sent to client";
+    case "approved": return who + " marked client approved";
+    case "back": return who + " moved back to " + phaseName(entry.stage);
+    case "bump": return who + " bumped " + (entry.to || []).map(objName).join(", ") + note;
+    case "auto": return "Moved back to Draft because info was missing";
+    default: return who + " updated this post";
+  }
+}
+
+function stampText(at) {
+  return new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(" AM", "am").replace(" PM", "pm");
+}
+
+function renderComments() {
+  const list = $("comment-list");
+  list.replaceChildren();
+  const entries = [
+    ...draft.comments.map((comment) => ({ kind: "comment", at: comment.at || 0, comment })),
+    ...(draft.history || []).map((entry) => ({ kind: "history", at: entry.at || 0, entry }))
+  ].sort((a, b) => a.at - b.at);
+  if (!entries.length) {
+    list.append(el("p", "comment-empty", "No comments yet."));
+    return;
+  }
+  entries.forEach((item) => {
+    if (item.kind === "history") {
+      list.append(el("p", "history-line", historyText(item.entry) + " · " + stampText(item.at)));
+      return;
+    }
+    const line = el("p", "", item.comment.text);
+    line.prepend(el("b", "", displayName(item.comment.by)));
+    list.append(line);
+  });
+}
+
+function readTemplate() {
+  draft.asset = $("f-asset").value;
+  draft.copy = $("f-copy").value;
+  draft.tags = $("f-tags").value;
+}
+
+function updateHint() {
+  readTemplate();
+  const hint = $("hint");
+  const missing = missingFields(draft);
+  const stage = editing ? stageOf(editing) : "draft";
+  if (!missing.length) {
+    hint.replaceChildren(stage === "draft" ? el("strong", "", "Everything is filled in. ") : "", stage === "draft" ? "Send it to a manager when it's ready." : "");
+  } else {
+    hint.replaceChildren(
+      el("strong", "", "Still needed: " + missing.join(", ") + "."),
+      stage === "draft" ? " Fill these in to send it to a manager." : " Saving now will move this post back to drafting."
+    );
+  }
+  renderActions();
+}
+
+function renderTracker() {
+  const tracker = $("tracker");
+  tracker.replaceChildren();
+  const stage = editing ? stageOf(editing) : "draft";
+  const current = phaseIndex(stage);
+  const steps = el("div", "phase-steps");
+  PHASES.forEach((phase, index) => {
+    if (index) steps.append(el("span", "phase-line" + (index <= current ? " done" : "")));
+    const step = el("button", "phase " + (index < current ? "done" : index === current ? "current" : "ahead"));
+    step.type = "button";
+    step.append(el("i", "phase-dot"), el("span", "", phase.name));
+    const canMove = index < current && editing && !state.readOnly;
+    step.disabled = !canMove;
+    if (index === current) step.setAttribute("aria-current", "step");
+    if (canMove) {
+      step.title = "Move this post back to " + phase.name;
+      step.addEventListener("click", () => {
+        pendingBack = phase.start;
+        $("stage-title").textContent = "Move this post back to " + phase.name + "?";
+        $("stage-dialog").showModal();
+      });
+    }
+    steps.append(step);
+  });
+  tracker.append(steps, el("p", "phase-status", statusText(editing)));
+}
+
+/* One plain sentence: where this post is inside its phase. */
+function statusText(post) {
+  if (!post) return "New post";
+  const stage = stageOf(post);
+  const step = lastStep(post);
+  const when = step ? " · " + stampText(step.at) : "";
+  if (stage === "draft") {
+    if (step && step.type === "changes") return displayName(step.by) + " requested changes" + (step.note ? ": " + step.note : "") + when;
+    if (step && step.type === "auto") return "Back to drafting because info was missing" + when;
+    return "Drafting";
+  }
+  if (stage === "internal") return (post.manager === myId ? "With you for review" : "With " + displayName(post.manager) + " for review") + when;
+  if (stage === "ready") return (step && step.type === "approved_internal" ? "Approved by " + displayName(step.by) + " · ready to send to client" : "Ready to send to client") + when;
+  if (stage === "client") return "Sent to client" + (step && step.type === "client" ? " by " + displayName(step.by) : "") + when;
+  return "Approved" + when;
+}
+
+function bumpWait(post) {
+  if (!post || !post.lastBump) return 0;
+  return Math.max(0, post.lastBump.at + 2 * 3600000 - Date.now());
+}
+
+/* The latest step on a post, shown in gray so anyone can see it's on track. */
+function lastStep(post) {
+  const steps = (post.history || []).filter((entry) => entry.type !== "bump");
+  return steps.length ? steps[steps.length - 1] : null;
+}
+
+function renderActions() {
+  const box = $("post-actions");
+  box.replaceChildren();
+  box.hidden = state.readOnly;
+  if (state.readOnly) return;
+  const stage = editing ? stageOf(editing) : "draft";
+  const button = (label, primary, handler) => {
+    const item = el("button", primary ? "primary" : "quiet", label);
+    item.type = "button";
+    item.addEventListener("click", handler);
+    return item;
+  };
+  if (stage === "draft") {
+    const pick = el("select");
+    pick.id = "manager-pick";
+    pick.setAttribute("aria-label", "Choose who reviews this");
+    managers().forEach((person) => {
+      const option = el("option", "", displayName(person.email));
+      option.value = person.email;
+      pick.append(option);
+    });
+    if (draft.manager && managers().some((person) => person.email === draft.manager)) pick.value = draft.manager;
+    const send = button("Send to manager", true, () => {
+      changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
+    });
+    send.disabled = missingFields(draft).length > 0 || !pick.options.length;
+    box.append(pick, send);
+  } else if (stage === "internal") {
+    const others = managers().filter((person) => person.email !== editing.manager);
+    if (passOpen && others.length) {
+      const pick = el("select");
+      pick.setAttribute("aria-label", "Choose the new reviewer");
+      others.forEach((person) => {
+        const option = el("option", "", displayName(person.email));
+        option.value = person.email;
+        pick.append(option);
+      });
+      box.append(
+        pick,
+        button("Pass", true, () => {
+          passOpen = false;
+          changeStage("internal", { type: "sent", to: [pick.value], passed: true }, { manager: pick.value }, "Passed to " + objName(pick.value));
+        }),
+        button("Cancel", false, () => { passOpen = false; renderActions(); })
+      );
+      box.hidden = false;
+      return;
+    }
+    if (editing.manager === myId) {
+      box.append(
+        button("Approve", true, () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
+        button("Request changes", false, () => openNote("changes"))
+      );
+    }
+    if (others.length) box.append(button("Change reviewer", false, () => { passOpen = true; renderActions(); }));
+  } else if (stage === "ready") {
+    box.append(button("Send to client", true, () => changeStage("client", { type: "client", to: [] })));
+  } else if (stage === "client") {
+    box.append(button("Client approved", true, () => {
+      const to = [creatorOf(editing), editing.manager].filter((email, index, all) => email && all.indexOf(email) === index);
+      changeStage("approved", { type: "approved", to });
+    }));
+  }
+
+  if (editing && stage !== "approved") {
+    const targets = waitingOn(editing).filter((email) => email !== myId);
+    if (targets.length) {
+      const wait = bumpWait(editing);
+      const minutes = Math.ceil(wait / 60000);
+      const label = wait > 0 ? "Bump again in " + (minutes >= 60 ? Math.floor(minutes / 60) + "h " : "") + (minutes % 60) + "m" : "Bump";
+      const bump = button(label, false, () => openNote("bump"));
+      bump.classList.add("bump-action");
+      bump.disabled = wait > 0;
+      if (editing.lastBump) bump.title = "Last bumped by " + displayName(editing.lastBump.by) + " " + stampText(editing.lastBump.at);
+      box.append(bump);
+    }
+  }
+  box.hidden = !box.children.length;
+}
+
+function openNote(kind) {
+  noteAction = kind;
+  const targets = waitingOn(editing).filter((email) => email !== myId).map(displayName).join(", ");
+  $("note-title").textContent = kind === "bump" ? "Bump " + targets : "Request changes";
+  $("note-help").textContent = kind === "bump" ? "Matrix Bot will remind them about this post." : "This sends the post back to Draft.";
+  $("note-text").placeholder = kind === "bump" ? "Need this by 3pm" : "What needs to change?";
+  $("send-note").textContent = kind === "bump" ? "Send bump" : "Request changes";
+  $("note-text").value = "";
+  $("note-dialog").showModal();
+  $("note-text").focus();
+}
+
+function postFields() {
+  readTemplate();
+  return {
+    title: $("f-title").value.trim(), client: $("f-client").value,
+    date: $("f-date").value, time: $("f-time").value,
+    asset: draft.asset, copy: draft.copy, tags: draft.tags,
+    assetFile: draft.assetFile || null
+  };
+}
+
+function fieldProblem(fields) {
+  return !fields.title ? "Add a title first."
+    : !fields.client || fields.client === "__new" ? "Choose a client first."
+    : !fields.date ? "Choose a date first." : "";
+}
+
+/* Saves the post and moves it to a new stage, then offers Undo. */
+async function changeStage(nextStage, entry, extra = {}, toast) {
+  const fields = postFields();
+  const error = $("form-error");
+  const problem = fieldProblem(fields);
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+  const isNew = !editing;
+  const before = isNew ? null : { stage: stageOf(editing), manager: editing.manager || null, history: [...(editing.history || [])], lastBump: editing.lastBump || null };
+  const record = { ...entry, by: myId, at: Date.now() };
+  const update = {
+    ...fields, stage: nextStage,
+    history: [...(isNew ? [] : editing.history || []), record],
+    ...extra
+  };
+  try {
+    const ref = db.collection("posts").doc(draft.id);
+    if (isNew) await ref.set({ ...update, comments: draft.comments, createdBy: myId });
+    else await ref.update(update);
+  } catch (failure) {
+    error.textContent = saveProblem(failure);
+    error.hidden = false;
+    return;
+  }
+  const local = state.posts.find((post) => post.id === draft.id);
+  if (local) Object.assign(local, update);
+  else state.posts.push({ id: draft.id, ...update, comments: draft.comments, createdBy: myId });
+  const id = draft.id;
+  $("post-dialog").close();
+  state.hidden.delete(fields.client);
+  render();
+  const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
+  showToast(message, isNew ? null : async () => {
+    try {
+      await db.collection("posts").doc(id).update(before);
+      const post = state.posts.find((item) => item.id === id);
+      if (post) Object.assign(post, before);
+      render();
+      showToast("Undone");
+    } catch (failure) {
+      showToast("That didn't undo. Try moving it back from the post.");
+    }
+  });
+}
+
+function fillClientOptions() {
+  const select = $("f-client");
+  select.replaceChildren();
+  if (!editing) {
+    const placeholder = el("option", "", "Choose a client");
+    placeholder.value = "";
+    placeholder.disabled = true;
+    select.append(placeholder);
+  }
+  state.clients.forEach((client) => {
+    const option = el("option", "", client.name);
+    option.value = client.id;
+    select.append(option);
+  });
+  if (!state.readOnly) {
+    const addNew = el("option", "", "+ Add client");
+    addNew.value = "__new";
+    select.append(addNew);
+  }
+}
+
+function openDialog() {
+  fillClientOptions();
+  $("f-title").value = draft.title;
+  $("f-client").value = draft.client;
+  $("f-date").value = draft.date;
+  $("f-time").value = draft.time;
+  $("f-asset").value = draft.asset;
+  $("f-copy").value = draft.copy;
+  $("f-tags").value = draft.tags;
+  $("comment-input").value = "";
+  $("form-error").hidden = true;
+  $("post-fields").disabled = state.readOnly;
+  $("upload-asset").hidden = !assets || state.readOnly;
+  $("asset-file").value = "";
+  renderAssetPreview();
+  $("save-post").hidden = state.readOnly;
+  $("cancel").textContent = state.readOnly ? "Close" : "Cancel";
+  $("delete-post").hidden = state.readOnly || !editing;
+  $("delete-post").textContent = "Delete post";
+  $("comment-input").hidden = state.readOnly;
+  $("add-comment").hidden = state.readOnly;
+  renderTracker();
+  renderComments();
+  updateHint();
+  $("post-dialog").showModal();
+  if (!editing) $("f-title").focus();
+}
+
+function openPost(post) {
+  passOpen = false;
+  if (unreadComments().some((item) => item.id === post.id)) {
+    state.commentSeen[post.id] = Date.now();
+    renderBumps();
+    savePreferences();
+  }
+  editing = { ...post, comments: [...(post.comments || [])] };
+  draft = { ...editing, comments: [...editing.comments] };
+  openDialog();
+}
+
+function openNewPost(date) {
+  const inView = now.getFullYear() === state.year && now.getMonth() === state.month;
+  const fallback = dateKey(inView ? now : new Date(state.year, state.month, 1));
+  const shownClients = state.clients.filter((item) => isShown(item.id));
+  editing = null;
+  draft = {
+    id: newId(), client: shownClients.length === 1 ? shownClients[0].id : "", title: "",
+    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", comments: [],
+    stage: "draft", manager: "", history: []
+  };
+  openDialog();
+}
+
+async function renderAssetPreview() {
+  const preview = $("asset-preview");
+  preview.replaceChildren();
+  const file = draft.assetFile;
+  preview.hidden = !file;
+  if (!file) return;
+  let url;
+  try {
+    url = await assets.signedUrl(file.id);
+  } catch (problem) {
+    preview.append(el("span", "", "This file can't be previewed right now."));
+    return;
+  }
+  if (draft.assetFile !== file) return;
+  preview.replaceChildren();
+  if ((file.type || "").startsWith("image/")) {
+    const image = el("img");
+    image.src = url;
+    image.alt = file.name;
+    preview.append(image);
+  } else if ((file.type || "").startsWith("video/")) {
+    const video = el("video");
+    video.src = url;
+    video.controls = true;
+    video.setAttribute("aria-label", file.name);
+    preview.append(video);
+  }
+  const link = el("a", "", "Open file");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  preview.append(link);
+}
+
+async function uploadAsset(file) {
+  const error = $("form-error");
+  const button = $("upload-asset");
+  error.hidden = true;
+  if (file.size > 50 * 1024 * 1024) {
+    error.textContent = "That file is over 50 MB. Paste a Google Drive link instead.";
+    error.hidden = false;
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Uploading";
+  try {
+    const stored = await assets.upload(file);
+    draft.assetFile = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+    $("f-asset").value = file.name;
+    updateHint();
+    renderAssetPreview();
+  } catch (problem) {
+    const code = problem && problem.code;
+    error.textContent = code === "too_large" ? "That file is too large. Paste a Google Drive link instead."
+      : code === "unsupported_type" ? "That file type can't be uploaded. Try an image, video, or PDF."
+      : "That file didn't upload. Try again, or paste a link instead.";
+    error.hidden = false;
+  }
+  button.disabled = false;
+  button.textContent = "Upload";
+}
+
+function hsvToHex(hue, saturation, value) {
+  const channel = (shift) => {
+    const k = (shift + hue / 60) % 6;
+    const amount = value - value * saturation * Math.max(0, Math.min(k, 4 - k, 1));
+    return Math.round(amount * 255).toString(16).padStart(2, "0");
+  };
+  return "#" + channel(5) + channel(3) + channel(1);
+}
+
+function hexToHsv(hex) {
+  const [r, g, b] = [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const range = max - Math.min(r, g, b);
+  let hue = 0;
+  if (range) {
+    if (max === r) hue = ((g - b) / range + 6) % 6;
+    else if (max === g) hue = (b - r) / range + 2;
+    else hue = (r - g) / range + 4;
+  }
+  return { hue: hue * 60, saturation: max ? range / max : 0, value: max };
+}
+
+function drawWheel() {
+  const canvas = $("color-wheel");
+  const context = canvas.getContext("2d");
+  const size = canvas.width;
+  const center = size / 2;
+  const value = Number($("color-shade").value) / 100;
+  const image = context.createImageData(size, size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - center;
+      const dy = y - center;
+      const distance = Math.hypot(dx, dy) / center;
+      if (distance > 1) continue;
+      const hex = hsvToHex((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, distance, value);
+      const index = (y * size + x) * 4;
+      image.data[index] = parseInt(hex.slice(1, 3), 16);
+      image.data[index + 1] = parseInt(hex.slice(3, 5), 16);
+      image.data[index + 2] = parseInt(hex.slice(5, 7), 16);
+      image.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  const angle = wheelHue * Math.PI / 180;
+  const mx = center + Math.cos(angle) * wheelSaturation * center;
+  const my = center + Math.sin(angle) * wheelSaturation * center;
+  context.lineWidth = 4;
+  context.strokeStyle = "#ffffff";
+  context.beginPath();
+  context.arc(mx, my, 12, 0, Math.PI * 2);
+  context.stroke();
+  context.lineWidth = 2;
+  context.strokeStyle = "#0f0f0f";
+  context.beginPath();
+  context.arc(mx, my, 15, 0, Math.PI * 2);
+  context.stroke();
+}
+
+function showPickedColor(fromCode) {
+  $("color-preview").style.background = pickedColor;
+  if (!fromCode) $("color-hex").value = pickedColor;
+  drawWheel();
+}
+
+function setPickedColor(hex) {
+  pickedColor = hex;
+  const { hue, saturation, value } = hexToHsv(hex);
+  wheelHue = hue;
+  wheelSaturation = saturation;
+  $("color-shade").value = String(Math.max(35, Math.round(value * 100)));
+}
+
+function pickFromWheel(event) {
+  const canvas = $("color-wheel");
+  const box = canvas.getBoundingClientRect();
+  const dx = event.clientX - box.left - box.width / 2;
+  const dy = event.clientY - box.top - box.height / 2;
+  wheelSaturation = Math.min(1, Math.hypot(dx, dy) / (box.width / 2));
+  wheelHue = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+  pickedColor = hsvToHex(wheelHue, wheelSaturation, Number($("color-shade").value) / 100);
+  showPickedColor();
+}
+
+function openClientDialog(client) {
+  editingClient = client || null;
+  const used = state.clients.map((item) => colorHex(item.color));
+  const free = PRESET_COLORS.find((hex) => !used.includes(hex)) || PRESET_COLORS[state.clients.length % PRESET_COLORS.length];
+  setPickedColor(client ? colorHex(client.color) : free);
+  $("c-name").value = client ? client.name : "";
+  $("client-title").textContent = client ? "Edit client" : "Add client";
+  $("save-client").textContent = client ? "Save client" : "Create client";
+  $("delete-client").hidden = !client;
+  $("delete-client").textContent = "Delete client";
+  $("client-error").hidden = true;
+  showPickedColor();
+  $("client-dialog").showModal();
+  $("c-name").focus();
+}
+
+function showToast(message, undo) {
+  const toast = $("toast");
+  toast.replaceChildren(el("span", "", message));
+  if (undo) {
+    const button = el("button", "", "Undo");
+    button.type = "button";
+    button.addEventListener("click", () => {
+      toast.hidden = true;
+      undo();
+    });
+    toast.append(button);
+  }
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, undo ? 7000 : 2800);
+}
+
+function saveProblem(error) {
+  if (error && error.code === "quota_exceeded") return "This calendar is full, so the change wasn't saved.";
+  return "That didn't save. Check your connection and try again.";
+}
+
+async function saveClient(event) {
+  event.preventDefault();
+  const name = $("c-name").value.trim();
+  const error = $("client-error");
+  if (!name) {
+    error.textContent = "Add a client name.";
+    error.hidden = false;
+    return;
+  }
+  const currentId = editingClient && editingClient.id;
+  if (state.clients.some((client) => client.id !== currentId && client.name.toLowerCase() === name.toLowerCase())) {
+    error.textContent = "That client already exists.";
+    error.hidden = false;
+    return;
+  }
+  if (editingClient) {
+    $("save-client").disabled = true;
+    try {
+      if (db) await db.collection("clients").doc(editingClient.id).update({ name, color: pickedColor });
+      Object.assign(clientById(editingClient.id), { name, color: pickedColor });
+    } catch (problem) {
+      error.textContent = saveProblem(problem);
+      error.hidden = false;
+      $("save-client").disabled = false;
+      return;
+    }
+    $("save-client").disabled = false;
+    $("client-dialog").close();
+    render();
+    showToast("Client saved");
+    return;
+  }
+  const id = newId();
+  const client = { name, color: pickedColor, createdAt: Date.now() };
+  $("save-client").disabled = true;
+  try {
+    if (db) await db.collection("clients").doc(id).set(client);
+    else state.clients.push({ id, ...client });
+  } catch (problem) {
+    error.textContent = saveProblem(problem);
+    error.hidden = false;
+    $("save-client").disabled = false;
+    return;
+  }
+  $("save-client").disabled = false;
+  if (!clientById(id)) state.clients.push({ id, ...client });
+  $("client-dialog").close();
+  render();
+  showToast(name + " added");
+  if ($("post-dialog").open) {
+    draft.client = id;
+    fillClientOptions();
+    $("f-client").value = id;
+  }
+}
+
+async function savePost(event) {
+  event.preventDefault();
+  if (state.readOnly) return;
+  readTemplate();
+  const fields = {
+    title: $("f-title").value.trim(), client: $("f-client").value,
+    date: $("f-date").value, time: $("f-time").value,
+    asset: draft.asset, copy: draft.copy, tags: draft.tags,
+    assetFile: draft.assetFile || null
+  };
+  const error = $("form-error");
+  const problem = !fields.title ? "Add a title to save this post."
+    : !fields.client ? "Choose a client to save this post."
+    : !fields.date ? "Choose a date to save this post." : "";
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+  const isNew = !editing;
+  $("save-post").disabled = true;
+  try {
+    if (db) {
+      const ref = db.collection("posts").doc(draft.id);
+      if (isNew) {
+        await ref.set({ ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
+      } else {
+        if (stageOf(editing) !== "draft" && !isComplete(fields)) {
+          fields.stage = "draft";
+          fields.history = [...(editing.history || []), { type: "auto", by: myId, at: Date.now(), to: [] }];
+        }
+        await ref.update(fields);
+      }
+    } else if (isNew) {
+      state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
+    } else {
+      Object.assign(state.posts.find((post) => post.id === draft.id), fields);
+    }
+  } catch (problem) {
+    error.textContent = saveProblem(problem);
+    error.hidden = false;
+    $("save-post").disabled = false;
+    return;
+  }
+  $("save-post").disabled = false;
+  state.hidden.delete(fields.client);
+  if (isNew) state.showStages = ALL_STAGES_ON();
+  const [year, month] = fields.date.split("-").map(Number);
+  state.year = year;
+  state.month = month - 1;
+  $("post-dialog").close();
+  render();
+  showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
+}
+
+/* Moves a post to a new day after it's dragged on the calendar. */
+async function movePost(id, newDate) {
+  const post = state.posts.find((item) => item.id === id);
+  if (!post || post.date === newDate) return;
+  const oldDate = post.date;
+  const save = async (date) => {
+    await db.collection("posts").doc(id).update({ date });
+    post.date = date;
+    renderMonth();
+  };
+  try {
+    await save(newDate);
+  } catch (failure) {
+    showToast(saveProblem(failure));
+    return;
+  }
+  showToast("Moved to " + shortDate(newDate), async () => {
+    try {
+      await save(oldDate);
+      showToast("Undone");
+    } catch (failure) {
+      showToast("That didn't undo. Drag it back instead.");
+    }
+  });
+}
+
+async function deletePost() {
+  const button = $("delete-post");
+  if (button.textContent === "Delete post") {
+    button.textContent = "Click again to delete";
+    return;
+  }
+  button.disabled = true;
+  try {
+    if (db) await db.collection("posts").doc(draft.id).delete();
+  } catch (problem) {
+    $("form-error").textContent = saveProblem(problem);
+    $("form-error").hidden = false;
+    button.disabled = false;
+    return;
+  }
+  button.disabled = false;
+  state.posts = state.posts.filter((post) => post.id !== draft.id);
+  $("post-dialog").close();
+  render();
+  showToast("Post deleted");
+}
+
+async function deleteClient() {
+  const button = $("delete-client");
+  const count = state.posts.filter((post) => post.client === editingClient.id).length;
+  if (button.textContent === "Delete client") {
+    button.textContent = count ? "Click again to delete it and " + count + (count === 1 ? " post" : " posts") : "Click again to delete";
+    return;
+  }
+  const id = editingClient.id;
+  button.disabled = true;
+  try {
+    if (db) {
+      for (const post of state.posts.filter((item) => item.client === id)) {
+        await db.collection("posts").doc(post.id).delete();
+      }
+      await db.collection("clients").doc(id).delete();
+    }
+  } catch (problem) {
+    $("client-error").textContent = saveProblem(problem);
+    $("client-error").hidden = false;
+    button.disabled = false;
+    return;
+  }
+  button.disabled = false;
+  state.posts = state.posts.filter((post) => post.client !== id);
+  state.clients = state.clients.filter((client) => client.id !== id);
+  state.hidden.delete(id);
+  $("client-dialog").close();
+  render();
+  showToast("Client deleted");
+}
+
+async function addComment() {
+  const input = $("comment-input");
+  const text = input.value.trim();
+  if (!text) return;
+  const comments = [...draft.comments, { by: myId, text, at: Date.now() }];
+  try {
+    if (editing && db) await db.collection("posts").doc(draft.id).update({ comments });
+    else if (editing) state.posts.find((post) => post.id === draft.id).comments = comments;
+  } catch (problem) {
+    const error = $("form-error");
+    error.textContent = saveProblem(problem);
+    error.hidden = false;
+    return;
+  }
+  draft.comments = comments;
+  input.value = "";
+  renderComments();
+}
+
+function setNote(text) {
+  const note = $("data-note");
+  note.textContent = text || "";
+  note.hidden = !text;
+}
+
+function listen(path, apply, confirmed) {
+  db.collection(path).onSnapshot((snap) => {
+    apply(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    if (!snap.metadata.fromCache) confirmed();
+    state.loaded = true;
+    render();
+  }, () => {
+    state.loaded = true;
+    setNote("Saved data can't be reached right now. Reload the page to try again.");
+    render();
+  });
+}
+
+async function connect() {
+  const claude = window.claude;
+  db = claude && claude.use ? await claude.use("db") : null;
+  assets = claude && claude.use ? await claude.use("assets") : null;
+  user = claude && claude.use ? await claude.use("user") : null;
+  if (user) {
+    myId = await user.id();
+    isOwner = await user.isOwner();
+    state.readOnly = (await user.can("data.write")) === false;
+  }
+  if (!db) {
+    state.loaded = true;
+    setNote("Saving isn't available in this view, so your changes won't be kept.");
+    render();
+    return;
+  }
+  if (myId && !state.readOnly) {
+    preferences = db.doc("data/users/" + myId + "/preferences");
+    try {
+      const saved = await Promise.race([preferences.get(), new Promise((resolve) => setTimeout(resolve, 3000))]);
+      if (saved && saved.exists) {
+        const stored = saved.data();
+        (stored.mutedBumps || []).forEach((id) => { state.bumpModes[id] = "off"; });
+        Object.assign(state.bumpModes, stored.bumpModes || {});
+        if (stored.bumpSchedule) state.bumpSchedule = stored.bumpSchedule.map((slot) => ({ ...slot }));
+        if (stored.commentMode) state.commentMode = stored.commentMode;
+        state.slackOn = Boolean(stored.slack);
+        state.commentSeen = { ...(stored.commentSeen || {}) };
+      }
+    } catch (problem) { /* bumps stay on for every calendar until the choice can load */ }
+  }
+  const waiting = new Set(["clients", "posts"]);
+  const timer = setTimeout(() => {
+    state.loaded = true;
+    setNote("Your calendar is taking a while to load. What you see may be out of date.");
+    render();
+  }, 10000);
+  const confirmed = (path) => {
+    waiting.delete(path);
+    if (waiting.size) return;
+    clearTimeout(timer);
+    setNote("");
+    notificationsReady = true;
+    openLinkedPost();
+    const bumps = bumpPosts().length;
+    if (bumps) showToast(bumps === 1 ? "You have 1 bump" : "You have " + bumps + " bumps");
+  };
+  listen("clients", (rows) => {
+    state.clients = rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  }, () => confirmed("clients"));
+  listen("posts", (rows) => { state.posts = rows; }, () => confirmed("posts"));
+  if (!state.readOnly) {
+    listen("invites", (rows) => {
+      state.invites = rows.sort((a, b) => (a.invitedAt || 0) - (b.invitedAt || 0));
+    }, () => {});
+  }
+}
+
+$("prev").addEventListener("click", () => moveMonth(-1));
+$("next").addEventListener("click", () => moveMonth(1));
+$("today").addEventListener("click", () => {
+  state.year = now.getFullYear();
+  state.month = now.getMonth();
+  renderMonth();
+});
+$("new-post").addEventListener("click", () => openNewPost());
+$("add-client").addEventListener("click", () => openClientDialog());
+function setNotifMenu(open) {
+  $("notif-menu").hidden = !open;
+  $("bumps").setAttribute("aria-expanded", String(open));
+}
+$("bumps").addEventListener("click", (event) => {
+  event.stopPropagation();
+  setNotifMenu($("notif-menu").hidden);
+});
+$("menu-notifs").addEventListener("click", () => { setNotifMenu(false); showView("notifications"); });
+$("menu-bumps").addEventListener("click", () => { setNotifMenu(false); showView("bumps"); });
+document.addEventListener("click", (event) => {
+  if (!$("notif-menu").hidden && !$("notif-menu").contains(event.target)) setNotifMenu(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("notif-menu").hidden) setNotifMenu(false);
+});
+$("pipe-btn").addEventListener("click", () => showView("pipeline"));
+$("cal-btn").addEventListener("click", () => showView("calendar"));
+/* Clicking outside a pop-up closes it. */
+document.querySelectorAll("dialog").forEach((dialog) => {
+  dialog.addEventListener("mousedown", (event) => {
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) dialog.close();
+  });
+});
+function showView(view) {
+  $("settings-view").hidden = view !== "settings";
+  $("notify-view").hidden = view !== "notifications";
+  $("bump-view").hidden = view !== "bumps";
+  $("pipe-view").hidden = view !== "pipeline";
+  [["calendar", "cal-btn"], ["pipeline", "pipe-btn"], ["settings", "settings"]]
+    .forEach(([name, id]) => $(id).classList.toggle("is-active", view === name));
+  $("bumps").classList.toggle("is-active", view === "notifications" || view === "bumps");
+  $("calendar-view").hidden = view !== "calendar";
+  $("client-panel").hidden = view !== "calendar";
+  history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-tab]").forEach((tab) => tab.addEventListener("click", () => {
+  state.tab = tab.dataset.tab;
+  renderBumps();
+}));
+$("close-note").addEventListener("click", () => $("note-dialog").close());
+$("cancel-note").addEventListener("click", () => $("note-dialog").close());
+$("note-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const note = $("note-text").value.trim();
+  $("note-dialog").close();
+  if (noteAction === "changes") {
+    changeStage("draft", { type: "changes", note, to: [creatorOf(editing)] });
+  } else {
+    const to = waitingOn(editing).filter((email) => email !== myId);
+    changeStage(stageOf(editing), { type: "bump", note, to }, { lastBump: { by: myId, at: Date.now() } }, "Bump sent");
+  }
+});
+$("cancel-stage").addEventListener("click", () => $("stage-dialog").close());
+$("stage-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  $("stage-dialog").close();
+  const target = pendingBack;
+  const extra = target === "draft" ? {} : {};
+  changeStage(target, { type: "back", stage: target, to: waitingOn(editing, target).filter((email) => email !== myId) }, extra);
+});
+$("settings").addEventListener("click", () => {
+  showView("settings");
+  loadAccess();
+});
+
+function buildDancer() {
+  const svg = document.querySelector(".logo").cloneNode(true);
+  svg.classList.remove("logo");
+  svg.setAttribute("aria-hidden", "true");
+  svg.removeAttribute("role");
+  svg.removeAttribute("aria-label");
+  svg.querySelector('path[fill="currentColor"]').classList.add("dude-m");
+  const ns = "http://www.w3.org/2000/svg";
+  const box = "M100 9L180 55V147L100 193L20 147V55Z";
+  let bits = "";
+  for (let index = 0; index < 22; index++) {
+    const x = 26 + Math.random() * 148;
+    const color = "var(--c" + (index % 8 === 7 ? 16 : index % 8) + "-bg)";
+    const fall = (1.3 + Math.random() * 1.1).toFixed(2);
+    const delay = (-Math.random() * 2.4).toFixed(2);
+    bits += '<rect class="bit" x="' + x.toFixed(1) + '" y="0" width="4.5" height="7" rx="1" style="fill:' + color + ";--fall:" + fall + "s;--delay:" + delay + 's"/>';
+  }
+  const extra = document.createElementNS(ns, "g");
+  extra.innerHTML = '<defs><clipPath id="dance-box"><path d="' + box + '"/></clipPath></defs>'
+    + '<path class="dude-cube" d="' + box + 'M100 101L20 55M100 101L180 55M100 101V193" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>'
+    + '<g class="dude-confetti" clip-path="url(#dance-box)">' + bits + "</g>"
+    + '<g class="dude-wrap"><g class="dude-fig" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">'
+    + '<path class="arm-left" d="M100 100L72 86"/><path class="arm-right" d="M100 100L128 86"/>'
+    + '<path class="leg-left" d="M100 126L86 152"/><path class="leg-right" d="M100 126L114 152"/>'
+    + '<path d="M100 92V126"/><circle cx="100" cy="72" r="15" fill="currentColor" stroke="none"/>'
+    + '<circle cx="94.5" cy="70" r="2.4" fill="var(--bg)" stroke="none"/><circle cx="105.5" cy="70" r="2.4" fill="var(--bg)" stroke="none"/>'
+    + '<path d="M94 77Q100 83 106 77" stroke="var(--bg)" stroke-width="2.4"/></g></g>';
+  svg.append(extra);
+  $("dance").append(svg);
+}
+
+buildDancer();
+$("dance").addEventListener("click", () => {
+  const dancing = $("dance").classList.toggle("dancing");
+  $("dance").setAttribute("aria-label", dancing ? "Make him stop" : "Make him dance");
+});
+$("home").addEventListener("click", () => showView("calendar"));
+
+function applyTheme(choice) {
+  if (choice === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", choice);
+  document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.themeChoice === choice));
+  });
+}
+
+let savedTheme = "system";
+try {
+  savedTheme = localStorage.getItem("matrix-theme") || "system";
+} catch (problem) { /* the page still works without a saved theme */ }
+applyTheme(savedTheme);
+$("theme-options").addEventListener("click", (event) => {
+  const choice = event.target.dataset.themeChoice;
+  if (!choice) return;
+  applyTheme(choice);
+  try {
+    localStorage.setItem("matrix-theme", choice);
+  } catch (problem) { /* the choice still applies until the page reloads */ }
+});
+$("f-client").addEventListener("change", (event) => {
+  if (event.target.value !== "__new") {
+    draft.client = event.target.value;
+    return;
+  }
+  event.target.value = draft.client;
+  openClientDialog();
+});
+$("post-form").addEventListener("submit", savePost);
+$("client-form").addEventListener("submit", saveClient);
+$("post-form").addEventListener("input", (event) => {
+  if (event.target.id === "f-asset" && draft.assetFile && event.target.value !== draft.assetFile.name) {
+    draft.assetFile = null;
+    renderAssetPreview();
+  }
+  if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
+});
+$("close-dialog").addEventListener("click", () => $("post-dialog").close());
+$("cancel").addEventListener("click", () => $("post-dialog").close());
+$("close-client").addEventListener("click", () => $("client-dialog").close());
+$("cancel-client").addEventListener("click", () => $("client-dialog").close());
+$("add-comment").addEventListener("click", addComment);
+$("color-wheel").addEventListener("pointerdown", (event) => {
+  $("color-wheel").setPointerCapture(event.pointerId);
+  pickFromWheel(event);
+});
+$("color-wheel").addEventListener("pointermove", (event) => {
+  if (event.buttons) pickFromWheel(event);
+});
+$("color-shade").addEventListener("input", () => {
+  pickedColor = hsvToHex(wheelHue, wheelSaturation, Number($("color-shade").value) / 100);
+  showPickedColor();
+});
+$("color-hex").addEventListener("input", () => {
+  const text = $("color-hex").value.trim();
+  const hex = text.startsWith("#") ? text : "#" + text;
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+  setPickedColor(hex.toLowerCase());
+  showPickedColor(true);
+});
+$("slack-modes").addEventListener("click", (event) => {
+  const choice = event.target.dataset.slack;
+  if (!choice) return;
+  state.slackOn = choice === "on";
+  render();
+  savePreferences();
+});
+$("comment-modes").addEventListener("click", (event) => {
+  const mode = event.target.dataset.commentMode;
+  if (!mode) return;
+  state.commentMode = mode;
+  render();
+  savePreferences();
+});
+$("post-search").addEventListener("input", () => {
+  searchIndex = -1;
+  renderSearch();
+});
+$("post-search").addEventListener("focus", renderSearch);
+$("open-search").addEventListener("mousedown", (event) => event.preventDefault());
+$("open-search").addEventListener("click", () => {
+  if ($("search-panel").hidden) openSearch();
+  else closeSearch();
+});
+$("post-search").addEventListener("blur", closeSearch);
+$("post-search").addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    $("post-search").value = "";
+    closeSearch();
+    $("open-search").focus();
+  } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (!searchMatches.length) return;
+    event.preventDefault();
+    const step = event.key === "ArrowDown" ? 1 : -1;
+    searchIndex = (searchIndex + step + searchMatches.length) % searchMatches.length;
+    renderSearch();
+  } else if (event.key === "Enter" && searchMatches.length) {
+    event.preventDefault();
+    goToPost(searchMatches[Math.max(searchIndex, 0)]);
+  }
+});
+$("add-timing").addEventListener("click", () => {
+  state.bumpSchedule.push({ days: 1, time: "10:00" });
+  renderBumpTiming();
+  changeSchedule();
+});
+$("invite-team").addEventListener("click", () => openInvite("team"));
+$("invite-client").addEventListener("click", () => openInvite("client"));
+$("invite-form").addEventListener("submit", saveInvite);
+$("close-invite").addEventListener("click", () => $("invite-dialog").close());
+$("cancel-invite").addEventListener("click", () => $("invite-dialog").close());
+$("delete-post").addEventListener("click", deletePost);
+$("delete-client").addEventListener("click", deleteClient);
+$("upload-asset").addEventListener("click", () => $("asset-file").click());
+$("asset-file").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (file) uploadAsset(file);
+});
+
+let lastBumpCheck = new Date();
+setInterval(() => {
+  const time = new Date();
+  const due = bumpPosts(time).filter((post) => bumpTimes(post).some((slot) => slot > lastBumpCheck && slot <= time));
+  lastBumpCheck = time;
+  if (!due.length) return;
+  renderBumps();
+  showToast("BUMP: " + due[0].title + (due.length > 1 ? " and " + (due.length - 1) + " more" : ""));
+}, 60000);
+
+if (location.hash === "#settings") showView("settings");
+if (location.hash === "#notifications") showView("notifications");
+if (location.hash === "#bumps") showView("bumps");
+if (location.hash === "#pipeline") showView("pipeline");
+if (!["#settings", "#notifications", "#bumps", "#pipeline"].includes(location.hash)) $("cal-btn").classList.add("is-active");
+window.addEventListener("hashchange", () => {
+  if (notificationsReady) openLinkedPost();
+});
+render();
+connect().then(() => {
+  if (location.hash === "#settings") loadAccess();
+});
+</script>
+
+</body>
+</html>
