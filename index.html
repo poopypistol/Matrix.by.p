@@ -290,7 +290,7 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 
 .main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 24px; }
-.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 180px; }
+.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 224px; }
 .top-left { min-width: 0; }
 .top .nav { justify-content: flex-end; }
 h1 {
@@ -498,6 +498,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   <div class="top-icons">
   <button class="settings-btn bell-btn" id="bumps" type="button" aria-label="Notifications" title="Notifications"></button>
   <button class="settings-btn bell-btn" id="bump-list-btn" type="button" aria-label="Bumps" title="Bumps"></button>
+  <button class="settings-btn" id="pipe-btn" type="button" aria-label="Pipeline" title="Pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="11" rx="1.5"/><rect x="16" y="4" width="5" height="7" rx="1.5"/></svg></button>
   <div class="search">
     <button class="settings-btn" id="open-search" type="button" aria-label="Search posts" title="Search posts" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></svg>
@@ -548,13 +549,14 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
   <section class="settings-page notify-page" id="notify-view" aria-labelledby="notify-title" hidden>
     <h1 id="notify-title">Notifications</h1>
-    <p class="side-note bump-intro">What’s happening: posts sent your way, new comments, and where everything is in the pipeline.</p>
-    <div class="mode-options notify-tabs" role="group" aria-label="Notification views">
-      <button class="quiet" type="button" data-tab="needs" aria-pressed="true">Needs me</button>
-      <button class="quiet" type="button" data-tab="pipeline" aria-pressed="false">Pipeline</button>
-    </div>
+    <p class="side-note bump-intro">What’s happening: posts sent your way and new comments.</p>
     <div id="needs-view"></div>
-    <div class="board" id="pipeline-view" hidden></div>
+  </section>
+
+  <section class="settings-page notify-page" id="pipe-view" aria-labelledby="pipe-title" hidden>
+    <h1 id="pipe-title">Pipeline</h1>
+    <p class="side-note bump-intro">Every post that isn’t approved yet, by step.</p>
+    <div class="board" id="pipeline-view"></div>
   </section>
 
   <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
@@ -1566,10 +1568,8 @@ function renderBumps() {
   if (total) button.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
   button.setAttribute("aria-label", total + (total === 1 ? " notification" : " notifications"));
   button.hidden = state.readOnly;
+  $("pipe-btn").hidden = state.readOnly;
 
-  document.querySelectorAll("[data-tab]").forEach((tab) => tab.setAttribute("aria-pressed", String(tab.dataset.tab === state.tab)));
-  $("needs-view").hidden = state.tab !== "needs";
-  $("pipeline-view").hidden = state.tab !== "pipeline";
 
   const needs = $("needs-view");
   needs.replaceChildren();
@@ -1599,7 +1599,7 @@ function renderBumps() {
     column.append(heading);
     if (!posts.length) column.append(el("p", "empty", "Nothing here."));
     posts.forEach((post) => {
-      const waiting = waitingOn(post).map(displayName).join(", ");
+      const waiting = waitingOn(post).map(objName).join(", ");
       column.append(noticeItem(post, waiting ? "Waiting on " + waiting : "Needs a manager", due.has(post.id) ? "Bump due" : ""));
     });
     board.append(column);
@@ -2885,6 +2885,7 @@ $("new-post").addEventListener("click", () => openNewPost());
 $("add-client").addEventListener("click", () => openClientDialog());
 $("bumps").addEventListener("click", () => showView("notifications"));
 $("bump-list-btn").addEventListener("click", () => showView("bumps"));
+$("pipe-btn").addEventListener("click", () => showView("pipeline"));
 /* Clicking outside a pop-up closes it. */
 document.querySelectorAll("dialog").forEach((dialog) => {
   dialog.addEventListener("mousedown", (event) => {
@@ -2898,6 +2899,7 @@ function showView(view) {
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
   $("bump-view").hidden = view !== "bumps";
+  $("pipe-view").hidden = view !== "pipeline";
   $("calendar-view").hidden = view !== "calendar";
   $("client-panel").hidden = view !== "calendar";
   history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
@@ -3105,6 +3107,7 @@ setInterval(() => {
 if (location.hash === "#settings") showView("settings");
 if (location.hash === "#notifications") showView("notifications");
 if (location.hash === "#bumps") showView("bumps");
+if (location.hash === "#pipeline") showView("pipeline");
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
