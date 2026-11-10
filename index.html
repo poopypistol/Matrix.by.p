@@ -180,6 +180,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .phase.done .phase-dot, .phase.current .phase-dot { background: currentColor; }
 .phase.done:hover span { text-decoration: underline; }
 .phase.current { color: var(--fg); }
+button:disabled { opacity: .35; cursor: not-allowed; }
 .phase:disabled { cursor: default; opacity: 1; }
 .phase-line { width: 22px; height: 1.5px; background: var(--line); }
 .phase-line.done { background: var(--fg); }
@@ -1213,6 +1214,7 @@ let searchMatches = [];
 let searchIndex = -1;
 let inviteRole = "team";
 let pendingBack = null;
+let passOpen = false;
 let noteAction = null;
 let inviteCalendars = new Set();
 let preferences = null;
@@ -1476,7 +1478,7 @@ function noticeItem(post, label, extra) {
   item.type = "button";
   const text = el("span", "bump-text", post.title);
   text.prepend(el("small", "", label));
-  const meta = el("small", "", client.name + " · " + shortDate(post.date) + " · " + phaseName(stageOf(post)));
+  const meta = el("small", "", (label === client.name ? "" : client.name + " · ") + shortDate(post.date) + " · " + phaseName(stageOf(post)));
   if (extra) meta.append(" · ", el("span", "due", extra));
   text.append(meta);
   item.append(el("span", "bump-swatch"), text);
@@ -1984,17 +1986,20 @@ function moveMonth(step) {
   renderMonth();
 }
 
+const objName = (email) => (email === myId ? "you" : displayName(email));
+
 function historyText(entry) {
   const who = displayName(entry.by);
   const note = entry.note ? ": " + entry.note : "";
   switch (entry.type) {
-    case "sent": return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + displayName((entry.to || [])[0]) + " for review";
+    case "sent": if (entry.passed) return who + " passed this to " + objName((entry.to || [])[0]) + " for review";
+      return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + objName((entry.to || [])[0]) + " for review";
     case "approved_internal": return who + " approved internally";
     case "changes": return who + " requested changes" + note;
     case "client": return who + " sent to client";
     case "approved": return who + " marked client approved";
     case "back": return who + " moved back to " + phaseName(entry.stage);
-    case "bump": return who + " bumped " + (entry.to || []).map(displayName).join(", ") + note;
+    case "bump": return who + " bumped " + (entry.to || []).map(objName).join(", ") + note;
     case "auto": return "Moved back to Draft because info was missing";
     default: return who + " updated this post";
   }
@@ -2131,12 +2136,33 @@ function renderActions() {
     send.disabled = missingFields(draft).length > 0 || !pick.options.length;
     box.append(pick, send);
   } else if (stage === "internal") {
+    const others = managers().filter((person) => person.email !== editing.manager);
+    if (passOpen && others.length) {
+      const pick = el("select");
+      pick.setAttribute("aria-label", "Choose the new reviewer");
+      others.forEach((person) => {
+        const option = el("option", "", displayName(person.email));
+        option.value = person.email;
+        pick.append(option);
+      });
+      box.append(
+        pick,
+        button("Pass", true, () => {
+          passOpen = false;
+          changeStage("internal", { type: "sent", to: [pick.value], passed: true }, { manager: pick.value }, "Passed to " + objName(pick.value));
+        }),
+        button("Cancel", false, () => { passOpen = false; renderActions(); })
+      );
+      box.hidden = false;
+      return;
+    }
     if (editing.manager === myId) {
       box.append(
         button("Approve", true, () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
         button("Request changes", false, () => openNote("changes"))
       );
     }
+    if (others.length) box.append(button("Change reviewer", false, () => { passOpen = true; renderActions(); }));
   } else if (stage === "ready") {
     box.append(button("Send to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
@@ -2288,6 +2314,7 @@ function openDialog() {
 }
 
 function openPost(post) {
+  passOpen = false;
   if (unreadComments().some((item) => item.id === post.id)) {
     state.commentSeen[post.id] = Date.now();
     renderBumps();
