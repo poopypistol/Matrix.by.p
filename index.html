@@ -156,6 +156,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .icon-gap { margin-left: 10px; }
 .notif-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; display: flex; flex-direction: column; gap: 2px; width: 290px; padding: 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); box-shadow: 0 8px 24px rgba(0, 0, 0, .14); }
 .notif-menu[hidden] { display: none; }
+.cover-row { display: flex; align-items: center; gap: 14px; }
+.cover-thumb { display: grid; place-items: center; flex: none; width: 72px; aspect-ratio: 4 / 5; overflow: hidden; border: 1.5px dashed var(--line); border-radius: 4px; color: var(--muted); font-size: 11px; text-align: center; padding: 4px; }
+.cover-thumb.has-image { border: 1px solid var(--line); padding: 0; }
+.cover-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.feed-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; max-width: 620px; margin-top: -8px; }
+.feed-bar .side-note { margin: 0; }
+.feed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 100%; max-width: 620px; }
+.feed-tile { position: relative; aspect-ratio: 4 / 5; overflow: hidden; padding: 0; border-radius: 0; background: var(--hover); }
+.feed-grid[data-ratio="tt"] .feed-tile { aspect-ratio: 9 / 16; }
+.feed-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.feed-tile.unapproved { outline: 2px dashed var(--cbg); outline-offset: -2px; }
+.feed-tile.unapproved img { opacity: .6; }
+.feed-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.feed-label { position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 3px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 11px; font-weight: 600; }
+.feed-tile:hover .feed-label { background: rgba(0, 0, 0, .85); }
 .notif-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 6px 10px; border-radius: 4px; text-align: left; font-weight: 600; font-size: 14px; }
 .notif-menu button:hover { background: var(--hover); }
 .notif-menu svg { width: 20px; height: 20px; flex: none; }
@@ -439,7 +455,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .title-input::placeholder, .field input::placeholder, .field textarea::placeholder, #comment-input::placeholder { color: var(--faint); }
 .meta-row { display: flex; flex-wrap: wrap; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.field label, .notes h2 {
+.field label, .field .field-label, .notes h2 {
   margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em;
   text-transform: uppercase; color: var(--muted);
 }
@@ -507,7 +523,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 <style id="client-colors"></style>
 <div class="app">
   <div class="top-icons">
-  <button class="settings-btn" id="cal-btn" type="button" aria-label="Calendar" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></button>
+  <button class="settings-btn" id="cal-btn" type="button" aria-label="Calendar and feed" title="Calendar and feed" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></button>
+  <div class="notif-menu cal-menu" id="cal-menu" role="menu" hidden>
+    <button type="button" role="menuitem" id="menu-cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><span class="menu-label">Calendar<small>Every client, month by month</small></span></button>
+    <button type="button" role="menuitem" id="menu-feed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="menu-label">Feed<small>Cover images, one client at a time</small></span></button>
+  </div>
   <button class="settings-btn" id="pipe-btn" type="button" aria-label="Pipeline" title="Pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M9 4.5v15M15 4.5v15"/></svg></button>
   <button class="settings-btn bell-btn icon-gap" id="bumps" type="button" aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false"></button>
   <div class="notif-menu" id="notif-menu" role="menu" hidden>
@@ -572,6 +592,18 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <h1 id="pipe-title">Pipeline</h1>
     <p class="side-note bump-intro">Every post that isn’t approved yet, by step.</p>
     <div class="board" id="pipeline-view"></div>
+  </section>
+
+  <section class="settings-page notify-page" id="feed-view" aria-labelledby="feed-title" hidden>
+    <h1 id="feed-title">Feed</h1>
+    <div class="feed-bar">
+      <p class="side-note">How this client’s posts will look on their grid. Pick a client on the left.</p>
+      <div class="mode-options" role="group" aria-label="Grid shape">
+        <button class="quiet" type="button" data-ratio="ig" aria-pressed="true">Instagram</button>
+        <button class="quiet" type="button" data-ratio="tt" aria-pressed="false">TikTok</button>
+      </div>
+    </div>
+    <div class="feed-grid" id="feed-grid"></div>
   </section>
 
   <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
@@ -689,6 +721,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     <div class="dlg-body">
       <section class="template" aria-label="Post template">
         <div class="field">
+          <span class="field-label" id="platform-label">Platform</span>
+          <div class="mode-options" id="platform-pick" role="group" aria-labelledby="platform-label">
+            <button class="quiet" type="button" data-platform="ig" aria-pressed="false">Instagram</button>
+            <button class="quiet" type="button" data-platform="tt" aria-pressed="false">TikTok</button>
+          </div>
+        </div>
+        <div class="field">
           <label for="f-asset">Asset</label>
           <div class="asset-row">
             <input id="f-asset" type="text" placeholder="Paste a link or upload a file" autocomplete="off">
@@ -696,6 +735,17 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
             <input id="asset-file" type="file" accept="image/*,video/*,application/pdf" aria-label="Choose a file to upload" hidden>
           </div>
           <div class="asset-preview" id="asset-preview" hidden></div>
+        </div>
+        <div class="field">
+          <label for="upload-cover">Cover image</label>
+          <div class="cover-row">
+            <div class="cover-thumb" id="cover-thumb"></div>
+            <div class="cover-actions">
+              <button class="quiet" id="upload-cover" type="button">Upload cover</button>
+              <span class="side-note">Shows on the feed grid.</span>
+            </div>
+            <input id="cover-file" type="file" accept="image/*" aria-label="Choose a cover image" hidden>
+          </div>
         </div>
         <div class="field"><label for="f-copy">Copy</label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
         <div class="field"><label for="f-tags">Tags</label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
@@ -1006,12 +1056,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, created_by: d.createdBy,
+        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
         stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, createdBy: r.created_by || undefined,
+        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
         stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
@@ -1248,6 +1298,7 @@ let inviteRole = "team";
 let pendingBack = null;
 let passOpen = false;
 let bumpCount = 0;
+let currentView = "calendar";
 let noteAction = null;
 let inviteCalendars = new Set();
 let preferences = null;
@@ -1343,6 +1394,8 @@ function isWaitingOnMe(post) {
 function missingFields(post) {
   const missing = [];
   if (!(post.asset || "").trim()) missing.push("Asset");
+  if (!post.coverFile) missing.push("Cover image");
+  if (!(post.platforms || []).length) missing.unshift("Platform");
   if (!(post.copy || "").trim()) missing.push("Copy");
   if (!(post.tags || "").trim()) missing.push("Tags");
   return missing;
@@ -1408,9 +1461,15 @@ function renderClients() {
     return;
   }
   const shownCount = state.clients.filter((client) => isShown(client.id)).length;
+  const feedMode = currentView === "feed";
+  const pickFeed = (client) => {
+    state.feedClient = client.id;
+    renderClients();
+    renderFeed();
+  };
   state.clients.forEach((client) => {
-    const shown = isShown(client.id);
-    const solo = shown && shownCount === 1 && state.clients.length > 1;
+    const shown = feedMode ? client.id === state.feedClient : isShown(client.id);
+    const solo = !feedMode && shown && shownCount === 1 && state.clients.length > 1;
     const row = el("div", "client " + colorClass(client.color) + (shown ? "" : " off"));
 
     const check = el("button", "client-check");
@@ -1420,6 +1479,7 @@ function renderClients() {
     check.title = shown ? "Hide this client" : "Show this client";
     check.append(el("span", "check", "✓"));
     check.addEventListener("click", () => {
+      if (feedMode) return pickFeed(client);
       const tap = doubleTap("client-" + client.id, solo);
       if (tap) {
         state.hidden = new Set(tap.wasSolo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id));
@@ -1436,6 +1496,7 @@ function renderClients() {
     name.setAttribute("aria-pressed", String(solo));
     name.title = solo ? "Show all clients" : "Show only this client";
     name.addEventListener("click", () => {
+      if (feedMode) return pickFeed(client);
       if (doubleTap("name-" + client.id)) return;
       state.hidden = new Set(solo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id));
       render();
@@ -1499,6 +1560,46 @@ function bumpListPosts(time = new Date()) {
     })
     .filter((post) => bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+}
+
+function renderFeed() {
+  if (currentView !== "feed") return;
+  if (!clientById(state.feedClient) && state.clients.length) state.feedClient = state.clients[0].id;
+  const client = clientById(state.feedClient);
+  $("feed-title").textContent = client ? client.name : "Feed";
+  const ratio = state.feedRatio || "ig";
+  document.querySelectorAll("[data-ratio]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.ratio === ratio)));
+  const grid = $("feed-grid");
+  grid.dataset.ratio = ratio;
+  grid.replaceChildren();
+  if (!client) {
+    grid.append(el("p", "empty", "Add a client to see a feed."));
+    return;
+  }
+  const posts = state.posts
+    .filter((post) => post.client === client.id && (post.platforms || []).includes(ratio))
+    .sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
+  if (!posts.length) {
+    grid.append(el("p", "empty", "No " + (ratio === "tt" ? "TikTok" : "Instagram") + " posts for " + client.name + " yet."));
+    return;
+  }
+  posts.forEach((post) => {
+    const approved = isApproved(post);
+    const tile = el("button", "feed-tile " + colorClass(client.color) + (approved ? "" : " unapproved"));
+    tile.type = "button";
+    tile.title = post.title + (approved ? "" : " · " + phaseName(stageOf(post)));
+    if (post.coverFile) {
+      const image = el("img");
+      image.alt = post.title;
+      tile.append(image);
+      coverUrl(post.coverFile).then((url) => { if (url) image.src = url; });
+    } else {
+      tile.append(el("span", "feed-empty", post.title + " · no cover yet"));
+    }
+    tile.append(el("span", "feed-label", shortDate(post.date) + (approved ? "" : " · " + phaseName(stageOf(post)))));
+    tile.addEventListener("click", () => openPost(post));
+    grid.append(tile);
+  });
 }
 
 function renderBumpList() {
@@ -2046,6 +2147,7 @@ function render() {
   renderClients();
   renderMonth();
   renderBumps();
+  renderFeed();
   renderBumpSettings();
   renderBumpTiming();
   document.querySelectorAll("[data-slack]").forEach((button) => {
@@ -2291,7 +2393,9 @@ function postFields() {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
     asset: draft.asset, copy: draft.copy, tags: draft.tags,
-    assetFile: draft.assetFile || null
+    assetFile: draft.assetFile || null,
+    coverFile: draft.coverFile || null,
+    platforms: draft.platforms || []
   };
 }
 
@@ -2383,6 +2487,9 @@ function openDialog() {
   $("form-error").hidden = true;
   $("post-fields").disabled = state.readOnly;
   $("upload-asset").hidden = !assets || state.readOnly;
+  $("upload-cover").hidden = !assets || state.readOnly;
+  renderCoverPreview();
+  renderPlatformPick();
   $("asset-file").value = "";
   renderAssetPreview();
   $("save-post").hidden = state.readOnly;
@@ -2455,6 +2562,82 @@ async function renderAssetPreview() {
   link.target = "_blank";
   link.rel = "noopener";
   preview.append(link);
+}
+
+function renderPlatformPick() {
+  const picked = (draft && draft.platforms) || [];
+  document.querySelectorAll("[data-platform]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(picked.includes(button.dataset.platform)));
+    button.disabled = state.readOnly;
+  });
+}
+document.querySelectorAll("[data-platform]").forEach((button) => button.addEventListener("click", () => {
+  if (!draft || state.readOnly) return;
+  const id = button.dataset.platform;
+  const picked = new Set(draft.platforms || []);
+  if (picked.has(id)) picked.delete(id);
+  else picked.add(id);
+  draft.platforms = ["ig", "tt"].filter((item) => picked.has(item));
+  renderPlatformPick();
+  updateHint();
+}));
+
+const coverUrls = new Map();
+function coverUrl(file) {
+  if (!file || !assets) return Promise.resolve(null);
+  if (!coverUrls.has(file.id)) coverUrls.set(file.id, assets.signedUrl(file.id).catch(() => null));
+  return coverUrls.get(file.id);
+}
+
+async function renderCoverPreview() {
+  const box = $("cover-thumb");
+  const file = draft && draft.coverFile;
+  $("upload-cover").textContent = file ? "Replace cover" : "Upload cover";
+  box.replaceChildren();
+  box.classList.toggle("has-image", !!file);
+  if (!file) {
+    box.append(el("span", "", "No cover yet"));
+    return;
+  }
+  const url = await coverUrl(file);
+  if (!draft || draft.coverFile !== file) return;
+  box.replaceChildren();
+  if (url) {
+    const image = el("img");
+    image.src = url;
+    image.alt = "Cover image";
+    box.append(image);
+  } else {
+    box.append(el("span", "", "Can't preview"));
+  }
+}
+
+async function uploadCover(file) {
+  const error = $("form-error");
+  const button = $("upload-cover");
+  error.hidden = true;
+  if (!(file.type || "").startsWith("image/")) {
+    error.textContent = "The cover has to be an image.";
+    error.hidden = false;
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    error.textContent = "That image is over 20 MB. Try a smaller export.";
+    error.hidden = false;
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Uploading";
+  try {
+    const stored = await assets.upload(file);
+    draft.coverFile = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+    updateHint();
+  } catch (problem) {
+    error.textContent = "That image didn't upload. Try again.";
+    error.hidden = false;
+  }
+  button.disabled = false;
+  renderCoverPreview();
 }
 
 async function uploadAsset(file) {
@@ -2671,7 +2854,9 @@ async function savePost(event) {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
     asset: draft.asset, copy: draft.copy, tags: draft.tags,
-    assetFile: draft.assetFile || null
+    assetFile: draft.assetFile || null,
+    coverFile: draft.coverFile || null,
+    platforms: draft.platforms || []
   };
   const error = $("form-error");
   const problem = !fields.title ? "Add a title to save this post."
@@ -2905,7 +3090,23 @@ $("add-client").addEventListener("click", () => openClientDialog());
 function setNotifMenu(open) {
   $("notif-menu").hidden = !open;
   $("bumps").setAttribute("aria-expanded", String(open));
+  if (open) setCalMenu(false);
 }
+function setCalMenu(open) {
+  $("cal-menu").hidden = !open;
+  $("cal-btn").setAttribute("aria-expanded", String(open));
+  if (open) setNotifMenu(false);
+}
+$("cal-btn").addEventListener("click", (event) => {
+  event.stopPropagation();
+  setCalMenu($("cal-menu").hidden);
+});
+$("menu-cal").addEventListener("click", () => { setCalMenu(false); showView("calendar"); });
+$("menu-feed").addEventListener("click", () => { setCalMenu(false); showView("feed"); });
+document.querySelectorAll("[data-ratio]").forEach((button) => button.addEventListener("click", () => {
+  state.feedRatio = button.dataset.ratio;
+  renderFeed();
+}));
 $("bumps").addEventListener("click", (event) => {
   event.stopPropagation();
   setNotifMenu($("notif-menu").hidden);
@@ -2914,12 +3115,14 @@ $("menu-notifs").addEventListener("click", () => { setNotifMenu(false); showView
 $("menu-bumps").addEventListener("click", () => { setNotifMenu(false); showView("bumps"); });
 document.addEventListener("click", (event) => {
   if (!$("notif-menu").hidden && !$("notif-menu").contains(event.target)) setNotifMenu(false);
+  if (!$("cal-menu").hidden && !$("cal-menu").contains(event.target)) setCalMenu(false);
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !$("notif-menu").hidden) setNotifMenu(false);
+  if (event.key !== "Escape") return;
+  setNotifMenu(false);
+  setCalMenu(false);
 });
 $("pipe-btn").addEventListener("click", () => showView("pipeline"));
-$("cal-btn").addEventListener("click", () => showView("calendar"));
 /* Clicking outside a pop-up closes it. */
 document.querySelectorAll("dialog").forEach((dialog) => {
   dialog.addEventListener("mousedown", (event) => {
@@ -2930,15 +3133,21 @@ document.querySelectorAll("dialog").forEach((dialog) => {
   });
 });
 function showView(view) {
+  currentView = view;
+  if (view === "feed" && !clientById(state.feedClient) && state.clients.length) state.feedClient = state.clients[0].id;
+  $("feed-view").hidden = view !== "feed";
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
   $("bump-view").hidden = view !== "bumps";
   $("pipe-view").hidden = view !== "pipeline";
-  [["calendar", "cal-btn"], ["pipeline", "pipe-btn"], ["settings", "settings"]]
+  [["pipeline", "pipe-btn"], ["settings", "settings"]]
     .forEach(([name, id]) => $(id).classList.toggle("is-active", view === name));
+  $("cal-btn").classList.toggle("is-active", view === "calendar" || view === "feed");
   $("bumps").classList.toggle("is-active", view === "notifications" || view === "bumps");
   $("calendar-view").hidden = view !== "calendar";
-  $("client-panel").hidden = view !== "calendar";
+  $("client-panel").hidden = view !== "calendar" && view !== "feed";
+  renderClients();
+  renderFeed();
   history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
   window.scrollTo(0, 0);
 }
@@ -3125,6 +3334,12 @@ $("cancel-invite").addEventListener("click", () => $("invite-dialog").close());
 $("delete-post").addEventListener("click", deletePost);
 $("delete-client").addEventListener("click", deleteClient);
 $("upload-asset").addEventListener("click", () => $("asset-file").click());
+$("upload-cover").addEventListener("click", () => $("cover-file").click());
+$("cover-file").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (file) uploadCover(file);
+});
 $("asset-file").addEventListener("change", (event) => {
   const file = event.target.files[0];
   event.target.value = "";
@@ -3145,7 +3360,8 @@ if (location.hash === "#settings") showView("settings");
 if (location.hash === "#notifications") showView("notifications");
 if (location.hash === "#bumps") showView("bumps");
 if (location.hash === "#pipeline") showView("pipeline");
-if (!["#settings", "#notifications", "#bumps", "#pipeline"].includes(location.hash)) $("cal-btn").classList.add("is-active");
+if (location.hash === "#feed") showView("feed");
+if (!["#settings", "#notifications", "#bumps", "#pipeline", "#feed"].includes(location.hash)) $("cal-btn").classList.add("is-active");
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
