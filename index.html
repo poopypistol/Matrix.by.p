@@ -447,6 +447,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .pill.approved { background: var(--accent); color: var(--on-accent); }
 .close { width: 40px; height: 40px; border-radius: 4px; font-size: 20px; line-height: 1; }
 .close:hover { background: var(--hover); }
+.dlg-tools { display: flex; align-items: center; gap: 2px; flex: none; }
+.trash-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; min-width: 40px; padding: 0 9px; color: var(--muted); }
+.trash-btn svg { width: 20px; height: 20px; }
+.trash-btn:hover { color: var(--danger); }
+.trash-btn .trash-confirm { display: none; font-size: 13px; font-weight: 700; }
+.trash-btn.armed { color: var(--danger); background: var(--hover); }
+.trash-btn.armed .trash-confirm { display: inline; }
 .title-input {
   width: 100%; padding: 2px 0; border: 0; border-bottom: 1px solid var(--line);
   background: none; font-family: var(--display); font-size: clamp(26px, 4vw, 36px);
@@ -708,7 +715,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
   <form id="post-form" novalidate>
     <div class="dlg-head">
       <div class="tracker" id="tracker" role="group" aria-label="Post stage"></div>
-      <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
+      <div class="dlg-tools">
+        <button class="close trash-btn" id="delete-top" type="button" aria-label="Delete post" title="Delete post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/></svg><span class="trash-confirm">Delete?</span></button>
+        <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
+      </div>
     </div>
     <div class="post-actions" id="post-actions"></div>
     <fieldset id="post-fields">
@@ -2496,6 +2506,8 @@ function openDialog() {
   $("cancel").textContent = state.readOnly ? "Close" : "Cancel";
   $("delete-post").hidden = state.readOnly || !editing;
   $("delete-post").textContent = "Delete post";
+  $("delete-top").hidden = $("delete-post").hidden;
+  $("delete-top").classList.remove("armed");
   $("comment-input").hidden = state.readOnly;
   $("add-comment").hidden = state.readOnly;
   renderTracker();
@@ -3331,7 +3343,14 @@ $("invite-client").addEventListener("click", () => openInvite("client"));
 $("invite-form").addEventListener("submit", saveInvite);
 $("close-invite").addEventListener("click", () => $("invite-dialog").close());
 $("cancel-invite").addEventListener("click", () => $("invite-dialog").close());
-$("delete-post").addEventListener("click", deletePost);
+$("delete-post").addEventListener("click", async () => {
+  await deletePost();
+  $("delete-top").classList.toggle("armed", $("delete-post").textContent !== "Delete post");
+});
+$("delete-top").addEventListener("click", async () => {
+  await deletePost();
+  $("delete-top").classList.toggle("armed", $("delete-post").textContent !== "Delete post");
+});
 $("delete-client").addEventListener("click", deleteClient);
 $("upload-asset").addEventListener("click", () => $("asset-file").click());
 $("upload-cover").addEventListener("click", () => $("cover-file").click());
