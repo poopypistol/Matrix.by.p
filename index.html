@@ -197,6 +197,10 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .needs-group { display: flex; flex-direction: column; gap: 4px; max-width: 640px; }
 .needs-group h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
 .bump-text .due { color: var(--danger); font-weight: 600; }
+.side-note.bump-intro { max-width: 560px; margin-top: -8px; }
+.bump-status { display: block; margin-top: 2px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.bump-view-count { background: var(--danger) !important; color: #fff !important; }
+.top-icons .bell-btn .bump-count { top: -3px; right: -6px; }
 .board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
 .column { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 4px; }
 .column h2 { margin: 0 0 6px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
@@ -286,7 +290,7 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 
 .main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 24px; }
-.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 136px; }
+.top h1 { grid-column: 1 / -1; white-space: nowrap; padding-right: 180px; }
 .top-left { min-width: 0; }
 .top .nav { justify-content: flex-end; }
 h1 {
@@ -378,6 +382,9 @@ h1 em { color: var(--faint); font-style: normal; }
 .post:hover { transform: translateY(-1px); }
 .post[draggable="true"] { cursor: grab; }
 .post.dragging { opacity: .4; }
+.post.unapproved { background: none; color: var(--fg); border-style: dashed; border-width: 2px; }
+.dots i.unapproved { background: none; border: 1.5px dashed var(--cbg); }
+.bump-swatch.unapproved { background: none; border: 1.5px dashed var(--cbg); }
 .day.drop-target { background: var(--hover); box-shadow: inset 0 0 0 2px var(--fg); }
 .post small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 500; opacity: .8; }
 .dots { position: relative; z-index: 1; pointer-events: none; display: none; flex-wrap: wrap; gap: 3px; }
@@ -490,6 +497,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 <div class="app">
   <div class="top-icons">
   <button class="settings-btn bell-btn" id="bumps" type="button" aria-label="Notifications" title="Notifications"></button>
+  <button class="settings-btn bell-btn" id="bump-list-btn" type="button" aria-label="Bumps" title="Bumps"></button>
   <div class="search">
     <button class="settings-btn" id="open-search" type="button" aria-label="Search posts" title="Search posts" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></svg>
@@ -540,12 +548,19 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 
   <section class="settings-page notify-page" id="notify-view" aria-labelledby="notify-title" hidden>
     <h1 id="notify-title">Notifications</h1>
+    <p class="side-note bump-intro">What’s happening: posts sent your way, new comments, and where everything is in the pipeline.</p>
     <div class="mode-options notify-tabs" role="group" aria-label="Notification views">
       <button class="quiet" type="button" data-tab="needs" aria-pressed="true">Needs me</button>
       <button class="quiet" type="button" data-tab="pipeline" aria-pressed="false">Pipeline</button>
     </div>
     <div id="needs-view"></div>
     <div class="board" id="pipeline-view" hidden></div>
+  </section>
+
+  <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
+    <h1 id="bump-title">Bumps</h1>
+    <p class="side-note bump-intro">Your posts coming up that aren’t approved yet. Follow up, or finish them. They leave this list once they’re approved.</p>
+    <div id="bump-list"></div>
   </section>
 
   <section class="settings-page" id="settings-view" aria-labelledby="settings-title" hidden>
@@ -1349,7 +1364,7 @@ function colorClass(color) {
 function postCard(post) {
   const approved = isApproved(post);
   const client = clientById(post.client);
-  const card = el("button", "post " + colorClass(client.color), post.title);
+  const card = el("button", "post " + colorClass(client.color) + (approved ? "" : " unapproved"), post.title);
   card.type = "button";
   card.append(el("small", "", formatTime(post.time) + (approved ? "" : " · " + phaseName(stageOf(post)))));
   card.title = client.name;
@@ -1454,6 +1469,56 @@ function bumpPosts(time = new Date()) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/* The Bumps list: my posts coming up that aren't approved yet, from the first bump time on. */
+function bumpListPosts(time = new Date()) {
+  return state.posts
+    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => {
+      const mode = state.bumpModes[post.client] || "mine";
+      if (mode === "off") return false;
+      if (mode === "all") return true;
+      return isMyPost(post) || post.manager === myId || isWaitingOnMe(post);
+    })
+    .filter((post) => bumpTimes(post).some((slot) => slot <= time))
+    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+}
+
+function renderBumpList() {
+  const posts = bumpListPosts();
+  const button = $("bump-list-btn");
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="translate(0 -1.5)"><path d="M2 18c3 0 4.5-9 10-9s7 9 10 9"/><path d="M7 18c1.8 0 2.6-4.6 5-4.6s3.2 4.6 5 4.6"/></g></svg>';
+  if (posts.length) button.append(el("span", "bump-count bump-view-count", posts.length > 99 ? "99+" : String(posts.length)));
+  button.setAttribute("aria-label", posts.length + (posts.length === 1 ? " bump" : " bumps"));
+  button.hidden = state.readOnly;
+
+  const list = $("bump-list");
+  list.replaceChildren();
+  if (!posts.length) {
+    list.append(el("p", "empty", "Nothing coming up. You’re all caught up."));
+    return;
+  }
+  const today = dateKey(new Date());
+  const tomorrow = dateKey(new Date(Date.now() + 86400000));
+  const groups = [
+    ["Past due", (post) => post.date < today],
+    ["Today", (post) => post.date === today],
+    ["Tomorrow", (post) => post.date === tomorrow],
+    ["Coming up", (post) => post.date > tomorrow]
+  ];
+  groups.forEach(([name, test]) => {
+    const items = posts.filter(test);
+    if (!items.length) return;
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", name));
+    items.forEach((post) => {
+      const item = noticeItem(post, clientById(post.client).name);
+      item.querySelector(".bump-text").append(el("span", "bump-status", statusText(post)));
+      group.append(item);
+    });
+    list.append(group);
+  });
+}
+
 function isMyPost(post) {
   return post.createdBy === undefined ? isOwner : post.createdBy === myId;
 }
@@ -1481,12 +1546,13 @@ function noticeItem(post, label, extra) {
   const meta = el("small", "", (label === client.name ? "" : client.name + " · ") + shortDate(post.date) + " · " + phaseName(stageOf(post)));
   if (extra) meta.append(" · ", el("span", "due", extra));
   text.append(meta);
-  item.append(el("span", "bump-swatch"), text);
+  item.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
   item.addEventListener("click", () => openPost(post));
   return item;
 }
 
 function renderBumps() {
+  renderBumpList();
   const unread = unreadComments();
   const due = new Set(bumpPosts().map((post) => post.id));
   const mine = state.posts
@@ -1844,7 +1910,7 @@ function renderSearch() {
     const date = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const text = el("span", "bump-text", post.title);
     text.append(el("small", "", client.name + " · " + date));
-    row.append(el("span", "bump-swatch"), text);
+    row.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
     row.addEventListener("mousedown", (event) => event.preventDefault());
     row.addEventListener("click", () => goToPost(post));
     results.append(row);
@@ -1936,7 +2002,7 @@ function renderMonth() {
       const dots = el("div", "dots");
       posts.forEach((post) => {
         dayCell.append(postCard(post));
-        dots.append(el("i", colorClass(clientById(post.client).color)));
+        dots.append(el("i", colorClass(clientById(post.client).color) + (isApproved(post) ? "" : " unapproved")));
       });
       dayCell.append(dots);
 
@@ -2818,6 +2884,7 @@ $("today").addEventListener("click", () => {
 $("new-post").addEventListener("click", () => openNewPost());
 $("add-client").addEventListener("click", () => openClientDialog());
 $("bumps").addEventListener("click", () => showView("notifications"));
+$("bump-list-btn").addEventListener("click", () => showView("bumps"));
 /* Clicking outside a pop-up closes it. */
 document.querySelectorAll("dialog").forEach((dialog) => {
   dialog.addEventListener("mousedown", (event) => {
@@ -2830,6 +2897,7 @@ document.querySelectorAll("dialog").forEach((dialog) => {
 function showView(view) {
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
+  $("bump-view").hidden = view !== "bumps";
   $("calendar-view").hidden = view !== "calendar";
   $("client-panel").hidden = view !== "calendar";
   history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
@@ -3036,6 +3104,7 @@ setInterval(() => {
 
 if (location.hash === "#settings") showView("settings");
 if (location.hash === "#notifications") showView("notifications");
+if (location.hash === "#bumps") showView("bumps");
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
