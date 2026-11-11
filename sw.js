@@ -2,7 +2,7 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener("push", (event) => {
-  let data = { title: "matrix.by.p", body: "" };
+  let data = { title: "declan.by.p", body: "" };
   try {
     data = event.data.json();
   } catch (problem) { /* use the default text */ }
