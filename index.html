@@ -1567,6 +1567,13 @@ function bumpTimes(post) {
   });
 }
 
+/* New posts get 3 hours before any bump, so a post isn't bumped right after someone makes it. */
+const BUMP_GRACE = 3 * 3600000;
+function inBumpGrace(post, time = new Date()) {
+  const created = (post.history || []).find((entry) => entry.type === "created");
+  return Boolean(created && time.getTime() - created.at < BUMP_GRACE);
+}
+
 function bumpPosts(time = new Date()) {
   return state.posts
     .filter((post) => clientById(post.client) && !isApproved(post))
@@ -1576,7 +1583,7 @@ function bumpPosts(time = new Date()) {
       if (mode === "all") return true;
       return isMyPost(post);
     })
-    .filter((post) => bumpTimes(post).some((slot) => slot <= time))
+    .filter((post) => !inBumpGrace(post, time) && bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -1590,7 +1597,7 @@ function bumpListPosts(time = new Date()) {
       if (mode === "all") return true;
       return isMyPost(post);
     })
-    .filter((post) => bumpTimes(post).some((slot) => slot <= time))
+    .filter((post) => !inBumpGrace(post, time) && bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
 }
 
@@ -2220,6 +2227,7 @@ function historyText(entry) {
     case "back": return who + " moved back to " + phaseName(entry.stage);
     case "bump": return who + " bumped " + (entry.to || []).map(objName).join(", ") + note;
     case "auto": return "Moved back to Draft because info was missing";
+    case "created": return who + " created this post";
     default: return who + " updated this post";
   }
 }
@@ -2452,7 +2460,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   const record = { ...entry, by: myId, at: Date.now() };
   const update = {
     ...fields, stage: nextStage,
-    history: [...(isNew ? [] : editing.history || []), record],
+    history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : editing.history || []), record],
     ...extra
   };
   try {
@@ -2907,7 +2915,7 @@ async function savePost(event) {
     if (db) {
       const ref = db.collection("posts").doc(draft.id);
       if (isNew) {
-        await ref.set({ ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
+        await ref.set({ ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [{ type: "created", by: myId, at: Date.now() }] });
       } else {
         if (stageOf(editing) !== "draft" && !isComplete(fields)) {
           fields.stage = "draft";
@@ -2916,7 +2924,7 @@ async function savePost(event) {
         await ref.update(fields);
       }
     } else if (isNew) {
-      state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [] });
+      state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [{ type: "created", by: myId, at: Date.now() }] });
     } else {
       Object.assign(state.posts.find((post) => post.id === draft.id), fields);
     }
