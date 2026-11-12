@@ -1406,6 +1406,12 @@ function rolesOf(email) {
   return person ? person.roles || [] : [];
 }
 
+/* Who can review a post: anyone on the team except the person who made it. */
+function reviewers(post) {
+  const creator = post ? creatorOf(post) : myId;
+  return managers().filter((person) => person.email !== creator);
+}
+
 function managers() {
   return state.invites
     .filter((person) => person.role !== "client")
@@ -2382,19 +2388,19 @@ function renderActions() {
     const pick = el("select");
     pick.id = "manager-pick";
     pick.setAttribute("aria-label", "Choose who reviews this");
-    managers().forEach((person) => {
+    reviewers(editing).forEach((person) => {
       const option = el("option", "", displayName(person.email));
       option.value = person.email;
       pick.append(option);
     });
-    if (draft.manager && managers().some((person) => person.email === draft.manager)) pick.value = draft.manager;
+    if (draft.manager && reviewers(editing).some((person) => person.email === draft.manager)) pick.value = draft.manager;
     const send = button("Send to manager", true, () => {
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
     });
     send.disabled = missingFields(draft).length > 0 || !pick.options.length;
     box.append(pick, send);
   } else if (stage === "internal") {
-    const others = managers().filter((person) => person.email !== editing.manager);
+    const others = reviewers(editing).filter((person) => person.email !== editing.manager);
     if (passOpen && others.length) {
       const pick = el("select");
       pick.setAttribute("aria-label", "Choose the new reviewer");
