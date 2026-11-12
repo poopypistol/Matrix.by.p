@@ -10,7 +10,7 @@ const DEFAULT_SCHEDULE = [
 ];
 const CATCH_UP_MS = 2 * 60 * 60 * 1000; // a slot missed by up to 2 hours still goes out
 const STAGE_NAMES: Record<string, string> = {
-  draft: "Draft", internal: "Internal review", ready: "Ready to send", client: "With client"
+  draft: "Drafting", internal: "In review", ready: "Ready to send", client: "Sent to client"
 };
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -110,7 +110,7 @@ Deno.serve(async () => {
           break;
         }
         const who = waiting.includes(person.email) ? "you" : (waiting[0] || "someone").split("@")[0];
-        const stage = STAGE_NAMES[post.stage || "draft"] || "Draft";
+        const stage = STAGE_NAMES[post.stage || "draft"] || "Drafting";
         const link = SITE + "/#post-" + post.id;
         const text = `Bump: *${post.title || "Untitled post"}* for ${clientName[post.client_id]} posts ${prettyDate(post.post_date)} and isn't approved yet. It's waiting on ${who} (${stage}). <${link}|Open in declan>`;
         const result = await slack("chat.postMessage", { channel: userId, text });
