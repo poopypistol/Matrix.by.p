@@ -278,6 +278,7 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .bump-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
 .bump-name .bump-swatch { margin-top: 0; }
 .mode-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.platform-bar { margin: 0 0 12px; }
 .mode-options .quiet { min-height: 34px; padding: 0 10px; font-size: 13px; }
 .mode-options .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .danger-btn { color: var(--danger); margin-right: auto; }
@@ -582,6 +583,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <button class="arrow" id="next" type="button" aria-label="Next month">&#8250;</button>
       </div>
     </header>
+
+    <div class="platform-bar mode-options" role="group" aria-label="Platform">
+      <button class="quiet" type="button" data-platform-view="all" aria-pressed="true">All</button>
+      <button class="quiet" type="button" data-platform-view="ig" aria-pressed="false">Instagram</button>
+      <button class="quiet" type="button" data-platform-view="tt" aria-pressed="false">TikTok</button>
+    </div>
 
     <section class="grid-wrap" aria-label="Month calendar">
       <div class="weekdays" aria-hidden="true">
@@ -1415,9 +1422,20 @@ function missingFields(post) {
   return missing;
 }
 
+let platformView = "all";
+try { platformView = localStorage.getItem("declan-platform") || "all"; } catch (error) {}
+// A post with no platform picked yet shows under both, so nothing goes missing.
+const onPlatform = (post) => platformView === "all" || !(post.platforms || []).length || post.platforms.includes(platformView);
+function setPlatformView(value) {
+  platformView = value;
+  if (value !== "all") state.feedRatio = value;
+  try { localStorage.setItem("declan-platform", value); } catch (error) {}
+  document.querySelectorAll("[data-platform-view]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.platformView === value)));
+}
+
 function postsOn(key) {
   return state.posts
-    .filter((post) => post.date === key && clientById(post.client) && isShown(post.client))
+    .filter((post) => post.date === key && clientById(post.client) && isShown(post.client) && onPlatform(post))
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 }
 
@@ -3120,9 +3138,14 @@ $("cal-btn").addEventListener("click", (event) => {
 $("menu-cal").addEventListener("click", () => { setCalMenu(false); showView("calendar"); });
 $("menu-feed").addEventListener("click", () => { setCalMenu(false); showView("feed"); });
 document.querySelectorAll("[data-ratio]").forEach((button) => button.addEventListener("click", () => {
-  state.feedRatio = button.dataset.ratio;
+  setPlatformView(button.dataset.ratio);
   renderFeed();
 }));
+document.querySelectorAll("[data-platform-view]").forEach((button) => button.addEventListener("click", () => {
+  setPlatformView(button.dataset.platformView);
+  renderMonth();
+}));
+setPlatformView(platformView);
 $("bumps").addEventListener("click", (event) => {
   event.stopPropagation();
   setNotifMenu($("notif-menu").hidden);
