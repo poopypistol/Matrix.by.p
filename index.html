@@ -480,9 +480,24 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .asset-row input { flex: 1; min-width: 0; }
 .asset-row .quiet { flex: none; }
 .link-open { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
-.asset-preview { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px; font-size: 13px; }
-.asset-preview img, .asset-preview video { display: block; max-width: 100%; max-height: 180px; border-radius: 3px; background: var(--hover); }
-.asset-preview a { color: inherit; font-weight: 600; }
+.asset-preview { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; font-size: 13px; min-width: 0; }
+.gallery-stage { position: relative; display: flex; align-items: center; justify-content: center; height: 260px; border-radius: 4px; background: var(--hover); overflow: hidden; }
+.gallery-stage img, .gallery-stage video { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.gallery-stage .gallery-note { color: var(--muted); font-weight: 600; }
+.gallery-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); }
+.gallery-arrow:hover { background: var(--hover); }
+.gallery-arrow:disabled { opacity: 0.35; cursor: default; }
+.gallery-arrow.prev { left: 8px; }
+.gallery-arrow.next { right: 8px; }
+.gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
+.gallery-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.gallery-thumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 4px; overflow: hidden; background: var(--hover); color: var(--muted); font-size: 11px; font-weight: 600; }
+.gallery-thumb[aria-current="true"] { border-color: var(--accent); }
+.gallery-thumb img, .gallery-thumb video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.gallery-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gallery-actions .quiet { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.gallery-actions .remove { color: var(--danger); }
+.gallery-actions a { margin-left: auto; color: inherit; font-weight: 600; }
 .meta-row .field { flex: 1 1 140px; }
 .dlg-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; }
 .template { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -752,9 +767,9 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <div class="field">
           <label for="f-asset">Asset</label>
           <div class="asset-row">
-            <input id="f-asset" type="text" placeholder="Paste a link or upload a file" autocomplete="off">
+            <input id="f-asset" type="text" placeholder="Paste a link or upload files" autocomplete="off">
             <button class="quiet" id="upload-asset" type="button">Upload</button>
-            <input id="asset-file" type="file" accept="image/*,video/*,application/pdf" aria-label="Choose a file to upload" hidden>
+            <input id="asset-file" type="file" accept="image/*,video/*,application/pdf" aria-label="Choose files to upload" multiple hidden>
           </div>
           <div class="asset-preview" id="asset-preview" hidden></div>
         </div>
@@ -1085,12 +1100,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFile, cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
+        copy_text: d.copy, tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFiles === undefined ? undefined : (d.assetFiles.length ? d.assetFiles : null), cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
         stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, tags: r.tags, link: r.link || "", assetFile: r.asset_file, coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
+        copy: r.copy_text, tags: r.tags, link: r.link || "", assetFiles: Array.isArray(r.asset_file) ? r.asset_file : r.asset_file ? [r.asset_file] : [], coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
         stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
@@ -1190,6 +1205,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       const { error } = await sb.storage.from("assets").upload(path, file, { contentType: file.type });
       if (error) throw error;
       return { id: path, contentType: file.type };
+    },
+    async remove(ids) {
+      const { error } = await sb.storage.from("assets").remove(ids);
+      if (error) throw error;
     },
     async signedUrl(id) {
       const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600);
@@ -1436,7 +1455,7 @@ function isWaitingOnMe(post) {
 
 function missingFields(post) {
   const missing = [];
-  if (!(post.asset || "").trim()) missing.push("Asset");
+  if (!(post.asset || "").trim() && !(post.assetFiles || []).length) missing.push("Asset");
   if (!post.coverFile) missing.push("Cover image");
   if (!(post.platforms || []).length) missing.unshift("Platform");
   if (!(post.copy || "").trim()) missing.push("Copy");
@@ -2470,7 +2489,7 @@ function postFields() {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
     asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
-    assetFile: draft.assetFile || null,
+    assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || []
   };
@@ -2513,6 +2532,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   if (local) Object.assign(local, update);
   else state.posts.push({ id: draft.id, ...update, comments: draft.comments, createdBy: myId });
   const id = draft.id;
+  purgeRemovedFiles(draft.removedFiles);
   $("post-dialog").close();
   state.hidden.delete(fields.client);
   render();
@@ -2570,6 +2590,9 @@ function openDialog() {
   renderCoverPreview();
   renderPlatformPick();
   $("asset-file").value = "";
+  galleryIndex = 0;
+  draft.removedFiles = [];
+  assetUrls.clear();
   renderAssetPreview();
   $("save-post").hidden = state.readOnly;
   $("cancel").textContent = state.readOnly ? "Close" : "Cancel";
@@ -2594,7 +2617,7 @@ function openPost(post) {
     savePreferences();
   }
   editing = { ...post, comments: [...(post.comments || [])] };
-  draft = { ...editing, comments: [...editing.comments] };
+  draft = { ...editing, comments: [...editing.comments], assetFiles: [...(editing.assetFiles || [])] };
   openDialog();
 }
 
@@ -2605,44 +2628,149 @@ function openNewPost(date) {
   editing = null;
   draft = {
     id: newId(), client: shownClients.length === 1 ? shownClients[0].id : "", title: "",
-    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", link: "", comments: [],
+    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", link: "", assetFiles: [], comments: [],
     stage: "draft", manager: "", history: []
   };
   openDialog();
 }
 
-async function renderAssetPreview() {
-  const preview = $("asset-preview");
-  preview.replaceChildren();
-  const file = draft.assetFile;
-  preview.hidden = !file;
-  if (!file) return;
-  let url;
-  try {
-    url = await assets.signedUrl(file.id);
-  } catch (problem) {
-    preview.append(el("span", "", "This file can't be previewed right now."));
+/* Uploaded files show as a small gallery: one big preview with arrows, thumbnails to jump,
+   and buttons to reorder or remove. Order here is the order of the carousel or story. */
+let galleryIndex = 0;
+const assetUrls = new Map();
+function assetUrl(id) {
+  if (!assetUrls.has(id)) assetUrls.set(id, assets.signedUrl(id).catch(() => { assetUrls.delete(id); return null; }));
+  return assetUrls.get(id);
+}
+
+function fileKind(file) {
+  const type = file.type || "";
+  return type.startsWith("image/") ? "image" : type.startsWith("video/") ? "video" : "other";
+}
+
+async function fillMedia(box, file, small, isCurrent) {
+  const url = await assetUrl(file.id);
+  if (!isCurrent()) return;
+  box.replaceChildren();
+  if (!url) {
+    box.append(el("span", "gallery-note", small ? "!" : "This file can't be previewed right now."));
     return;
   }
-  if (draft.assetFile !== file) return;
-  preview.replaceChildren();
-  if ((file.type || "").startsWith("image/")) {
+  const kind = fileKind(file);
+  if (kind === "image") {
     const image = el("img");
     image.src = url;
-    image.alt = file.name;
-    preview.append(image);
-  } else if ((file.type || "").startsWith("video/")) {
+    image.alt = small ? "" : file.name;
+    box.append(image);
+  } else if (kind === "video") {
     const video = el("video");
-    video.src = url;
-    video.controls = true;
+    video.src = small ? url + "#t=0.1" : url;
+    video.preload = "metadata";
+    if (small) video.muted = true;
+    else video.controls = true;
     video.setAttribute("aria-label", file.name);
-    preview.append(video);
+    box.append(video);
+  } else {
+    box.append(el("span", "gallery-note", small ? "PDF" : file.name));
   }
-  const link = el("a", "", "Open file");
-  link.href = url;
-  link.target = "_blank";
-  link.rel = "noopener";
-  preview.append(link);
+}
+
+function renderAssetPreview() {
+  const preview = $("asset-preview");
+  const files = (draft && draft.assetFiles) || [];
+  const token = {};
+  renderAssetPreview.token = token;
+  const isCurrent = () => renderAssetPreview.token === token;
+  preview.replaceChildren();
+  preview.hidden = !files.length;
+  if (!files.length) return;
+  galleryIndex = Math.min(Math.max(galleryIndex, 0), files.length - 1);
+  const file = files[galleryIndex];
+  const many = files.length > 1;
+
+  const stage = el("div", "gallery-stage");
+  const media = el("div", "gallery-stage");
+  media.style.cssText = "position:static;height:100%;width:100%;background:none";
+  stage.append(media);
+  fillMedia(media, file, false, isCurrent);
+  if (many) {
+    const arrow = (cls, label, delta, path) => {
+      const go = el("button", "gallery-arrow " + cls);
+      go.type = "button";
+      go.setAttribute("aria-label", label);
+      go.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>';
+      go.disabled = galleryIndex + delta < 0 || galleryIndex + delta >= files.length;
+      go.addEventListener("click", () => { galleryIndex += delta; renderAssetPreview(); });
+      return go;
+    };
+    stage.append(
+      arrow("prev", "Previous file", -1, "M15 18l-6-6 6-6"),
+      arrow("next", "Next file", 1, "M9 18l6-6-6-6"),
+      el("span", "gallery-count", (galleryIndex + 1) + " / " + files.length)
+    );
+  }
+  preview.append(stage);
+
+  if (many) {
+    const strip = el("div", "gallery-strip");
+    strip.setAttribute("aria-label", "Uploaded files, in order");
+    files.forEach((item, index) => {
+      const thumb = el("button", "gallery-thumb");
+      thumb.type = "button";
+      thumb.setAttribute("aria-label", "Show file " + (index + 1) + ": " + item.name);
+      thumb.setAttribute("aria-current", String(index === galleryIndex));
+      thumb.addEventListener("click", () => { galleryIndex = index; renderAssetPreview(); });
+      fillMedia(thumb, item, true, isCurrent);
+      strip.append(thumb);
+    });
+    preview.append(strip);
+  }
+
+  const actions = el("div", "gallery-actions");
+  if (!state.readOnly) {
+    if (many) {
+      const move = (label, delta) => {
+        const go = el("button", "quiet", label);
+        go.type = "button";
+        go.addEventListener("click", () => moveAsset(delta));
+        go.disabled = galleryIndex + delta < 0 || galleryIndex + delta >= files.length;
+        return go;
+      };
+      actions.append(move("Move earlier", -1), move("Move later", 1));
+    }
+    const remove = el("button", "quiet remove", "Remove");
+    remove.type = "button";
+    remove.addEventListener("click", removeAsset);
+    remove.setAttribute("aria-label", "Remove " + file.name);
+    actions.append(remove);
+  }
+  const open = el("a", "", "Open file");
+  open.target = "_blank";
+  open.rel = "noopener";
+  assetUrl(file.id).then((url) => { if (url) open.href = url; else open.hidden = true; });
+  actions.append(open);
+  preview.append(actions);
+}
+
+function moveAsset(delta) {
+  const files = draft.assetFiles;
+  const to = galleryIndex + delta;
+  if (to < 0 || to >= files.length) return;
+  [files[galleryIndex], files[to]] = [files[to], files[galleryIndex]];
+  galleryIndex = to;
+  renderAssetPreview();
+}
+
+/* Takes the file off the post now; it's deleted from storage once the post is saved. */
+function removeAsset() {
+  const [gone] = draft.assetFiles.splice(galleryIndex, 1);
+  if (gone) draft.removedFiles = [...(draft.removedFiles || []), gone.id];
+  renderAssetPreview();
+  updateHint();
+}
+
+function purgeRemovedFiles(ids) {
+  if (assets && ids && ids.length) assets.remove(ids).catch(() => {});
 }
 
 function renderPlatformPick() {
@@ -2721,32 +2849,37 @@ async function uploadCover(file) {
   renderCoverPreview();
 }
 
-async function uploadAsset(file) {
+async function uploadAssets(list) {
   const error = $("form-error");
-  const button = $("upload-asset");
+  const upload = $("upload-asset");
+  const files = [...list];
+  const tooBig = files.filter((file) => file.size > 50 * 1024 * 1024);
+  const ready = files.filter((file) => file.size <= 50 * 1024 * 1024);
   error.hidden = true;
-  if (file.size > 50 * 1024 * 1024) {
-    error.textContent = "That file is over 50 MB. Paste a Google Drive link instead.";
-    error.hidden = false;
-    return;
+  upload.disabled = true;
+  const firstNew = (draft.assetFiles || []).length;
+  let failed = 0;
+  for (const [index, file] of ready.entries()) {
+    upload.textContent = ready.length > 1 ? "Uploading " + (index + 1) + " of " + ready.length : "Uploading";
+    try {
+      const stored = await assets.upload(file);
+      draft.assetFiles = [...(draft.assetFiles || []), { id: stored.id, name: file.name, type: stored.contentType || file.type }];
+      galleryIndex = firstNew;
+      renderAssetPreview();
+      updateHint();
+    } catch (problem) {
+      failed++;
+    }
   }
-  button.disabled = true;
-  button.textContent = "Uploading";
-  try {
-    const stored = await assets.upload(file);
-    draft.assetFile = { id: stored.id, name: file.name, type: stored.contentType || file.type };
-    $("f-asset").value = file.name;
-    updateHint();
-    renderAssetPreview();
-  } catch (problem) {
-    const code = problem && problem.code;
-    error.textContent = code === "too_large" ? "That file is too large. Paste a Google Drive link instead."
-      : code === "unsupported_type" ? "That file type can't be uploaded. Try an image, video, or PDF."
-      : "That file didn't upload. Try again, or paste a link instead.";
+  const notes = [];
+  if (tooBig.length) notes.push((tooBig.length === 1 ? tooBig[0].name + " is" : tooBig.length + " files are") + " over 50 MB. Paste a Google Drive link instead.");
+  if (failed) notes.push((failed === 1 ? "1 file" : failed + " files") + " didn't upload. Try again, or paste a link instead.");
+  if (notes.length) {
+    error.textContent = notes.join(" ");
     error.hidden = false;
   }
-  button.disabled = false;
-  button.textContent = "Upload";
+  upload.disabled = false;
+  upload.textContent = "Upload";
 }
 
 function hsvToHex(hue, saturation, value) {
@@ -2935,7 +3068,7 @@ async function savePost(event) {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
     asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
-    assetFile: draft.assetFile || null,
+    assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || []
   };
@@ -2974,6 +3107,7 @@ async function savePost(event) {
     return;
   }
   $("save-post").disabled = false;
+  purgeRemovedFiles(draft.removedFiles);
   state.hidden.delete(fields.client);
   if (isNew) state.showStages = ALL_STAGES_ON();
   const [year, month] = fields.date.split("-").map(Number);
@@ -3337,10 +3471,6 @@ $("f-client").addEventListener("change", (event) => {
 $("post-form").addEventListener("submit", savePost);
 $("client-form").addEventListener("submit", saveClient);
 $("post-form").addEventListener("input", (event) => {
-  if (event.target.id === "f-asset" && draft.assetFile && event.target.value !== draft.assetFile.name) {
-    draft.assetFile = null;
-    renderAssetPreview();
-  }
   if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
   if (event.target.id === "f-link") readTemplate();
 });
@@ -3435,9 +3565,9 @@ $("cover-file").addEventListener("change", (event) => {
   if (file) uploadCover(file);
 });
 $("asset-file").addEventListener("change", (event) => {
-  const file = event.target.files[0];
+  const files = [...event.target.files];
   event.target.value = "";
-  if (file) uploadAsset(file);
+  if (files.length) uploadAssets(files);
 });
 
 let lastBumpCheck = new Date();
