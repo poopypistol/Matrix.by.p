@@ -479,6 +479,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .asset-row { display: flex; gap: 8px; min-width: 0; }
 .asset-row input { flex: 1; min-width: 0; }
 .asset-row .quiet { flex: none; }
+.link-open { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 .asset-preview { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px; font-size: 13px; }
 .asset-preview img, .asset-preview video { display: block; max-width: 100%; max-height: 180px; border-radius: 3px; background: var(--hover); }
 .asset-preview a { color: inherit; font-weight: 600; }
@@ -770,6 +771,13 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         </div>
         <div class="field"><label for="f-copy">Copy</label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
         <div class="field"><label for="f-tags">Tags</label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
+        <div class="field">
+          <label for="f-link">Link</label>
+          <div class="asset-row">
+            <input id="f-link" type="text" inputmode="url" placeholder="Optional: a deck, reference or other link" autocomplete="off">
+            <a class="quiet link-open" id="open-link" target="_blank" rel="noopener" hidden>Open</a>
+          </div>
+        </div>
         <p class="hint" id="hint"></p>
       </section>
       <aside class="notes" aria-label="Comments">
@@ -1077,12 +1085,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, tags: d.tags, asset_file: d.assetFile, cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
+        copy_text: d.copy, tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFile, cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
         stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, tags: r.tags, assetFile: r.asset_file, coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
+        copy: r.copy_text, tags: r.tags, link: r.link || "", assetFile: r.asset_file, coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
         stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
@@ -1097,6 +1105,14 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
     return rows.map((row) => ({ id: row.id, ...model.doc(row), comments: byPost[row.id] || [] }));
   }
 
+  /* Until the posts table has a link column, save everything else instead of failing. */
+  async function withoutMissingLink(row, run) {
+    const result = await run();
+    if (!result.error || !("link" in row) || !/link/.test(result.error.message || "")) return result;
+    delete row.link;
+    return run();
+  }
+
   function collection(name) {
     const model = models[name];
     return {
@@ -1106,12 +1122,12 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
           async set(data) {
             const row = model.row(data);
             if (model.key === "id") row.id = id;
-            check(await sb.from(model.table).upsert(row));
+            check(await withoutMissingLink(row, () => sb.from(model.table).upsert(row)));
             if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
           },
           async update(data) {
             const row = model.row(data);
-            if (Object.keys(row).length) check(await sb.from(model.table).update(row).eq(model.key, id));
+            if (Object.keys(row).length) check(await withoutMissingLink(row, () => sb.from(model.table).update(row).eq(model.key, id)));
             if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
           },
           async delete() {
@@ -2262,6 +2278,21 @@ function readTemplate() {
   draft.asset = $("f-asset").value;
   draft.copy = $("f-copy").value;
   draft.tags = $("f-tags").value;
+  draft.link = $("f-link").value.trim();
+  renderLinkOpen();
+}
+
+/* Shows an Open button once the link box has something in it. */
+function linkHref(value) {
+  const text = (value || "").trim();
+  if (!text) return "";
+  return /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : "https://" + text;
+}
+function renderLinkOpen() {
+  const href = linkHref(draft.link);
+  const open = $("open-link");
+  open.hidden = !/^https?:/i.test(href);
+  if (!open.hidden) open.href = href;
 }
 
 function updateHint() {
@@ -2432,7 +2463,7 @@ function postFields() {
   return {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
-    asset: draft.asset, copy: draft.copy, tags: draft.tags,
+    asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
     assetFile: draft.assetFile || null,
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || []
@@ -2523,6 +2554,8 @@ function openDialog() {
   $("f-asset").value = draft.asset;
   $("f-copy").value = draft.copy;
   $("f-tags").value = draft.tags;
+  $("f-link").value = draft.link || "";
+  renderLinkOpen();
   $("comment-input").value = "";
   $("form-error").hidden = true;
   $("post-fields").disabled = state.readOnly;
@@ -2566,7 +2599,7 @@ function openNewPost(date) {
   editing = null;
   draft = {
     id: newId(), client: shownClients.length === 1 ? shownClients[0].id : "", title: "",
-    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", comments: [],
+    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", link: "", comments: [],
     stage: "draft", manager: "", history: []
   };
   openDialog();
@@ -2895,7 +2928,7 @@ async function savePost(event) {
   const fields = {
     title: $("f-title").value.trim(), client: $("f-client").value,
     date: $("f-date").value, time: $("f-time").value,
-    asset: draft.asset, copy: draft.copy, tags: draft.tags,
+    asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
     assetFile: draft.assetFile || null,
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || []
@@ -3303,6 +3336,7 @@ $("post-form").addEventListener("input", (event) => {
     renderAssetPreview();
   }
   if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
+  if (event.target.id === "f-link") readTemplate();
 });
 $("close-dialog").addEventListener("click", () => $("post-dialog").close());
 $("cancel").addEventListener("click", () => $("post-dialog").close());
