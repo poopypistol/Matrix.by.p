@@ -498,6 +498,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-actions .quiet { min-height: 32px; padding: 0 10px; font-size: 13px; }
 .gallery-actions .remove { color: var(--danger); }
 .gallery-actions a { margin-left: auto; color: inherit; font-weight: 600; }
+.gallery-badge { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 600; }
 .meta-row .field { flex: 1 1 140px; }
 .dlg-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; }
 .template { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -779,7 +780,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
             <div class="cover-thumb" id="cover-thumb"></div>
             <div class="cover-actions">
               <button class="quiet" id="upload-cover" type="button">Upload cover</button>
-              <span class="side-note">Shows on the feed grid.</span>
+              <span class="side-note" id="cover-note">Shows on the feed grid.</span>
             </div>
             <input id="cover-file" type="file" accept="image/*" aria-label="Choose a cover image" hidden>
           </div>
@@ -2664,6 +2665,14 @@ async function fillMedia(box, file, small, isCurrent) {
     box.append(image);
   } else if (kind === "video") {
     const video = el("video");
+    if (!small) {
+      video.crossOrigin = "anonymous";
+      video.addEventListener("error", () => {
+        if (!video.crossOrigin) return;
+        video.removeAttribute("crossorigin");
+        video.src = url;
+      }, { once: true });
+    }
     video.src = small ? url + "#t=0.1" : url;
     video.preload = "metadata";
     if (small) video.muted = true;
@@ -2709,6 +2718,7 @@ function renderAssetPreview() {
       el("span", "gallery-count", (galleryIndex + 1) + " / " + files.length)
     );
   }
+  if (draft.coverFile && draft.coverFile.id === file.id) stage.append(el("span", "gallery-badge", "Cover"));
   preview.append(stage);
 
   if (many) {
@@ -2738,6 +2748,22 @@ function renderAssetPreview() {
       };
       actions.append(move("Move earlier", -1), move("Move later", 1));
     }
+    const isCover = draft.coverFile && draft.coverFile.id === file.id;
+    if (fileKind(file) === "image" && !isCover) {
+      const pick = el("button", "quiet", "Use as cover");
+      pick.type = "button";
+      pick.addEventListener("click", () => useImageAsCover(file));
+      actions.append(pick);
+    } else if (fileKind(file) === "video") {
+      const grab = el("button", "quiet", "Use this frame as cover");
+      grab.type = "button";
+      grab.title = "Pause the video on the frame you want, then click";
+      grab.addEventListener("click", () => {
+        const video = media.querySelector("video");
+        if (video && video.readyState >= 2) useFrameAsCover(video, file, grab);
+      });
+      actions.append(grab);
+    }
     const remove = el("button", "quiet remove", "Remove");
     remove.type = "button";
     remove.addEventListener("click", removeAsset);
@@ -2759,18 +2785,22 @@ function moveAsset(delta) {
   [files[galleryIndex], files[to]] = [files[to], files[galleryIndex]];
   galleryIndex = to;
   renderAssetPreview();
+  syncAutoCover();
 }
 
 /* Takes the file off the post now; it's deleted from storage once the post is saved. */
 function removeAsset() {
   const [gone] = draft.assetFiles.splice(galleryIndex, 1);
   if (gone) draft.removedFiles = [...(draft.removedFiles || []), gone.id];
+  if (gone && draft.coverFile && draft.coverFile.id === gone.id && !autoCover(draft.coverFile)) draft.coverFile = null;
   renderAssetPreview();
-  updateHint();
+  syncAutoCover();
 }
 
 function purgeRemovedFiles(ids) {
-  if (assets && ids && ids.length) assets.remove(ids).catch(() => {});
+  const cover = draft && draft.coverFile && draft.coverFile.id;
+  ids = (ids || []).filter((id) => id !== cover);
+  if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
 
 function renderPlatformPick() {
@@ -2802,6 +2832,10 @@ async function renderCoverPreview() {
   const box = $("cover-thumb");
   const file = draft && draft.coverFile;
   $("upload-cover").textContent = file ? "Replace cover" : "Upload cover";
+  const source = file && file.source;
+  $("cover-note").textContent = source === "asset" ? "Your first image. Shows on the feed grid."
+    : source === "frame-auto" ? "A frame from your video. Shows on the feed grid."
+    : "Shows on the feed grid.";
   box.replaceChildren();
   box.classList.toggle("has-image", !!file);
   if (!file) {
@@ -2839,14 +2873,94 @@ async function uploadCover(file) {
   button.textContent = "Uploading";
   try {
     const stored = await assets.upload(file);
-    draft.coverFile = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+    draft.coverFile = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload" };
     updateHint();
+    renderAssetPreview();
   } catch (problem) {
     error.textContent = "That image didn't upload. Try again.";
     error.hidden = false;
   }
   button.disabled = false;
   renderCoverPreview();
+}
+
+/* The cover follows the first image unless someone picked or uploaded one on purpose. */
+const autoCover = (cover) => !cover || cover.source === "asset" || cover.source === "frame-auto";
+function syncAutoCover() {
+  if (!autoCover(draft.coverFile)) return;
+  const image = (draft.assetFiles || []).find((file) => fileKind(file) === "image");
+  if (image) draft.coverFile = { id: image.id, name: image.name, type: image.type, source: "asset" };
+  else if (draft.coverFile && draft.coverFile.source === "asset") draft.coverFile = null;
+  renderCoverPreview();
+  updateHint();
+}
+
+function waitFor(target, name) {
+  return new Promise((resolve, reject) => {
+    target.addEventListener(name, resolve, { once: true });
+    target.addEventListener("error", () => reject(new Error("media")), { once: true });
+  });
+}
+
+async function frameBlob(video) {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("frame"))), "image/jpeg", 0.9));
+}
+
+async function saveFrameAsCover(blob, name, source) {
+  const file = new File([blob], name.replace(/\.[^.]+$/, "") + "-cover.jpg", { type: "image/jpeg" });
+  const stored = await assets.upload(file);
+  draft.coverFile = { id: stored.id, name: file.name, type: "image/jpeg", source };
+  renderCoverPreview();
+  renderAssetPreview();
+  updateHint();
+}
+
+/* No image in the post: grab a frame about a second into the first video. */
+async function autoFrameCover(file) {
+  const video = document.createElement("video");
+  const url = URL.createObjectURL(file);
+  try {
+    video.muted = true;
+    video.preload = "auto";
+    video.src = url;
+    await waitFor(video, "loadeddata");
+    video.currentTime = Math.min(1, (video.duration || 2) / 2);
+    await waitFor(video, "seeked");
+    const blob = await frameBlob(video);
+    if (autoCover(draft.coverFile) && !draft.coverFile) await saveFrameAsCover(blob, file.name, "frame-auto");
+  } catch (problem) {
+    /* No automatic cover; they can still pick a frame or upload one. */
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/* Uses whatever frame the video preview is paused on. */
+async function useFrameAsCover(video, file, control) {
+  const error = $("form-error");
+  error.hidden = true;
+  control.disabled = true;
+  control.textContent = "Saving cover";
+  try {
+    await saveFrameAsCover(await frameBlob(video), file.name, "frame");
+    showToast("Cover set from this frame");
+  } catch (problem) {
+    error.textContent = "That frame couldn't be saved. Try again, or upload a cover image.";
+    error.hidden = false;
+    control.disabled = false;
+    control.textContent = "Use this frame as cover";
+  }
+}
+
+function useImageAsCover(file) {
+  draft.coverFile = { id: file.id, name: file.name, type: file.type, source: "pick" };
+  renderCoverPreview();
+  renderAssetPreview();
+  updateHint();
 }
 
 async function uploadAssets(list) {
@@ -2870,6 +2984,11 @@ async function uploadAssets(list) {
     } catch (problem) {
       failed++;
     }
+  }
+  syncAutoCover();
+  if (!draft.coverFile) {
+    const video = ready.find((file) => (file.type || "").startsWith("video/"));
+    if (video) await autoFrameCover(video);
   }
   const notes = [];
   if (tooBig.length) notes.push((tooBig.length === 1 ? tooBig[0].name + " is" : tooBig.length + " files are") + " over 50 MB. Paste a Google Drive link instead.");
