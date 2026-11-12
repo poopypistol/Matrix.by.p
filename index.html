@@ -653,7 +653,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
         <button class="quiet" id="push-test" type="button" hidden>Send a test</button>
       </div>
       <h3 class="group-title" id="slack-title">Slack</h3>
-      <p class="empty">DMA team only. Get your notifications from declan in a Slack direct message. Your declan email must match your Slack email.</p>
+      <p class="empty">DMA team only. Get your notifications and bumps from declan in a Slack direct message. Your declan email must match your Slack email.</p>
       <div class="theme-options push-options">
         <div class="mode-options" id="slack-modes" role="group" aria-labelledby="slack-title">
           <button class="quiet" type="button" data-slack="on">On</button>
@@ -1574,7 +1574,7 @@ function bumpPosts(time = new Date()) {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
       if (mode === "all") return true;
-      return isWaitingOnMe(post);
+      return isMyPost(post);
     })
     .filter((post) => bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -1588,7 +1588,7 @@ function bumpListPosts(time = new Date()) {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
       if (mode === "all") return true;
-      return isMyPost(post) || post.manager === myId || isWaitingOnMe(post);
+      return isMyPost(post);
     })
     .filter((post) => bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
