@@ -497,6 +497,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-arrow.next { right: 8px; }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.optional-note { margin-left: 6px; color: var(--faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
+#copy-field.is-optional textarea:not(:focus):placeholder-shown { opacity: 0.55; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
 .discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
@@ -781,6 +783,13 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     <div class="dlg-body">
       <section class="template" aria-label="Post template">
         <div class="field">
+          <span class="field-label" id="type-label">Type</span>
+          <div class="mode-options text-toggle" id="type-pick" role="group" aria-labelledby="type-label">
+            <button class="quiet" type="button" data-kind="post" aria-pressed="true">Post</button>
+            <button class="quiet" type="button" data-kind="story" aria-pressed="false">Story</button>
+          </div>
+        </div>
+        <div class="field">
           <span class="field-label" id="platform-label">Platform</span>
           <div class="mode-options text-toggle" id="platform-pick" role="group" aria-labelledby="platform-label">
             <button class="quiet" type="button" data-platform="ig" aria-pressed="false">Instagram</button>
@@ -807,7 +816,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
             <input id="cover-file" type="file" accept="image/*" aria-label="Choose a cover image" hidden>
           </div>
         </div>
-        <div class="field"><label for="f-copy">Copy</label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
+        <div class="field" id="copy-field"><label for="f-copy">Copy <span class="optional-note" id="copy-optional" hidden>Optional</span></label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
         <div class="field"><label for="f-tags">Tags</label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
         <div class="field">
           <label for="f-link">Link</label>
@@ -1128,12 +1137,12 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFiles === undefined ? undefined : (d.assetFiles.length ? d.assetFiles : null), cover_file: d.coverFile, platforms: d.platforms, created_by: d.createdBy,
+        copy_text: d.copy, tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFiles === undefined ? undefined : (d.assetFiles.length ? d.assetFiles : null), cover_file: d.coverFile, platforms: d.platforms, kind: d.kind, created_by: d.createdBy,
         stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, tags: r.tags, link: r.link || "", assetFiles: Array.isArray(r.asset_file) ? r.asset_file : r.asset_file ? [r.asset_file] : [], coverFile: r.cover_file || null, platforms: r.platforms || [], createdBy: r.created_by || undefined,
+        copy: r.copy_text, tags: r.tags, link: r.link || "", assetFiles: Array.isArray(r.asset_file) ? r.asset_file : r.asset_file ? [r.asset_file] : [], coverFile: r.cover_file || null, platforms: r.platforms || [], kind: r.kind || "post", createdBy: r.created_by || undefined,
         stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
@@ -1151,9 +1160,11 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
   /* Until the posts table has a link column, save everything else instead of failing. */
   async function withoutMissingLink(row, run) {
     const result = await run();
-    if (!result.error || !("link" in row) || !/link/.test(result.error.message || "")) return result;
-    delete row.link;
-    return run();
+    if (!result.error) return result;
+    const missing = ["link", "kind"].find((column) => column in row && new RegExp(column).test(result.error.message || ""));
+    if (!missing) return result;
+    delete row[missing];
+    return withoutMissingLink(row, run);
   }
 
   function collection(name) {
@@ -1484,9 +1495,10 @@ function isWaitingOnMe(post) {
 function missingFields(post) {
   const missing = [];
   if (!(post.asset || "").trim() && !(post.assetFiles || []).length) missing.push("Asset");
-  if (!post.coverFile) missing.push("Cover image");
+  const story = post.kind === "story";
+  if (!story && !post.coverFile) missing.push("Cover image");
   if (!(post.platforms || []).length) missing.unshift("Platform");
-  if (!(post.copy || "").trim()) missing.push("Copy");
+  if (!story && !(post.copy || "").trim()) missing.push("Copy");
   if (!(post.tags || "").trim()) missing.push("Tags");
   return missing;
 }
@@ -1545,9 +1557,9 @@ function postCard(post) {
   const client = clientById(post.client);
   const card = el("button", "post " + colorClass(client.color) + (approved ? "" : " unapproved"), post.title);
   card.type = "button";
-  card.append(el("small", "", formatTime(post.time) + (approved ? "" : " · " + phaseName(stageOf(post)))));
+  card.append(el("small", "", formatTime(post.time) + (post.kind === "story" ? " · Story" : "") + (approved ? "" : " · " + phaseName(stageOf(post)))));
   card.title = client.name;
-  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + ", " + phaseName(stageOf(post)));
+  card.setAttribute("aria-label", post.title + ", " + client.name + ", " + formatTime(post.time) + (post.kind === "story" ? ", story" : "") + ", " + phaseName(stageOf(post)));
   card.addEventListener("click", () => openPost(post));
   if (!state.readOnly) {
     card.draggable = true;
@@ -1692,7 +1704,7 @@ function renderFeed() {
     return;
   }
   const posts = state.posts
-    .filter((post) => post.client === client.id && (post.platforms || []).includes(ratio))
+    .filter((post) => post.client === client.id && post.kind !== "story" && (post.platforms || []).includes(ratio))
     .sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
   if (!posts.length) {
     grid.append(el("p", "empty", "No " + (ratio === "tt" ? "TikTok" : "Instagram") + " posts for " + client.name + " yet."));
@@ -1776,7 +1788,7 @@ function noticeItem(post, label, extra) {
   item.type = "button";
   const text = el("span", "bump-text", post.title);
   text.prepend(el("small", "", label));
-  const meta = el("small", "", (label === client.name ? "" : client.name + " · ") + shortDate(post.date) + " · " + phaseName(stageOf(post)));
+  const meta = el("small", "", (label === client.name ? "" : client.name + " · ") + shortDate(post.date) + (post.kind === "story" ? " · Story" : "") + " · " + phaseName(stageOf(post)));
   if (extra) meta.append(" · ", el("span", "due", extra));
   text.append(meta);
   item.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
@@ -2527,7 +2539,8 @@ function postFields() {
     asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
     assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
-    platforms: draft.platforms || []
+    platforms: draft.platforms || [],
+    kind: draft.kind || "post"
   };
 }
 
@@ -2614,7 +2627,7 @@ function postSnapshot() {
   const value = (id) => $(id).value;
   return JSON.stringify([
     value("f-title"), value("f-client"), value("f-date"), value("f-time"), value("f-asset"), value("f-copy"),
-    value("f-tags"), value("f-link"), value("comment-input"), draft.platforms || [],
+    value("f-tags"), value("f-link"), value("comment-input"), draft.platforms || [], draft.kind || "post",
     (draft.assetFiles || []).map((file) => file.id), draft.coverFile ? draft.coverFile.id : null
   ]);
 }
@@ -2648,6 +2661,7 @@ function openDialog() {
   $("upload-cover").hidden = !assets || state.readOnly;
   renderCoverPreview();
   renderPlatformPick();
+  renderKindPick();
   $("asset-file").value = "";
   galleryIndex = 0;
   draft.removedFiles = [];
@@ -2690,7 +2704,7 @@ function openNewPost(date) {
   editing = null;
   draft = {
     id: newId(), client: shownClients.length === 1 ? shownClients[0].id : "", title: "",
-    date: date || fallback, time: "09:00", asset: "", copy: "", tags: "", link: "", assetFiles: [], comments: [],
+    date: date || fallback, time: "09:00", kind: "post", asset: "", copy: "", tags: "", link: "", assetFiles: [], comments: [],
     stage: "draft", manager: "", history: []
   };
   openDialog();
@@ -2925,6 +2939,25 @@ function purgeRemovedFiles(ids) {
   ids = (ids || []).filter((id) => id !== cover);
   if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
+
+/* Stories skip the cover (they never show on the grid) and copy is optional. */
+function renderKindPick() {
+  const story = draft && draft.kind === "story";
+  document.querySelectorAll("[data-kind]").forEach((button) => {
+    button.setAttribute("aria-pressed", String((button.dataset.kind === "story") === story));
+    button.disabled = state.readOnly;
+  });
+  $("cover-drop").hidden = story;
+  $("copy-optional").hidden = !story;
+  $("copy-field").classList.toggle("is-optional", story);
+  $("f-copy").placeholder = story ? "Only if the story has text" : "Final caption";
+}
+document.querySelectorAll("[data-kind]").forEach((button) => button.addEventListener("click", () => {
+  if (!draft || state.readOnly) return;
+  draft.kind = button.dataset.kind;
+  renderKindPick();
+  updateHint();
+}));
 
 function renderPlatformPick() {
   const picked = (draft && draft.platforms) || [];
@@ -3312,7 +3345,8 @@ async function savePost(event) {
     asset: draft.asset, copy: draft.copy, tags: draft.tags, link: draft.link || "",
     assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
-    platforms: draft.platforms || []
+    platforms: draft.platforms || [],
+    kind: draft.kind || "post"
   };
   const error = $("form-error");
   const problem = !fields.title ? "Add a title to save this post."
@@ -3626,8 +3660,10 @@ function showView(view, fromHistory) {
   renderFeed();
   const address = view === "calendar" ? location.pathname : "#" + view;
   if (!fromHistory) {
-    if (changed && viewHistoryReady) history.pushState({ view }, "", address);
-    else history.replaceState(history.state, "", address);
+    try {
+      if (changed && viewHistoryReady) history.pushState({ view }, "", address);
+      else history.replaceState(history.state, "", address);
+    } catch (error) { /* some embedded previews block history changes */ }
   }
   window.scrollTo(0, 0);
 }
