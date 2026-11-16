@@ -491,6 +491,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-arrow.next { right: 8px; }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+#platform-pick [aria-pressed="true"]::before { content: "✓"; margin-right: 6px; font-weight: 700; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
 .discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
