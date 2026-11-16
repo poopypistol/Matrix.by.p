@@ -2414,6 +2414,7 @@ function renderActions() {
       pick.append(option);
     });
     if (draft.manager && reviewers(editing).some((person) => person.email === draft.manager)) pick.value = draft.manager;
+    pick.addEventListener("change", () => { draft.manager = pick.value; });
     const send = button("Send to manager", true, () => {
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
     });
