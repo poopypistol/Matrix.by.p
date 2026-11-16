@@ -490,9 +490,11 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-arrow.prev { left: 8px; }
 .gallery-arrow.next { right: 8px; }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
-.gallery-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
 .gallery-thumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 4px; overflow: hidden; background: var(--hover); color: var(--muted); font-size: 11px; font-weight: 600; }
 .gallery-thumb[aria-current="true"] { border-color: var(--accent); }
+.gallery-strip .gallery-thumb { cursor: grab; touch-action: none; }
+.gallery-thumb.is-dragging { cursor: grabbing; opacity: 0.6; }
 .gallery-thumb img, .gallery-thumb video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .gallery-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .gallery-actions .quiet { min-height: 32px; padding: 0 10px; font-size: 13px; }
@@ -2730,7 +2732,22 @@ function renderAssetPreview() {
       thumb.type = "button";
       thumb.setAttribute("aria-label", "Show file " + (index + 1) + ": " + item.name);
       thumb.setAttribute("aria-current", String(index === galleryIndex));
-      thumb.addEventListener("click", () => { galleryIndex = index; renderAssetPreview(); });
+      thumb.dataset.index = index;
+      thumb.addEventListener("click", (event) => {
+        if (thumb.dataset.dragged) { delete thumb.dataset.dragged; event.preventDefault(); return; }
+        galleryIndex = index;
+        renderAssetPreview();
+      });
+      thumb.addEventListener("keydown", (event) => {
+        if (!event.altKey || state.readOnly) return;
+        const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+        if (!delta) return;
+        event.preventDefault();
+        galleryIndex = index;
+        moveAsset(delta);
+        $("asset-preview").querySelectorAll(".gallery-thumb")[galleryIndex]?.focus();
+      });
+      if (!state.readOnly) dragToReorder(thumb, strip);
       fillMedia(thumb, item, true, isCurrent);
       strip.append(thumb);
     });
@@ -2739,16 +2756,6 @@ function renderAssetPreview() {
 
   const actions = el("div", "gallery-actions");
   if (!state.readOnly) {
-    if (many) {
-      const move = (label, delta) => {
-        const go = el("button", "quiet", label);
-        go.type = "button";
-        go.addEventListener("click", () => moveAsset(delta));
-        go.disabled = galleryIndex + delta < 0 || galleryIndex + delta >= files.length;
-        return go;
-      };
-      actions.append(move("Move earlier", -1), move("Move later", 1));
-    }
     const isCover = draft.coverFile && draft.coverFile.id === file.id;
     if (fileKind(file) === "image" && !isCover) {
       const pick = el("button", "quiet", "Use as cover");
@@ -2777,6 +2784,48 @@ function renderAssetPreview() {
   assetUrl(file.id).then((url) => { if (url) open.href = url; else open.hidden = true; });
   actions.append(open);
   preview.append(actions);
+}
+
+/* Drag a thumbnail to change the order. Works with a mouse or a finger. */
+function dragToReorder(thumb, strip) {
+  thumb.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let dragging = false;
+    const move = (moveEvent) => {
+      if (!dragging) {
+        if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 6) return;
+        dragging = true;
+        thumb.classList.add("is-dragging");
+      }
+      const others = [...strip.children].filter((item) => item !== thumb);
+      const before = others.find((item) => {
+        const box = item.getBoundingClientRect();
+        const sameRow = moveEvent.clientY >= box.top && moveEvent.clientY <= box.bottom;
+        return (sameRow && moveEvent.clientX < box.left + box.width / 2) || moveEvent.clientY < box.top;
+      });
+      if (before) { if (thumb.nextSibling !== before) strip.insertBefore(thumb, before); }
+      else if (strip.lastChild !== thumb) strip.append(thumb);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (!dragging) return;
+      thumb.dataset.dragged = "1";
+      thumb.classList.remove("is-dragging");
+      const order = [...strip.children].map((item) => Number(item.dataset.index));
+      const current = draft.assetFiles[galleryIndex];
+      draft.assetFiles = order.map((index) => draft.assetFiles[index]);
+      galleryIndex = Math.max(0, draft.assetFiles.indexOf(current));
+      renderAssetPreview();
+      syncAutoCover();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  });
 }
 
 function moveAsset(delta) {
