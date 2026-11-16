@@ -498,7 +498,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
 .optional-note { margin-left: 6px; color: var(--faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
-#copy-field.is-optional textarea:not(:focus):placeholder-shown { opacity: 0.55; }
+#copy-field.is-optional textarea:not(:focus):placeholder-shown, #tags-field.is-optional input:not(:focus):placeholder-shown { opacity: 0.55; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
 .discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
@@ -817,7 +817,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
           </div>
         </div>
         <div class="field" id="copy-field"><label for="f-copy">Copy <span class="optional-note" id="copy-optional" hidden>Optional</span></label><textarea id="f-copy" placeholder="Final caption"></textarea></div>
-        <div class="field"><label for="f-tags">Tags</label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
+        <div class="field" id="tags-field"><label for="f-tags">Tags <span class="optional-note" id="tags-optional" hidden>Optional</span></label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
         <div class="field">
           <label for="f-link">Link</label>
           <div class="asset-row">
@@ -1499,7 +1499,7 @@ function missingFields(post) {
   if (!story && !post.coverFile) missing.push("Cover image");
   if (!(post.platforms || []).length) missing.unshift("Platform");
   if (!story && !(post.copy || "").trim()) missing.push("Copy");
-  if (!(post.tags || "").trim()) missing.push("Tags");
+  if (!story && !(post.tags || "").trim()) missing.push("Tags");
   return missing;
 }
 
@@ -2940,7 +2940,7 @@ function purgeRemovedFiles(ids) {
   if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
 
-/* Stories skip the cover (they never show on the grid) and copy is optional. */
+/* Stories skip the cover (they never show on the grid); copy and tags are optional. */
 function renderKindPick() {
   const story = draft && draft.kind === "story";
   document.querySelectorAll("[data-kind]").forEach((button) => {
@@ -2951,6 +2951,9 @@ function renderKindPick() {
   $("copy-optional").hidden = !story;
   $("copy-field").classList.toggle("is-optional", story);
   $("f-copy").placeholder = story ? "Only if the story has text" : "Final caption";
+  $("tags-optional").hidden = !story;
+  $("tags-field").classList.toggle("is-optional", story);
+  $("f-tags").placeholder = story ? "Only if the story tags anyone" : "Accounts to tag, or n/a";
 }
 document.querySelectorAll("[data-kind]").forEach((button) => button.addEventListener("click", () => {
   if (!draft || state.readOnly) return;
