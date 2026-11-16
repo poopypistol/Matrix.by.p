@@ -622,8 +622,8 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     </header>
 
     <div class="platform-bar mode-options text-toggle" role="group" aria-label="Platform">
-      <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts">Instagram</button>
-      <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts">TikTok</button>
+      <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Double-click to show only these.">Instagram</button>
+      <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Double-click to show only these.">TikTok</button>
     </div>
 
     <section class="grid-wrap" aria-label="Month calendar">
@@ -3562,7 +3562,19 @@ document.querySelectorAll("[data-ratio]").forEach((button) => button.addEventLis
   renderFeed();
 }));
 document.querySelectorAll("[data-platform-view]").forEach((button) => button.addEventListener("click", () => {
-  togglePlatform(button.dataset.platformView);
+  const platform = button.dataset.platformView;
+  const other = platform === "ig" ? "tt" : "ig";
+  const solo = platformsShown[platform] && !platformsShown[other];
+  /* Double-click shows only this platform, or both again if it already was the only one. */
+  const tap = doubleTap("platform-" + platform, solo);
+  if (tap) {
+    platformsShown = { [platform]: true, [other]: tap.wasSolo };
+    if (!tap.wasSolo) state.feedRatio = platform;
+    try { localStorage.setItem("declan-platforms", JSON.stringify(platformsShown)); } catch (error) {}
+    renderPlatformView();
+  } else {
+    togglePlatform(platform);
+  }
   renderMonth();
 }));
 renderPlatformView();
