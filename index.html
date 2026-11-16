@@ -238,7 +238,6 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .column h2 span { color: var(--muted); font-weight: 500; }
 .count-btn.is-approved, .count-btn.is-approved[aria-pressed="true"] { color: var(--good); }
 .count-btn.is-approved .key { border-color: var(--good); }
-.count-btn.is-approved[aria-pressed="false"] { opacity: .65; }
 .bell-btn { position: relative; }
 .bell-btn .bump-count { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 4px; font-size: 11px; }
 .gate { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px; background: var(--bg); }
@@ -335,10 +334,11 @@ h1 {
   font-size: clamp(28px, 3.8vw, 44px); line-height: 1; letter-spacing: -.05em;
 }
 h1 em { color: var(--faint); font-style: normal; }
-.count { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 0 -8px; color: var(--muted); font-size: 14px; }
-.count-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 8px; border-radius: 4px; color: var(--muted); transition: background .15s ease; }
-.count-btn:hover { background: var(--hover); }
-.count-btn[aria-pressed="true"] { color: var(--fg); }
+.count { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 14px; }
+/* Stage filters: bright when on, faded when off, like the platform toggles. */
+.count-btn { display: inline-flex; align-items: center; min-height: 28px; padding: 0; color: var(--fg); font-weight: 600; opacity: 0.35; transition: opacity .12s; }
+.count-btn:hover { opacity: 0.7; }
+.count-btn[aria-pressed="true"] { opacity: 1; }
 .key { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 3px; font-size: 11px; font-style: normal; font-weight: 700; line-height: 1; }
 .key.filled { border: 1.5px solid var(--faint); }
 .key.dashed { border: 1.5px dashed var(--faint); }
@@ -2166,7 +2166,7 @@ function renderCount(counts) {
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
     button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
-    button.append(el("i", "key filled", shown ? "✓" : ""), total + " " + group.label);
+    button.append(total + " " + group.label);
     button.addEventListener("click", () => {
       const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
       const tap = doubleTap("group-" + group.id, solo);
