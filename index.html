@@ -280,10 +280,10 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .mode-options { display: flex; flex-wrap: wrap; gap: 4px; }
 .platform-bar { margin: 0 0 12px; gap: 14px; }
 /* A view filter, not an action: plain text, with a check on the one showing. */
-.platform-bar .quiet { min-height: 28px; padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
-.platform-bar .quiet:hover { background: none; color: var(--fg); }
-.platform-bar .quiet[aria-pressed="true"] { background: none; color: var(--fg); }
-.platform-bar .quiet[aria-pressed="true"]::before { content: "✓"; margin-right: 5px; }
+.platform-bar.mode-options .quiet { min-height: 28px; padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
+.platform-bar.mode-options .quiet:hover { background: none; color: var(--fg); }
+.platform-bar.mode-options .quiet[aria-pressed="true"] { background: none; color: var(--fg); }
+.platform-bar.mode-options .quiet[aria-pressed="true"]::before { content: "✓"; margin-right: 5px; }
 .mode-options .quiet { min-height: 34px; padding: 0 10px; font-size: 13px; }
 .mode-options .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .danger-btn { color: var(--danger); margin-right: auto; }
