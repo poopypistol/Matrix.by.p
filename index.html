@@ -494,7 +494,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-thumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 4px; overflow: hidden; background: var(--hover); color: var(--muted); font-size: 11px; font-weight: 600; }
 .gallery-thumb[aria-current="true"] { border-color: var(--accent); }
 .gallery-strip .gallery-thumb { cursor: grab; touch-action: none; }
-.gallery-thumb.is-dragging { cursor: grabbing; opacity: 0.6; }
+.gallery-thumb.is-dragging { opacity: 0.25; border: 2px dashed var(--muted); }
+.gallery-thumb.is-dragging > * { visibility: hidden; }
+.gallery-ghost { position: fixed; z-index: 10; margin: 0; pointer-events: none; transform: scale(1.08) rotate(-2deg); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); border-color: var(--accent); }
+body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
 .gallery-thumb img, .gallery-thumb video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .gallery-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .gallery-actions .quiet { min-height: 32px; padding: 0 10px; font-size: 13px; }
@@ -2793,12 +2796,25 @@ function dragToReorder(thumb, strip) {
     const startX = event.clientX;
     const startY = event.clientY;
     let dragging = false;
+    let ghost = null;
+    const box = thumb.getBoundingClientRect();
+    const grabX = startX - box.left;
+    const grabY = startY - box.top;
     const move = (moveEvent) => {
       if (!dragging) {
         if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 6) return;
         dragging = true;
+        /* A copy follows the pointer; the original stays behind as a faded slot. */
+        ghost = thumb.cloneNode(true);
+        ghost.className = "gallery-thumb gallery-ghost";
+        ghost.removeAttribute("aria-current");
+        ghost.setAttribute("aria-hidden", "true");
+        thumb.closest("dialog").append(ghost);
         thumb.classList.add("is-dragging");
+        document.body.classList.add("is-grabbing");
       }
+      ghost.style.left = moveEvent.clientX - grabX + "px";
+      ghost.style.top = moveEvent.clientY - grabY + "px";
       const others = [...strip.children].filter((item) => item !== thumb);
       const before = others.find((item) => {
         const box = item.getBoundingClientRect();
@@ -2813,6 +2829,8 @@ function dragToReorder(thumb, strip) {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       if (!dragging) return;
+      ghost.remove();
+      document.body.classList.remove("is-grabbing");
       thumb.dataset.dragged = "1";
       thumb.classList.remove("is-dragging");
       const order = [...strip.children].map((item) => Number(item.dataset.index));
