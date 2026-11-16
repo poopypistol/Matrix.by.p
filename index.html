@@ -501,8 +501,8 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 #copy-field.is-optional textarea:not(:focus):placeholder-shown, #tags-field.is-optional input:not(:focus):placeholder-shown { opacity: 0.55; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
-.discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
-.dlg-foot.is-asking > :not(.discard-bar) { display: none; }
+.discard-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
+.dlg-foot.is-asking > :not(.discard-bar), .dlg-foot.is-asking > .discard-bar[hidden] { display: none; }
 .switch { position: relative; width: 44px; height: 26px; padding: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .15s; flex: none; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
 .switch[aria-checked="true"] { background: var(--good); }
@@ -795,6 +795,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
             <button class="quiet" type="button" data-platform="ig" aria-pressed="false">Instagram</button>
             <button class="quiet" type="button" data-platform="tt" aria-pressed="false">TikTok</button>
           </div>
+          <p class="side-note" id="both-note" hidden>One post on both. When you edit it later, you can change just one.</p>
         </div>
         <div class="field drop-zone" id="asset-drop">
           <label for="f-asset">Asset</label>
@@ -836,6 +837,12 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     </div>
     </fieldset>
     <div class="dlg-foot">
+      <div class="discard-bar" id="split-bar" hidden>
+        <span>This post is on Instagram and TikTok. Save changes to:</span>
+        <button class="quiet" type="button" data-split="both">Both</button>
+        <button class="quiet" type="button" data-split="ig">Only Instagram</button>
+        <button class="quiet" type="button" data-split="tt">Only TikTok</button>
+      </div>
       <div class="discard-bar" id="discard-bar" hidden>
         <span>Discard your changes?</span>
         <button class="quiet" id="keep-editing" type="button">Keep editing</button>
@@ -2315,6 +2322,7 @@ function historyText(entry) {
     case "back": return who + " moved back to " + phaseName(entry.stage);
     case "bump": return who + " bumped " + (entry.to || []).map(objName).join(", ") + note;
     case "auto": return "Moved back to Draft because info was missing";
+    case "split": return who + " made this its own " + (entry.platform === "tt" ? "TikTok" : "Instagram") + " post";
     case "created": return who + " created this post";
     default: return who + " updated this post";
   }
@@ -2631,6 +2639,22 @@ function postSnapshot() {
     (draft.assetFiles || []).map((file) => file.id), draft.coverFile ? draft.coverFile.id : null
   ]);
 }
+function contentSnapshot() {
+  return JSON.stringify(JSON.parse(postSnapshot()).filter((_, index) => index !== 8));
+}
+let openContent = "";
+function askSplit(show) {
+  $("split-bar").hidden = !show;
+  document.querySelector("#post-dialog .dlg-foot").classList.toggle("is-asking", show);
+  if (show) {
+    const only = ["ig", "tt"].filter((key) => platformsShown[key]);
+    const suggest = only.length === 1 ? only[0] : "both";
+    document.querySelectorAll("[data-split]").forEach((button) => {
+      button.className = button.dataset.split === suggest ? "primary" : "quiet";
+    });
+    document.querySelector('[data-split="' + suggest + '"]').focus();
+  }
+}
 function askDiscard(show) {
   $("discard-bar").hidden = !show;
   document.querySelector("#post-dialog .dlg-foot").classList.toggle("is-asking", show);
@@ -2679,8 +2703,11 @@ function openDialog() {
   renderComments();
   updateHint();
   askDiscard(false);
+  askSplit(false);
+  draft.splitChoice = null;
   $("post-dialog").showModal();
   openSnapshot = postSnapshot();
+  openContent = contentSnapshot();
   if (!postInHistory) { history.pushState({ post: true }, "", location.href); postInHistory = true; }
   if (!editing) $("f-title").focus();
 }
@@ -2964,6 +2991,7 @@ document.querySelectorAll("[data-kind]").forEach((button) => button.addEventList
 
 function renderPlatformPick() {
   const picked = (draft && draft.platforms) || [];
+  $("both-note").hidden = picked.length < 2 || state.readOnly;
   document.querySelectorAll("[data-platform]").forEach((button) => {
     button.setAttribute("aria-pressed", String(picked.includes(button.dataset.platform)));
     button.disabled = state.readOnly;
@@ -2973,6 +3001,12 @@ document.querySelectorAll("[data-platform]").forEach((button) => button.addEvent
   if (!draft || state.readOnly) return;
   const id = button.dataset.platform;
   const picked = new Set(draft.platforms || []);
+  if (doubleTap("pick-" + id)) {
+    draft.platforms = [id];
+    renderPlatformPick();
+    updateHint();
+    return;
+  }
   if (picked.has(id)) picked.delete(id);
   else picked.add(id);
   draft.platforms = ["ig", "tt"].filter((item) => picked.has(item));
@@ -3361,6 +3395,16 @@ async function savePost(event) {
     return;
   }
   const isNew = !editing;
+  const wasBoth = !isNew && ["ig", "tt"].every((key) => (editing.platforms || []).includes(key));
+  const staysBoth = ["ig", "tt"].every((key) => fields.platforms.includes(key));
+  if (wasBoth && staysBoth && contentSnapshot() !== openContent && !draft.splitChoice) {
+    askSplit(true);
+    return;
+  }
+  if (wasBoth && staysBoth && (draft.splitChoice === "ig" || draft.splitChoice === "tt")) {
+    await splitPost(fields, draft.splitChoice);
+    return;
+  }
   $("save-post").disabled = true;
   try {
     if (db) {
@@ -3395,6 +3439,40 @@ async function savePost(event) {
   $("post-dialog").close();
   render();
   showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
+}
+
+/* Saves the edits as a separate post for one platform; the original keeps the other platform, unchanged. */
+async function splitPost(fields, platform) {
+  const error = $("form-error");
+  const other = platform === "ig" ? "tt" : "ig";
+  const name = platform === "ig" ? "Instagram" : "TikTok";
+  const at = Date.now();
+  const copy = {
+    ...fields, platforms: [platform], stage: stageOf(editing), manager: editing.manager || null,
+    history: [...(editing.history || []), { type: "split", platform, by: myId, at }],
+    comments: [], createdBy: editing.createdBy || myId
+  };
+  const newIdValue = newId();
+  $("save-post").disabled = true;
+  try {
+    if (db) {
+      await db.collection("posts").doc(newIdValue).set(copy);
+      await db.collection("posts").doc(editing.id).update({ platforms: [other] });
+    }
+  } catch (problem) {
+    error.textContent = saveProblem(problem);
+    error.hidden = false;
+    $("save-post").disabled = false;
+    return;
+  }
+  $("save-post").disabled = false;
+  const original = state.posts.find((post) => post.id === editing.id);
+  if (original) original.platforms = [other];
+  state.posts.push({ id: newIdValue, ...copy });
+  /* Files stay: both posts still use them. */
+  $("post-dialog").close();
+  render();
+  showToast("Saved as its own " + name + " post");
 }
 
 /* Moves a post to a new day after it's dragged on the calendar. */
@@ -3776,6 +3854,11 @@ $("post-form").addEventListener("input", (event) => {
 $("close-dialog").addEventListener("click", requestClosePost);
 $("cancel").addEventListener("click", requestClosePost);
 $("keep-editing").addEventListener("click", () => askDiscard(false));
+document.querySelectorAll("[data-split]").forEach((button) => button.addEventListener("click", () => {
+  draft.splitChoice = button.dataset.split;
+  askSplit(false);
+  $("post-form").requestSubmit();
+}));
 $("discard-changes").addEventListener("click", () => { askDiscard(false); $("post-dialog").close(); });
 /* Esc asks too, instead of throwing edits away. */
 $("post-dialog").addEventListener("cancel", (event) => {
