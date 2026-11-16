@@ -278,12 +278,12 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .bump-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
 .bump-name .bump-swatch { margin-top: 0; }
 .mode-options { display: flex; flex-wrap: wrap; gap: 4px; }
-.platform-bar { margin: 0 0 12px; gap: 14px; }
-/* A view filter, not an action: plain text, with a check on the one showing. */
-.platform-bar.mode-options .quiet { min-height: 28px; padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
-.platform-bar.mode-options .quiet:hover { background: none; color: var(--fg); }
-.platform-bar.mode-options .quiet[aria-pressed="true"] { background: none; color: var(--fg); }
-.platform-bar.mode-options .quiet[aria-pressed="true"]::before { content: "✓"; margin-right: 5px; }
+.platform-bar { margin: 0 0 12px; }
+/* Platform toggles: bright when on, faded when off. */
+.text-toggle.mode-options { gap: 16px; }
+.text-toggle.mode-options .quiet { min-height: 28px; padding: 0; border: 0; background: none; color: var(--fg); opacity: 0.35; font-size: 14px; font-weight: 600; transition: opacity .12s; }
+.text-toggle.mode-options .quiet:hover { background: none; opacity: 0.7; }
+.text-toggle.mode-options .quiet[aria-pressed="true"] { background: none; color: var(--fg); opacity: 1; }
 .mode-options .quiet { min-height: 34px; padding: 0 10px; font-size: 13px; }
 .mode-options .quiet[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .danger-btn { color: var(--danger); margin-right: auto; }
@@ -496,7 +496,6 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-arrow.next { right: 8px; }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
-#platform-pick [aria-pressed="true"]::before { content: "✓"; margin-right: 6px; font-weight: 700; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
 .discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
@@ -622,10 +621,9 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
       </div>
     </header>
 
-    <div class="platform-bar mode-options" role="group" aria-label="Platform">
-      <button class="quiet" type="button" data-platform-view="all" aria-pressed="true">All</button>
-      <button class="quiet" type="button" data-platform-view="ig" aria-pressed="false">Instagram</button>
-      <button class="quiet" type="button" data-platform-view="tt" aria-pressed="false">TikTok</button>
+    <div class="platform-bar mode-options text-toggle" role="group" aria-label="Platform">
+      <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts">Instagram</button>
+      <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts">TikTok</button>
     </div>
 
     <section class="grid-wrap" aria-label="Month calendar">
@@ -654,7 +652,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     <h1 id="feed-title">Feed</h1>
     <div class="feed-bar">
       <p class="side-note">How this client’s posts will look on their grid. Pick a client on the left.</p>
-      <div class="mode-options" role="group" aria-label="Grid shape">
+      <div class="mode-options text-toggle" role="group" aria-label="Grid shape">
         <button class="quiet" type="button" data-ratio="ig" aria-pressed="true">Instagram</button>
         <button class="quiet" type="button" data-ratio="tt" aria-pressed="false">TikTok</button>
       </div>
@@ -781,7 +779,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
       <section class="template" aria-label="Post template">
         <div class="field">
           <span class="field-label" id="platform-label">Platform</span>
-          <div class="mode-options" id="platform-pick" role="group" aria-labelledby="platform-label">
+          <div class="mode-options text-toggle" id="platform-pick" role="group" aria-labelledby="platform-label">
             <button class="quiet" type="button" data-platform="ig" aria-pressed="false">Instagram</button>
             <button class="quiet" type="button" data-platform="tt" aria-pressed="false">TikTok</button>
           </div>
@@ -1490,15 +1488,22 @@ function missingFields(post) {
   return missing;
 }
 
-let platformView = "all";
-try { platformView = localStorage.getItem("declan-platform") || "all"; } catch (error) {}
+let platformsShown = { ig: true, tt: true };
+try { platformsShown = { ...platformsShown, ...JSON.parse(localStorage.getItem("declan-platforms") || "{}") }; } catch (error) {}
 // A post with no platform picked yet shows under both, so nothing goes missing.
-const onPlatform = (post) => platformView === "all" || !(post.platforms || []).length || post.platforms.includes(platformView);
-function setPlatformView(value) {
-  platformView = value;
-  if (value !== "all") state.feedRatio = value;
-  try { localStorage.setItem("declan-platform", value); } catch (error) {}
-  document.querySelectorAll("[data-platform-view]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.platformView === value)));
+const onPlatform = (post) => !(post.platforms || []).length || post.platforms.some((platform) => platformsShown[platform]);
+function renderPlatformView() {
+  document.querySelectorAll("[data-platform-view]").forEach((button) => button.setAttribute("aria-pressed", String(Boolean(platformsShown[button.dataset.platformView]))));
+}
+/* Turning off the only platform showing switches to the other one, so the calendar is never empty. */
+function togglePlatform(platform) {
+  const other = platform === "ig" ? "tt" : "ig";
+  if (platformsShown[platform] && !platformsShown[other]) platformsShown = { [platform]: false, [other]: true };
+  else platformsShown[platform] = !platformsShown[platform];
+  const only = Object.keys(platformsShown).filter((key) => platformsShown[key]);
+  if (only.length === 1) state.feedRatio = only[0];
+  try { localStorage.setItem("declan-platforms", JSON.stringify(platformsShown)); } catch (error) {}
+  renderPlatformView();
 }
 
 function postsOn(key) {
@@ -3553,14 +3558,14 @@ $("cal-btn").addEventListener("click", (event) => {
 $("menu-cal").addEventListener("click", () => { setCalMenu(false); showView("calendar"); });
 $("menu-feed").addEventListener("click", () => { setCalMenu(false); showView("feed"); });
 document.querySelectorAll("[data-ratio]").forEach((button) => button.addEventListener("click", () => {
-  setPlatformView(button.dataset.ratio);
+  state.feedRatio = button.dataset.ratio;
   renderFeed();
 }));
 document.querySelectorAll("[data-platform-view]").forEach((button) => button.addEventListener("click", () => {
-  setPlatformView(button.dataset.platformView);
+  togglePlatform(button.dataset.platformView);
   renderMonth();
 }));
-setPlatformView(platformView);
+renderPlatformView();
 $("bumps").addEventListener("click", (event) => {
   event.stopPropagation();
   setNotifMenu($("notif-menu").hidden);
