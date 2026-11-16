@@ -491,6 +491,16 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-arrow.next { right: 8px; }
 .gallery-count { position: absolute; top: 8px; right: 8px; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 600; }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
+.drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
+.discard-bar { display: flex; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
+.dlg-foot.is-asking > :not(.discard-bar) { display: none; }
+.switch { position: relative; width: 44px; height: 26px; padding: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--good); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch > button { display: none; }
 .gallery-thumb { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: 4px; overflow: hidden; background: var(--hover); color: var(--muted); font-size: 11px; font-weight: 600; }
 .gallery-thumb[aria-current="true"] { border-color: var(--accent); }
 .gallery-strip .gallery-thumb { cursor: grab; touch-action: none; }
@@ -668,7 +678,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
       <p class="empty" id="push-status">Checking this device.</p>
       <p class="empty">Notifications don't work in private browsing windows.</p>
       <div class="theme-options push-options">
-        <div class="mode-options" id="push-toggle" role="group" aria-label="Notifications on this device">
+        <div class="mode-options switch" id="push-toggle" role="switch" tabindex="0" aria-label="Notifications on this device">
           <button class="quiet" id="push-on" type="button" aria-pressed="false">On</button>
           <button class="quiet" id="push-off" type="button" aria-pressed="true">Off</button>
         </div>
@@ -677,7 +687,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
       <h3 class="group-title" id="slack-title">Slack</h3>
       <p class="empty">DMA team only. Get your notifications and bumps from declan in a Slack direct message. Your declan email must match your Slack email.</p>
       <div class="theme-options push-options">
-        <div class="mode-options" id="slack-modes" role="group" aria-labelledby="slack-title">
+        <div class="mode-options switch" id="slack-modes" role="switch" tabindex="0" aria-labelledby="slack-title">
           <button class="quiet" type="button" data-slack="on">On</button>
           <button class="quiet" type="button" data-slack="off">Off</button>
         </div>
@@ -770,7 +780,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
             <button class="quiet" type="button" data-platform="tt" aria-pressed="false">TikTok</button>
           </div>
         </div>
-        <div class="field">
+        <div class="field drop-zone" id="asset-drop">
           <label for="f-asset">Asset</label>
           <div class="asset-row">
             <input id="f-asset" type="text" placeholder="Paste a link or upload files" autocomplete="off">
@@ -779,7 +789,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
           </div>
           <div class="asset-preview" id="asset-preview" hidden></div>
         </div>
-        <div class="field">
+        <div class="field drop-zone" id="cover-drop">
           <label for="upload-cover">Cover image</label>
           <div class="cover-row">
             <div class="cover-thumb" id="cover-thumb"></div>
@@ -810,6 +820,11 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     </div>
     </fieldset>
     <div class="dlg-foot">
+      <div class="discard-bar" id="discard-bar" hidden>
+        <span>Discard your changes?</span>
+        <button class="quiet" id="keep-editing" type="button">Keep editing</button>
+        <button class="primary" id="discard-changes" type="button">Discard</button>
+      </div>
       <p class="error" id="form-error" hidden></p>
       <button class="quiet danger-btn" id="delete-post" type="button">Delete post</button>
       <button class="quiet" id="cancel" type="button">Cancel</button>
@@ -2578,6 +2593,29 @@ function fillClientOptions() {
   }
 }
 
+/* Remembers how the post looked when it opened, to catch unsaved edits. */
+let openSnapshot = "";
+let postInHistory = false;
+function postSnapshot() {
+  const value = (id) => $(id).value;
+  return JSON.stringify([
+    value("f-title"), value("f-client"), value("f-date"), value("f-time"), value("f-asset"), value("f-copy"),
+    value("f-tags"), value("f-link"), value("comment-input"), draft.platforms || [],
+    (draft.assetFiles || []).map((file) => file.id), draft.coverFile ? draft.coverFile.id : null
+  ]);
+}
+function askDiscard(show) {
+  $("discard-bar").hidden = !show;
+  document.querySelector("#post-dialog .dlg-foot").classList.toggle("is-asking", show);
+  if (show) $("keep-editing").focus();
+}
+function requestClosePost() {
+  const dialog = $("post-dialog");
+  if (!dialog.open) return;
+  if (!state.readOnly && postSnapshot() !== openSnapshot) askDiscard(true);
+  else dialog.close();
+}
+
 function openDialog() {
   fillClientOptions();
   $("f-title").value = draft.title;
@@ -2612,7 +2650,10 @@ function openDialog() {
   renderTracker();
   renderComments();
   updateHint();
+  askDiscard(false);
   $("post-dialog").showModal();
+  openSnapshot = postSnapshot();
+  if (!postInHistory) { history.pushState({ post: true }, "", location.href); postInHistory = true; }
   if (!editing) $("f-title").focus();
 }
 
@@ -3536,10 +3577,12 @@ document.querySelectorAll("dialog").forEach((dialog) => {
     if (event.target !== dialog) return;
     const box = dialog.getBoundingClientRect();
     const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
-    if (!inside) dialog.close();
+    if (!inside) dialog.id === "post-dialog" ? requestClosePost() : dialog.close();
   });
 });
-function showView(view) {
+let viewHistoryReady = false;
+function showView(view, fromHistory) {
+  const changed = view !== currentView;
   currentView = view;
   if (view === "feed" && !clientById(state.feedClient) && state.clients.length) state.feedClient = state.clients[0].id;
   $("feed-view").hidden = view !== "feed";
@@ -3555,7 +3598,11 @@ function showView(view) {
   $("client-panel").hidden = view !== "calendar" && view !== "feed";
   renderClients();
   renderFeed();
-  history.replaceState(null, "", view === "calendar" ? location.pathname : "#" + view);
+  const address = view === "calendar" ? location.pathname : "#" + view;
+  if (!fromHistory) {
+    if (changed && viewHistoryReady) history.pushState({ view }, "", address);
+    else history.replaceState(history.state, "", address);
+  }
   window.scrollTo(0, 0);
 }
 document.querySelectorAll("[data-tab]").forEach((tab) => tab.addEventListener("click", () => {
@@ -3661,8 +3708,60 @@ $("post-form").addEventListener("input", (event) => {
   if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
   if (event.target.id === "f-link") readTemplate();
 });
-$("close-dialog").addEventListener("click", () => $("post-dialog").close());
-$("cancel").addEventListener("click", () => $("post-dialog").close());
+$("close-dialog").addEventListener("click", requestClosePost);
+$("cancel").addEventListener("click", requestClosePost);
+$("keep-editing").addEventListener("click", () => askDiscard(false));
+$("discard-changes").addEventListener("click", () => { askDiscard(false); $("post-dialog").close(); });
+/* Esc asks too, instead of throwing edits away. */
+$("post-dialog").addEventListener("cancel", (event) => {
+  event.preventDefault();
+  requestClosePost();
+});
+$("post-dialog").addEventListener("close", () => {
+  askDiscard(false);
+  if (postInHistory) { postInHistory = false; history.back(); }
+});
+
+/* Files dropped from the computer upload like the Upload buttons. */
+function dropFiles(zone, handle) {
+  const hasFiles = (event) => [...(event.dataTransfer?.types || [])].includes("Files");
+  zone.addEventListener("dragover", (event) => {
+    if (!hasFiles(event) || state.readOnly || !assets) return;
+    event.preventDefault();
+    zone.classList.add("is-over");
+  });
+  zone.addEventListener("dragleave", (event) => {
+    if (!zone.contains(event.relatedTarget)) zone.classList.remove("is-over");
+  });
+  zone.addEventListener("drop", (event) => {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    zone.classList.remove("is-over");
+    if (state.readOnly || !assets) return;
+    handle([...event.dataTransfer.files]);
+  });
+}
+dropFiles($("asset-drop"), (files) => uploadAssets(files));
+dropFiles($("cover-drop"), (files) => {
+  const image = files.find((file) => (file.type || "").startsWith("image/"));
+  uploadCover(image || files[0]);
+});
+/* A file dropped anywhere else in the post shouldn't make the browser open it. */
+["dragover", "drop"].forEach((name) => $("post-dialog").addEventListener(name, (event) => {
+  if ([...(event.dataTransfer?.types || [])].includes("Files")) event.preventDefault();
+}));
+
+/* On/off switches: one click flips them. */
+document.querySelectorAll(".switch").forEach((toggle) => {
+  const sync = () => toggle.setAttribute("aria-checked", String(toggle.querySelector("button")?.getAttribute("aria-pressed") === "true"));
+  new MutationObserver(sync).observe(toggle, { subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
+  sync();
+  const flip = () => [...toggle.querySelectorAll("button")].find((button) => button.getAttribute("aria-pressed") !== "true")?.click();
+  toggle.addEventListener("click", (event) => { if (event.target === toggle) flip(); });
+  toggle.addEventListener("keydown", (event) => {
+    if (event.key === " " || event.key === "Enter") { event.preventDefault(); flip(); }
+  });
+});
 $("close-client").addEventListener("click", () => $("client-dialog").close());
 $("cancel-client").addEventListener("click", () => $("client-dialog").close());
 $("add-comment").addEventListener("click", addComment);
@@ -3776,6 +3875,26 @@ if (!["#settings", "#notifications", "#bumps", "#pipeline", "#feed"].includes(lo
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
+/* Back closes an open post first, then steps back through screens. */
+window.addEventListener("popstate", () => {
+  const dialog = $("post-dialog");
+  if (dialog.open && postInHistory) {
+    postInHistory = false;
+    if (!state.readOnly && postSnapshot() !== openSnapshot) {
+      history.pushState({ post: true }, "", location.href);
+      postInHistory = true;
+      askDiscard(true);
+    } else {
+      dialog.close();
+    }
+    return;
+  }
+  const hash = location.hash.slice(1);
+  const views = ["settings", "notifications", "bumps", "pipeline", "feed"];
+  const target = views.includes(hash) ? hash : "calendar";
+  if (target !== currentView) showView(target, true);
+});
+viewHistoryReady = true;
 render();
 connect().then(() => {
   if (location.hash === "#settings") loadAccess();
