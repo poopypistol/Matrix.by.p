@@ -499,7 +499,10 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; }
 .optional-note { margin-left: 6px; color: var(--faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
 #copy-field.is-optional textarea:not(:focus):placeholder-shown, #tags-field.is-optional input:not(:focus):placeholder-shown { opacity: 0.55; }
-.both-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 6px; }
+.variant-row { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+#variant-confirm { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+#variant-confirm[hidden] { display: none; }
+.version-field { padding-top: 14px; border-top: 1px solid var(--line); }
 .link-btn { padding: 0; border: 0; background: none; color: var(--fg); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
@@ -797,11 +800,24 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
             <button class="quiet" type="button" data-platform="ig" aria-pressed="false">Instagram</button>
             <button class="quiet" type="button" data-platform="tt" aria-pressed="false">TikTok</button>
           </div>
-          <p class="side-note both-note" id="both-note" hidden>
-            <span id="both-text">Both use the same asset and copy.</span>
-            <button class="link-btn" id="edit-one" type="button">Edit just one</button>
-            <span id="pick-one" hidden>Edit just <button class="link-btn" type="button" data-only="ig">Instagram</button> · <button class="link-btn" type="button" data-only="tt">TikTok</button></span>
-          </p>
+          <div class="variant-row" id="variant-row" hidden>
+            <div class="mode-options text-toggle" id="variant-pick" role="group" aria-label="Asset and copy on each platform">
+              <button class="quiet" type="button" data-variant="same" aria-pressed="true">Same for both</button>
+              <button class="quiet" type="button" data-variant="different" aria-pressed="false">Different for each</button>
+            </div>
+            <p class="side-note" id="variant-confirm" hidden>
+              <span id="variant-question"></span>
+              <button class="link-btn" id="variant-yes" type="button">Yes</button>
+              <button class="link-btn" id="variant-no" type="button">Cancel</button>
+            </p>
+          </div>
+        </div>
+        <div class="field version-field" id="version-field" hidden>
+          <span class="field-label" id="version-label">Editing</span>
+          <div class="mode-options text-toggle" id="version-pick" role="group" aria-labelledby="version-label">
+            <button class="quiet" type="button" data-version="ig" aria-pressed="true">Instagram version</button>
+            <button class="quiet" type="button" data-version="tt" aria-pressed="false">TikTok version</button>
+          </div>
         </div>
         <div class="field drop-zone" id="asset-drop">
           <label for="f-asset">Asset</label>
@@ -843,12 +859,6 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     </div>
     </fieldset>
     <div class="dlg-foot">
-      <div class="discard-bar" id="split-bar" hidden>
-        <span>This post is on Instagram and TikTok. Save changes to:</span>
-        <button class="quiet" type="button" data-split="both">Both</button>
-        <button class="quiet" type="button" data-split="ig">Only Instagram</button>
-        <button class="quiet" type="button" data-split="tt">Only TikTok</button>
-      </div>
       <div class="discard-bar" id="discard-bar" hidden>
         <span>Discard your changes?</span>
         <button class="quiet" id="keep-editing" type="button">Keep editing</button>
@@ -2384,7 +2394,7 @@ function renderLinkOpen() {
 function updateHint() {
   readTemplate();
   const hint = $("hint");
-  const missing = missingFields(draft);
+  const missing = draftMissing();
   const stage = editing ? stageOf(editing) : "draft";
   if (!missing.length) {
     hint.replaceChildren(stage === "draft" ? el("strong", "", "Everything is filled in. ") : "", stage === "draft" ? "Send it to a manager when it's ready." : "");
@@ -2478,7 +2488,7 @@ function renderActions() {
     const send = button("Send to manager", true, () => {
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
     });
-    send.disabled = missingFields(draft).length > 0 || !pick.options.length;
+    send.disabled = draftMissing().length > 0 || !pick.options.length;
     box.append(pick, send);
   } else if (stage === "internal") {
     const others = reviewers(editing).filter((person) => person.email !== editing.manager);
@@ -2566,6 +2576,7 @@ function fieldProblem(fields) {
 
 /* Saves the post and moves it to a new stage, then offers Undo. */
 async function changeStage(nextStage, entry, extra = {}, toast) {
+  if (isDifferent()) return saveVersions({ nextStage, entry, extra, toast });
   const fields = postFields();
   const error = $("form-error");
   const problem = fieldProblem(fields);
@@ -2642,24 +2653,9 @@ function postSnapshot() {
   return JSON.stringify([
     value("f-title"), value("f-client"), value("f-date"), value("f-time"), value("f-asset"), value("f-copy"),
     value("f-tags"), value("f-link"), value("comment-input"), draft.platforms || [], draft.kind || "post",
+    draft.variant || "same", draft.versions ? draft.versions[draft.activeVersion === "ig" ? "tt" : "ig"] : null,
     (draft.assetFiles || []).map((file) => file.id), draft.coverFile ? draft.coverFile.id : null
   ]);
-}
-function contentSnapshot() {
-  return JSON.stringify(JSON.parse(postSnapshot()).filter((_, index) => index !== 8));
-}
-let openContent = "";
-function askSplit(show) {
-  $("split-bar").hidden = !show;
-  document.querySelector("#post-dialog .dlg-foot").classList.toggle("is-asking", show);
-  if (show) {
-    const only = ["ig", "tt"].filter((key) => platformsShown[key]);
-    const suggest = only.length === 1 ? only[0] : "both";
-    document.querySelectorAll("[data-split]").forEach((button) => {
-      button.className = button.dataset.split === suggest ? "primary" : "quiet";
-    });
-    document.querySelector('[data-split="' + suggest + '"]').focus();
-  }
 }
 function askDiscard(show) {
   $("discard-bar").hidden = !show;
@@ -2709,13 +2705,8 @@ function openDialog() {
   renderComments();
   updateHint();
   askDiscard(false);
-  askSplit(false);
-  draft.splitChoice = null;
-  $("pick-one").hidden = true;
-  renderPlatformPick();
   $("post-dialog").showModal();
   openSnapshot = postSnapshot();
-  openContent = contentSnapshot();
   if (!postInHistory) { history.pushState({ post: true }, "", location.href); postInHistory = true; }
   if (!editing) $("f-title").focus();
 }
@@ -2997,15 +2988,174 @@ document.querySelectorAll("[data-kind]").forEach((button) => button.addEventList
   updateHint();
 }));
 
+/* Posts on both platforms can share one asset and copy, or have a version for each.
+   With "Different for each", the form edits one version at a time and saving makes two posts. */
+const VERSION_KEYS = ["asset", "copy", "tags", "link", "assetFiles", "coverFile"];
+const PLATFORM_NAME = { ig: "Instagram", tt: "TikTok" };
+const isBoth = () => Boolean(draft) && ["ig", "tt"].every((key) => (draft.platforms || []).includes(key));
+const isDifferent = () => isBoth() && draft.variant === "different" && Boolean(draft.versions);
+function versionNow() {
+  readTemplate();
+  const version = {};
+  VERSION_KEYS.forEach((key) => { version[key] = key === "assetFiles" ? [...(draft.assetFiles || [])] : draft[key]; });
+  return version;
+}
+function syncActive() {
+  if (!draft || !draft.versions || !draft.activeVersion) return;
+  const now = versionNow();
+  draft.versions[draft.activeVersion] = now;
+  /* A version nobody has opened yet follows the one being filled in. */
+  const other = draft.activeVersion === "ig" ? "tt" : "ig";
+  if (draft.untouched[other]) draft.versions[other] = { ...now, assetFiles: [...(now.assetFiles || [])] };
+}
+function loadVersion(platform) {
+  const version = draft.versions[platform];
+  VERSION_KEYS.forEach((key) => { draft[key] = key === "assetFiles" ? [...(version.assetFiles || [])] : version[key]; });
+  draft.activeVersion = platform;
+  if (draft.untouched) draft.untouched[platform] = false;
+  $("f-asset").value = draft.asset || "";
+  $("f-copy").value = draft.copy || "";
+  $("f-tags").value = draft.tags || "";
+  $("f-link").value = draft.link || "";
+  renderLinkOpen();
+  galleryIndex = 0;
+  renderAssetPreview();
+  renderCoverPreview();
+}
+function sameVersions() {
+  syncActive();
+  return JSON.stringify(draft.versions.ig) === JSON.stringify(draft.versions.tt);
+}
+function goSame(keep) {
+  if (draft.versions) {
+    syncActive();
+    draft.collapsed = { versions: draft.versions, at: Date.now() };
+    loadVersion(keep || draft.activeVersion || "ig");
+  }
+  draft.variant = "same";
+  draft.versions = null;
+  draft.activeVersion = null;
+  $("variant-confirm").hidden = true;
+  renderVariantRow();
+  updateHint();
+}
+function goDifferent() {
+  if (isDifferent()) return;
+  const now = versionNow();
+  const copy = () => ({ ...now, assetFiles: [...(now.assetFiles || [])] });
+  draft.versions = { ig: copy(), tt: copy() };
+  draft.untouched = { ig: true, tt: true };
+  draft.variant = "different";
+  const only = ["ig", "tt"].filter((key) => platformsShown[key]);
+  draft.activeVersion = only.length === 1 ? only[0] : "ig";
+  loadVersion(draft.activeVersion);
+  renderVariantRow();
+  updateHint();
+}
+function renderVariantRow() {
+  const both = isBoth();
+  const different = isDifferent();
+  $("variant-row").hidden = !both || state.readOnly;
+  document.querySelectorAll("[data-variant]").forEach((button) => {
+    button.setAttribute("aria-pressed", String((button.dataset.variant === "different") === different));
+  });
+  $("version-field").hidden = !different;
+  document.querySelectorAll("[data-version]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.version === draft.activeVersion));
+  });
+}
+/* Everything still missing; with two versions, each one is checked and named. */
+function draftMissing() {
+  if (!isDifferent()) return missingFields(draft);
+  syncActive();
+  const missing = [];
+  ["ig", "tt"].forEach((platform) => {
+    missingFields({ ...draft, ...draft.versions[platform], platforms: [platform] })
+      .forEach((field) => missing.push(PLATFORM_NAME[platform] + " " + field.toLowerCase()));
+  });
+  return missing;
+}
+document.querySelectorAll("[data-variant]").forEach((button) => button.addEventListener("click", () => {
+  if (!draft || state.readOnly) return;
+  if (button.dataset.variant === "different") return goDifferent();
+  if (!isDifferent()) return;
+  if (sameVersions()) return goSame();
+  $("variant-question").textContent = "Use the " + PLATFORM_NAME[draft.activeVersion] + " version for both?";
+  $("variant-confirm").hidden = false;
+}));
+$("variant-yes").addEventListener("click", () => goSame(draft.activeVersion));
+$("variant-no").addEventListener("click", () => { $("variant-confirm").hidden = true; });
+document.querySelectorAll("[data-version]").forEach((button) => button.addEventListener("click", () => {
+  if (!isDifferent() || button.dataset.version === draft.activeVersion) return;
+  syncActive();
+  loadVersion(button.dataset.version);
+  renderVariantRow();
+  updateHint();
+}));
+
+/* Saves two posts, one per platform, each with its own version. An existing post keeps its
+   Instagram version; the TikTok version becomes a new post at the same step. */
+async function saveVersions(change) {
+  syncActive();
+  const error = $("form-error");
+  const base = { title: $("f-title").value.trim(), client: $("f-client").value, date: $("f-date").value, time: $("f-time").value, kind: draft.kind || "post" };
+  const problem = fieldProblem(base);
+  if (problem) {
+    error.textContent = problem;
+    error.hidden = false;
+    return;
+  }
+  const isNew = !editing;
+  const at = Date.now();
+  const owner = isNew ? myId : (editing.createdBy || myId);
+  const startHistory = isNew ? [{ type: "created", by: myId, at }] : [...(editing.history || [])];
+  const ids = { ig: draft.id, tt: newId() };
+  const docs = ["ig", "tt"].map((platform) => {
+    const version = draft.versions[platform];
+    const fields = { ...base, ...version, assetFiles: [...(version.assetFiles || [])], platforms: [platform] };
+    const history = [...startHistory];
+    if (!isNew && platform === "tt") history.push({ type: "split", platform, by: myId, at });
+    let stage = isNew ? "draft" : stageOf(editing);
+    let manager = isNew ? null : editing.manager || null;
+    if (change) {
+      history.push({ ...change.entry, by: myId, at });
+      stage = change.nextStage;
+      if (change.extra && "manager" in change.extra) manager = change.extra.manager;
+    } else if (stage !== "draft" && !isComplete(fields)) {
+      stage = "draft";
+      history.push({ type: "auto", by: myId, at, to: [] });
+    }
+    return { platform, id: ids[platform], fresh: isNew || platform === "tt", doc: { ...fields, stage, manager, history } };
+  });
+  $("save-post").disabled = true;
+  try {
+    for (const item of docs) {
+      const ref = db.collection("posts").doc(item.id);
+      if (item.fresh) await ref.set({ ...item.doc, comments: item.platform === "ig" ? draft.comments || [] : [], createdBy: owner });
+      else await ref.update(item.doc);
+    }
+  } catch (failure) {
+    error.textContent = saveProblem(failure);
+    error.hidden = false;
+    $("save-post").disabled = false;
+    return;
+  }
+  $("save-post").disabled = false;
+  docs.forEach((item) => {
+    const local = state.posts.find((post) => post.id === item.id);
+    if (local) Object.assign(local, item.doc);
+    else state.posts.push({ id: item.id, ...item.doc, comments: item.platform === "ig" ? draft.comments || [] : [], createdBy: owner });
+  });
+  state.hidden.delete(base.client);
+  if (isNew) state.showStages = ALL_STAGES_ON();
+  $("post-dialog").close();
+  render();
+  showToast(change && change.toast ? change.toast : change ? "Moved to " + stageName(change.nextStage) + " as two posts" : "Saved as an Instagram post and a TikTok post");
+}
+
 function renderPlatformPick() {
   const picked = (draft && draft.platforms) || [];
-  $("both-note").hidden = picked.length < 2 || state.readOnly;
-  /* Only a saved post on both platforms can be split. */
-  const canSplit = editing && ["ig", "tt"].every((key) => (editing.platforms || []).includes(key));
-  const only = draft && (draft.splitChoice === "ig" || draft.splitChoice === "tt") ? draft.splitChoice : null;
-  $("both-text").textContent = only ? "Your changes will only go to " + (only === "ig" ? "Instagram" : "TikTok") + "." : "Both use the same asset and copy.";
-  $("edit-one").hidden = !canSplit || Boolean(only) || !$("pick-one").hidden;
-  $("edit-one").textContent = "Edit just one";
+  renderVariantRow();
   document.querySelectorAll("[data-platform]").forEach((button) => {
     button.setAttribute("aria-pressed", String(picked.includes(button.dataset.platform)));
     button.disabled = state.readOnly;
@@ -3015,15 +3165,25 @@ document.querySelectorAll("[data-platform]").forEach((button) => button.addEvent
   if (!draft || state.readOnly) return;
   const id = button.dataset.platform;
   const picked = new Set(draft.platforms || []);
+  const wasDifferent = isDifferent();
   if (doubleTap("pick-" + id)) {
+    if (wasDifferent) { syncActive(); loadVersion(id); }
+    else if (draft.collapsed && Date.now() - draft.collapsed.at < 1000) {
+      draft.versions = draft.collapsed.versions;
+      loadVersion(id);
+      draft.versions = null;
+      draft.activeVersion = null;
+    }
     draft.platforms = [id];
-    renderPlatformPick();
-    updateHint();
-    return;
+  } else {
+    if (picked.has(id)) picked.delete(id);
+    else picked.add(id);
+    draft.platforms = ["ig", "tt"].filter((item) => picked.has(item));
   }
-  if (picked.has(id)) picked.delete(id);
-  else picked.add(id);
-  draft.platforms = ["ig", "tt"].filter((item) => picked.has(item));
+  if (wasDifferent && !isBoth()) {
+    syncActive();
+    goSame(draft.platforms[0] || draft.activeVersion);
+  }
   renderPlatformPick();
   updateHint();
 }));
@@ -3409,14 +3569,8 @@ async function savePost(event) {
     return;
   }
   const isNew = !editing;
-  const wasBoth = !isNew && ["ig", "tt"].every((key) => (editing.platforms || []).includes(key));
-  const staysBoth = ["ig", "tt"].every((key) => fields.platforms.includes(key));
-  if (wasBoth && staysBoth && contentSnapshot() !== openContent && !draft.splitChoice) {
-    askSplit(true);
-    return;
-  }
-  if (wasBoth && staysBoth && (draft.splitChoice === "ig" || draft.splitChoice === "tt")) {
-    await splitPost(fields, draft.splitChoice);
+  if (isDifferent()) {
+    await saveVersions(null);
     return;
   }
   $("save-post").disabled = true;
@@ -3453,40 +3607,6 @@ async function savePost(event) {
   $("post-dialog").close();
   render();
   showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
-}
-
-/* Saves the edits as a separate post for one platform; the original keeps the other platform, unchanged. */
-async function splitPost(fields, platform) {
-  const error = $("form-error");
-  const other = platform === "ig" ? "tt" : "ig";
-  const name = platform === "ig" ? "Instagram" : "TikTok";
-  const at = Date.now();
-  const copy = {
-    ...fields, platforms: [platform], stage: stageOf(editing), manager: editing.manager || null,
-    history: [...(editing.history || []), { type: "split", platform, by: myId, at }],
-    comments: [], createdBy: editing.createdBy || myId
-  };
-  const newIdValue = newId();
-  $("save-post").disabled = true;
-  try {
-    if (db) {
-      await db.collection("posts").doc(newIdValue).set(copy);
-      await db.collection("posts").doc(editing.id).update({ platforms: [other] });
-    }
-  } catch (problem) {
-    error.textContent = saveProblem(problem);
-    error.hidden = false;
-    $("save-post").disabled = false;
-    return;
-  }
-  $("save-post").disabled = false;
-  const original = state.posts.find((post) => post.id === editing.id);
-  if (original) original.platforms = [other];
-  state.posts.push({ id: newIdValue, ...copy });
-  /* Files stay: both posts still use them. */
-  $("post-dialog").close();
-  render();
-  showToast("Saved as its own " + name + " post");
 }
 
 /* Moves a post to a new day after it's dragged on the calendar. */
@@ -3868,22 +3988,6 @@ $("post-form").addEventListener("input", (event) => {
 $("close-dialog").addEventListener("click", requestClosePost);
 $("cancel").addEventListener("click", requestClosePost);
 $("keep-editing").addEventListener("click", () => askDiscard(false));
-$("edit-one").addEventListener("click", () => {
-  $("pick-one").hidden = false;
-  renderPlatformPick();
-});
-document.querySelectorAll("[data-only]").forEach((button) => button.addEventListener("click", () => {
-  draft.splitChoice = button.dataset.only;
-  $("pick-one").hidden = true;
-  renderPlatformPick();
-}));
-document.querySelectorAll("[data-split]").forEach((button) => button.addEventListener("click", () => {
-  draft.splitChoice = button.dataset.split;
-  askSplit(false);
-  $("post-form").requestSubmit();
-}));
-$("discard-changes").addEventListener("click", () => { askDiscard(false); $("post-dialog").close(); });
-/* Esc asks too, instead of throwing edits away. */
 $("post-dialog").addEventListener("cancel", (event) => {
   event.preventDefault();
   requestClosePost();
