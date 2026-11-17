@@ -1839,16 +1839,19 @@ function renderBumps() {
   renderBumpList();
   const unread = unreadComments();
   const due = new Set(bumpPosts().map((post) => post.id));
+  /* Notifications are things sent your way: your own unfinished drafts aren't, unless a manager sent one back. */
   const mine = state.posts
     .filter((post) => clientById(post.client) && !isApproved(post) && isWaitingOnMe(post))
+    .filter((post) => stageOf(post) !== "draft" || (lastStep(post) || {}).type === "changes")
     .sort((a, b) => a.date.localeCompare(b.date));
   const total = mine.length + unread.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
   button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
-  if (bumpCount) button.append(el("span", "bump-count bump-view-count", bumpCount > 99 ? "99+" : String(bumpCount)));
-  else if (total) button.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
+  /* One number for everything waiting in the bell; red when a bump is among them. */
+  const all = total + bumpCount;
+  if (all) button.append(el("span", "bump-count" + (bumpCount ? " bump-view-count" : ""), all > 99 ? "99+" : String(all)));
   button.setAttribute("aria-label", "Notifications and bumps: " + total + " notifications, " + bumpCount + " bumps");
   const menuRow = $("menu-notifs");
   menuRow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="menu-label">Notifications<small>Sent to you and new comments</small></span>';
