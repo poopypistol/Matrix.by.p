@@ -437,7 +437,7 @@ h1 em { color: var(--faint); font-style: normal; }
 .empty { margin: 0; color: var(--muted); }
 
 dialog {
-  width: min(920px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  width: min(920px, calc(100vw - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
   padding: 24px; border: 1px solid var(--line); border-radius: 6px;
   background: var(--surface); color: var(--fg); overflow: auto;
 }
@@ -2343,6 +2343,7 @@ function moveMonth(step) {
 const objName = (email) => (email === myId ? "you" : displayName(email));
 
 function historyText(entry) {
+  if (!entry.to && entry.copiedTo) entry = { ...entry, to: entry.copiedTo };
   const who = displayName(entry.by);
   const note = entry.note ? ": " + entry.note : "";
   switch (entry.type) {
@@ -2919,6 +2920,11 @@ function renderAssetPreview() {
       grab.addEventListener("click", () => {
         const video = media.querySelector("video");
         if (video && video.readyState >= 2) useFrameAsCover(video, file, grab);
+        else {
+          /* Phones often don't load a video until it's played. */
+          $("form-error").textContent = "Play the video, pause on the frame you want, then click this again.";
+          $("form-error").hidden = false;
+        }
       });
       actions.append(grab);
     }
@@ -3173,7 +3179,10 @@ async function saveVersions(change) {
   const docs = ["ig", "tt"].map((platform) => {
     const version = draft.versions[platform];
     const fields = { ...base, ...version, assetFiles: [...(version.assetFiles || [])], platforms: [platform] };
-    const history = [...startHistory];
+    /* The new TikTok post keeps the history, but marked so nobody is notified about old steps twice. */
+    const history = !isNew && platform === "tt"
+      ? startHistory.map(({ to, ...entry }) => (to ? { ...entry, copiedTo: to } : entry))
+      : [...startHistory];
     if (!isNew && platform === "tt") history.push({ type: "split", platform, by: myId, at });
     let stage = isNew ? "draft" : stageOf(editing);
     let manager = isNew ? null : editing.manager || null;
