@@ -4191,6 +4191,7 @@ $("post-form").addEventListener("input", (event) => {
 $("close-dialog").addEventListener("click", requestClosePost);
 $("cancel").addEventListener("click", requestClosePost);
 $("keep-editing").addEventListener("click", () => askDiscard(false));
+$("discard-changes").addEventListener("click", () => { askDiscard(false); $("post-dialog").close(); });
 $("post-dialog").addEventListener("cancel", (event) => {
   event.preventDefault();
   requestClosePost();
