@@ -2537,7 +2537,7 @@ function renderActions() {
     }
     if (others.length) box.append(button("Change reviewer", false, () => { passOpen = true; renderActions(); }));
   } else if (stage === "ready") {
-    box.append(button("Send to client", true, () => changeStage("client", { type: "client", to: [] })));
+    box.append(button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
     box.append(button("Client approved", true, () => {
       const to = [creatorOf(editing), editing.manager].filter((email, index, all) => email && all.indexOf(email) === index);
