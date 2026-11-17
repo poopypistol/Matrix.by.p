@@ -1866,6 +1866,10 @@ function renderBumps() {
     mine.forEach((post) => {
       const item = noticeItem(post, nextForMe(post));
       item.querySelector(".bump-text small").classList.add("notice-what");
+      const step = lastStep(post);
+      if (stageOf(post) === "draft" && step && step.type === "changes" && step.note) {
+        item.querySelector(".bump-text").append(el("span", "notice-quote", displayName(step.by) + ": “" + step.note + "”"));
+      }
       group.append(item);
     });
     needs.append(group);
