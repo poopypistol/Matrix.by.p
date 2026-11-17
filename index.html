@@ -1025,8 +1025,11 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     gateMessage.textContent = message;
   }
 
+  /* The loading screen stays up long enough for one full run of the dots; the app loads behind it meanwhile. */
+  const gateShownAt = performance.now();
   function finishEntry() {
-    gate.hidden = true;
+    const wait = gateForm.hidden ? Math.max(0, 1300 - (performance.now() - gateShownAt)) : 0;
+    setTimeout(() => { gate.hidden = true; }, wait);
     document.getElementById("account-email").textContent = me.email;
     finishReady();
   }
@@ -1661,14 +1664,7 @@ function renderClients() {
   const list = $("clients");
   list.replaceChildren();
   if (!state.clients.length) {
-    const note = el("p", "side-note", state.loaded ? "No clients yet." : "Loading clients");
-    if (!state.loaded) {
-      const dots = el("span", "loading-dots");
-      dots.setAttribute("aria-hidden", "true");
-      dots.innerHTML = "<i>.</i><i>.</i><i>.</i>";
-      note.append(dots);
-    }
-    list.append(note);
+    if (state.loaded) list.append(el("p", "side-note", "No clients yet."));
     return;
   }
   const shownCount = state.clients.filter((client) => isShown(client.id)).length;
