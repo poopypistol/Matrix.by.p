@@ -271,6 +271,14 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .calendar-pick[aria-pressed="false"] { color: var(--muted); }
 .calendar-pick[aria-pressed="false"] .check { background: none; color: transparent; border-color: var(--faint); }
 .invite-list { display: flex; flex-direction: column; }
+/* Loading dots that fill in one at a time; the width stays put so the text doesn't shift. */
+.loading-dots i { font-style: normal; animation: dot1 1.2s infinite; }
+.loading-dots i:nth-child(2) { animation-name: dot2; }
+.loading-dots i:nth-child(3) { animation-name: dot3; }
+@keyframes dot1 { 0%, 24% { opacity: 0; } 25%, 100% { opacity: 1; } }
+@keyframes dot2 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes dot3 { 0%, 74% { opacity: 0; } 75%, 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .loading-dots i { animation: none; } }
 .final-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; font-size: 14px; }
 .more-menu { position: relative; }
 .more-menu > summary { list-style: none; cursor: pointer; padding: 6px 10px; border-radius: 8px; color: var(--muted); font-size: 18px; line-height: 1; }
@@ -983,7 +991,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     <button class="primary" type="submit">Save password</button>
     <p class="gate-note">You'll use this to log in on any device.</p>
   </form>
-  <p class="gate-message" id="gate-message">Loading.</p>
+  <p class="gate-message" id="gate-message">Loading<span class="loading-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
   <button class="quiet" id="gate-out" type="button" hidden>Sign out</button>
 </div>
 
@@ -1653,7 +1661,14 @@ function renderClients() {
   const list = $("clients");
   list.replaceChildren();
   if (!state.clients.length) {
-    list.append(el("p", "side-note", state.loaded ? "No clients yet." : "Loading clients."));
+    const note = el("p", "side-note", state.loaded ? "No clients yet." : "Loading clients");
+    if (!state.loaded) {
+      const dots = el("span", "loading-dots");
+      dots.setAttribute("aria-hidden", "true");
+      dots.innerHTML = "<i>.</i><i>.</i><i>.</i>";
+      note.append(dots);
+    }
+    list.append(note);
     return;
   }
   const shownCount = state.clients.filter((client) => isShown(client.id)).length;
