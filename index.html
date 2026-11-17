@@ -2961,8 +2961,12 @@ function removeAsset() {
 }
 
 function purgeRemovedFiles(ids) {
-  const cover = draft && draft.coverFile && draft.coverFile.id;
-  ids = (ids || []).filter((id) => id !== cover);
+  const inUse = new Set();
+  if (draft) {
+    if (draft.coverFile) inUse.add(draft.coverFile.id);
+    (draft.assetFiles || []).forEach((file) => inUse.add(file.id));
+  }
+  ids = (ids || []).filter((id) => !inUse.has(id));
   if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
 
@@ -3125,7 +3129,7 @@ async function saveVersions(change) {
       stage = "draft";
       history.push({ type: "auto", by: myId, at, to: [] });
     }
-    return { platform, id: ids[platform], fresh: isNew || platform === "tt", doc: { ...fields, stage, manager, history } };
+    return { platform, id: ids[platform], fresh: isNew || platform === "tt", doc: { ...fields, stage, manager, history, ...(change ? change.extra : {}) } };
   });
   $("save-post").disabled = true;
   try {
@@ -3339,18 +3343,32 @@ async function uploadAssets(list) {
   error.hidden = true;
   upload.disabled = true;
   const firstNew = (draft.assetFiles || []).length;
+  const owner = draft;
+  const version = draft.activeVersion;
   let failed = 0;
   for (const [index, file] of ready.entries()) {
     upload.textContent = ready.length > 1 ? "Uploading " + (index + 1) + " of " + ready.length : "Uploading";
     try {
       const stored = await assets.upload(file);
-      draft.assetFiles = [...(draft.assetFiles || []), { id: stored.id, name: file.name, type: stored.contentType || file.type }];
+      const entry = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+      if (draft !== owner) continue;
+      if (version && owner.versions && owner.activeVersion !== version) {
+        const target = owner.versions[version];
+        target.assetFiles = [...(target.assetFiles || []), entry];
+        continue;
+      }
+      draft.assetFiles = [...(draft.assetFiles || []), entry];
       galleryIndex = firstNew;
       renderAssetPreview();
       updateHint();
     } catch (problem) {
       failed++;
     }
+  }
+  if (draft !== owner) {
+    upload.disabled = false;
+    upload.textContent = "Upload";
+    return;
   }
   syncAutoCover();
   if (!draft.coverFile) {
