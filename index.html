@@ -399,6 +399,8 @@ h1 em { color: var(--faint); font-style: normal; }
 .day-add:hover { background: var(--hover); }
 .day-add:hover::after, .day-add:focus-visible::after { opacity: 1; }
 .day-add:focus-visible { outline-offset: -2px; }
+.day-more { position: relative; z-index: 1; align-self: flex-start; padding: 2px 4px; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.day-more:hover { color: var(--fg); }
 .date {
   position: relative; z-index: 1; pointer-events: none;
   align-self: flex-start; display: grid; place-items: center;
@@ -564,7 +566,8 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
   .weekdays div { padding: 8px 2px 6px; text-align: center; font-size: 11px; letter-spacing: .02em; }
   .day { min-height: 58px; padding: 5px 2px; align-items: center; }
   .date { align-self: center; }
-  .day .post { display: none; }
+  .day .post, .day .day-more { display: none; }
+  .filter-row .platform-bar { padding-left: 0; border-left: 0; }
   .dots { display: flex; justify-content: center; }
   .agenda { display: flex; }
   dialog { padding: 16px; }
@@ -1422,6 +1425,7 @@ let inviteCalendars = new Set();
 let preferences = null;
 let preferenceWrite = Promise.resolve();
 let toastTimer;
+const expandedDays = new Set();
 
 const $ = (id) => document.getElementById(id);
 const clientById = (id) => state.clients.find((client) => client.id === id);
@@ -1441,7 +1445,7 @@ function formatTime(value) {
 }
 
 function isComplete(post) {
-  return [post.asset, post.copy, post.tags].every((value) => (value || "").trim() !== "");
+  return missingFields(post).length === 0;
 }
 
 const STAGES = [
@@ -2238,7 +2242,7 @@ function renderMonth() {
     const date = new Date(year, month, cell - firstWeekday + 1);
     const key = dateKey(date);
     const inMonth = date.getMonth() === month;
-    const isToday = date.toDateString() === now.toDateString();
+    const isToday = date.toDateString() === new Date().toDateString();
     const dayCell = el("div", "day" + (inMonth ? "" : " out") + (isToday ? " today" : ""));
 
     if (!state.readOnly) {
@@ -2270,10 +2274,23 @@ function renderMonth() {
       const posts = dayPosts.filter((post) => state.showStages[stageOf(post)]);
       shownTotal += posts.length;
       const dots = el("div", "dots");
+      /* A busy day shows a few posts and a "+ more" link, so one day can't stretch the whole week. */
+      const limit = 3;
+      const expanded = expandedDays.has(key);
+      const visible = posts.length > limit + 1 && !expanded ? posts.slice(0, limit) : posts;
+      visible.forEach((post) => dayCell.append(postCard(post)));
       posts.forEach((post) => {
-        dayCell.append(postCard(post));
         dots.append(el("i", colorClass(clientById(post.client).color) + (isApproved(post) ? "" : " unapproved")));
       });
+      if (posts.length > limit + 1) {
+        const more = el("button", "day-more", expanded ? "Show less" : "+" + (posts.length - limit) + " more");
+        more.type = "button";
+        more.addEventListener("click", () => {
+          if (expanded) expandedDays.delete(key); else expandedDays.add(key);
+          renderMonth();
+        });
+        dayCell.append(more);
+      }
       dayCell.append(dots);
 
       if (posts.length) {
@@ -2576,6 +2593,15 @@ function fieldProblem(fields) {
 
 /* Saves the post and moves it to a new stage, then offers Undo. */
 async function changeStage(nextStage, entry, extra = {}, toast) {
+  if (["sent", "approved_internal", "client", "approved"].includes(entry.type)) {
+    const missing = draftMissing();
+    if (missing.length) {
+      $("form-error").textContent = "Fill in " + missing.join(", ") + " first.";
+      $("form-error").hidden = false;
+      return;
+    }
+  }
+  takePendingComment();
   if (isDifferent()) return saveVersions({ nextStage, entry, extra, toast });
   const fields = postFields();
   const error = $("form-error");
@@ -2590,6 +2616,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   const record = { ...entry, by: myId, at: Date.now() };
   const update = {
     ...fields, stage: nextStage,
+    ...(isNew ? {} : { comments: latestComments() }),
     history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : editing.history || []), record],
     ...extra
   };
@@ -2671,13 +2698,13 @@ function requestClosePost() {
 
 function openDialog() {
   fillClientOptions();
-  $("f-title").value = draft.title;
-  $("f-client").value = draft.client;
-  $("f-date").value = draft.date;
-  $("f-time").value = draft.time;
-  $("f-asset").value = draft.asset;
-  $("f-copy").value = draft.copy;
-  $("f-tags").value = draft.tags;
+  $("f-title").value = draft.title || "";
+  $("f-client").value = draft.client || "";
+  $("f-date").value = draft.date || "";
+  $("f-time").value = draft.time || "";
+  $("f-asset").value = draft.asset || "";
+  $("f-copy").value = draft.copy || "";
+  $("f-tags").value = draft.tags || "";
   $("f-link").value = draft.link || "";
   renderLinkOpen();
   $("comment-input").value = "";
@@ -2724,8 +2751,9 @@ function openPost(post) {
 }
 
 function openNewPost(date) {
-  const inView = now.getFullYear() === state.year && now.getMonth() === state.month;
-  const fallback = dateKey(inView ? now : new Date(state.year, state.month, 1));
+  const today = new Date();
+  const inView = today.getFullYear() === state.year && today.getMonth() === state.month;
+  const fallback = dateKey(inView ? today : new Date(state.year, state.month, 1));
   const shownClients = state.clients.filter((item) => isShown(item.id));
   editing = null;
   draft = {
@@ -2966,6 +2994,10 @@ function purgeRemovedFiles(ids) {
     if (draft.coverFile) inUse.add(draft.coverFile.id);
     (draft.assetFiles || []).forEach((file) => inUse.add(file.id));
   }
+  state.posts.filter((post) => !draft || post.id !== draft.id).forEach((post) => {
+    if (post.coverFile) inUse.add(post.coverFile.id);
+    (post.assetFiles || []).forEach((file) => inUse.add(file.id));
+  });
   ids = (ids || []).filter((id) => !inUse.has(id));
   if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
@@ -3136,7 +3168,7 @@ async function saveVersions(change) {
     for (const item of docs) {
       const ref = db.collection("posts").doc(item.id);
       if (item.fresh) await ref.set({ ...item.doc, comments: item.platform === "ig" ? draft.comments || [] : [], createdBy: owner });
-      else await ref.update(item.doc);
+      else await ref.update({ ...item.doc, comments: latestComments() });
     }
   } catch (failure) {
     error.textContent = saveProblem(failure);
@@ -3242,11 +3274,24 @@ async function uploadCover(file) {
   }
   button.disabled = true;
   button.textContent = "Uploading";
+  const owner = draft;
+  const version = draft.activeVersion;
   try {
     const stored = await assets.upload(file);
-    draft.coverFile = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload" };
-    updateHint();
-    renderAssetPreview();
+    const cover = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload" };
+    if (draft !== owner) {
+      button.disabled = false;
+      return;
+    }
+    if (version && owner.versions && owner.activeVersion !== version) {
+      owner.versions[version].coverFile = cover;
+    } else {
+      const old = draft.coverFile;
+      if (old && (old.source === "upload" || old.source === "frame")) draft.removedFiles = [...(draft.removedFiles || []), old.id];
+      draft.coverFile = cover;
+      updateHint();
+      renderAssetPreview();
+    }
   } catch (problem) {
     error.textContent = "That image didn't upload. Try again.";
     error.hidden = false;
@@ -3587,6 +3632,7 @@ async function savePost(event) {
     return;
   }
   const isNew = !editing;
+  if (takePendingComment() && !isNew) fields.comments = draft.comments;
   if (isDifferent()) {
     await saveVersions(null);
     return;
@@ -3706,11 +3752,27 @@ async function deleteClient() {
   showToast("Client deleted");
 }
 
+function takePendingComment() {
+  const text = $("comment-input").value.trim();
+  if (!text || state.readOnly) return false;
+  draft.comments = [...latestComments(), { by: myId, text, at: Date.now() }];
+  $("comment-input").value = "";
+  return true;
+}
+/* The newest comments for this post, including any someone else added while it was open. */
+function latestComments() {
+  const saved = state.posts.find((post) => post.id === draft.id);
+  const mine = draft.comments || [];
+  const theirs = saved ? saved.comments || [] : [];
+  const seen = new Set(theirs.map((comment) => comment.by + comment.at));
+  return [...theirs, ...mine.filter((comment) => !seen.has(comment.by + comment.at))].sort((a, b) => (a.at || 0) - (b.at || 0));
+}
+
 async function addComment() {
   const input = $("comment-input");
   const text = input.value.trim();
   if (!text) return;
-  const comments = [...draft.comments, { by: myId, text, at: Date.now() }];
+  const comments = [...latestComments(), { by: myId, text, at: Date.now() }];
   try {
     if (editing && db) await db.collection("posts").doc(draft.id).update({ comments });
     else if (editing) state.posts.find((post) => post.id === draft.id).comments = comments;
@@ -3805,8 +3867,9 @@ async function connect() {
 $("prev").addEventListener("click", () => moveMonth(-1));
 $("next").addEventListener("click", () => moveMonth(1));
 $("today").addEventListener("click", () => {
-  state.year = now.getFullYear();
-  state.month = now.getMonth();
+  const today = new Date();
+  state.year = today.getFullYear();
+  state.month = today.getMonth();
   renderMonth();
 });
 $("new-post").addEventListener("click", () => openNewPost());
@@ -3998,6 +4061,9 @@ $("f-client").addEventListener("change", (event) => {
   openClientDialog();
 });
 $("post-form").addEventListener("submit", savePost);
+$("post-form").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.target.tagName === "INPUT" && event.target.type !== "submit") event.preventDefault();
+});
 $("client-form").addEventListener("submit", saveClient);
 $("post-form").addEventListener("input", (event) => {
   if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
@@ -4012,7 +4078,12 @@ $("post-dialog").addEventListener("cancel", (event) => {
 });
 $("post-dialog").addEventListener("close", () => {
   askDiscard(false);
-  if (postInHistory) { postInHistory = false; history.back(); }
+  if (postInHistory) {
+    postInHistory = false;
+    skipNextPop = true;
+    setTimeout(() => { skipNextPop = false; }, 600);
+    history.back();
+  }
 });
 
 /* Files dropped from the computer upload like the Upload buttons. */
@@ -4169,7 +4240,10 @@ window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
 /* Back closes an open post first, then steps back through screens. */
+let skipNextPop = false;
 window.addEventListener("popstate", () => {
+  /* The step back we took ourselves when a post closed: nothing else to do. */
+  if (skipNextPop) { skipNextPop = false; return; }
   const dialog = $("post-dialog");
   if (dialog.open && postInHistory) {
     postInHistory = false;
