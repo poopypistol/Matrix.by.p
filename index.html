@@ -1539,10 +1539,6 @@ function finalApprover() {
   return person ? person.email : "";
 }
 
-function rolesOf(email) {
-  const person = state.invites.find((item) => item.email === email);
-  return person ? person.roles || [] : [];
-}
 
 /* Who can review a post: anyone on the team except the person who made it. */
 function reviewers(post) {
