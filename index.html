@@ -271,6 +271,14 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .calendar-pick[aria-pressed="false"] { color: var(--muted); }
 .calendar-pick[aria-pressed="false"] .check { background: none; color: transparent; border-color: var(--faint); }
 .invite-list { display: flex; flex-direction: column; }
+.final-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 12px; font-size: 14px; }
+.more-menu { position: relative; }
+.more-menu > summary { list-style: none; cursor: pointer; padding: 6px 10px; border-radius: 8px; color: var(--muted); font-size: 18px; line-height: 1; }
+.more-menu > summary::-webkit-details-marker { display: none; }
+.more-menu > summary:hover, .more-menu[open] > summary { background: var(--hover, rgba(127,127,127,.12)); color: var(--text, inherit); }
+.more-menu .more-items { position: absolute; top: calc(100% + 4px); left: 0; z-index: 5; min-width: 200px; display: flex; flex-direction: column; padding: 4px; background: var(--bg, #fff); border: 1px solid var(--line, rgba(127,127,127,.25)); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.more-menu .more-items button { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+.more-menu .more-items button:hover { background: var(--hover, rgba(127,127,127,.12)); }
 .invite-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .invite-info { min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
 .invite-info small.status-missing { color: var(--danger); font-weight: 500; }
@@ -766,6 +774,7 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     <div class="setting" id="admin-setting" hidden>
       <div class="side-label admin-title">Admin</div>
       <p class="empty">See who has finished setting up and what's still missing.</p>
+      <label class="final-row">Final approval <select id="final-pick" aria-label="Who gives final approval"></select></label>
       <div class="invite-list" id="invite-list"></div>
     </div>
     <div class="setting">
@@ -1493,7 +1502,9 @@ function creatorOf(post) {
 
 /* The creator and the manager follow a post: they hear about it when someone else changes it. */
 function followersOf(post) {
-  return [creatorOf(post), post.manager].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index);
+  /* Managers who approved it on the way to final approval keep following it too. */
+  const approvers = (post.history || []).filter((entry) => entry.type === "approved_manager").map((entry) => entry.by);
+  return [creatorOf(post), post.manager, ...approvers].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index);
 }
 function withFollowers(entry, post) {
   if (!post || entry.type === "bump") return entry;
@@ -1521,6 +1532,12 @@ function followUps(latest, changes) {
 }
 const isDeletedPost = (post) => (post.history || []).some((entry) => entry.type === "deleted");
 const NOT_STEPS = ["bump", "moved", "edited", "deleted"];
+
+/* The one person who gives final approval after a manager approves (Dana). Empty when nobody is set. */
+function finalApprover() {
+  const person = state.invites.find((item) => item.role !== "client" && (item.roles || []).includes("final"));
+  return person ? person.email : "";
+}
 
 function rolesOf(email) {
   const person = state.invites.find((item) => item.email === email);
@@ -1882,7 +1899,7 @@ function noticeItem(post, label, extra) {
 /* What a post is waiting on you to do, in a few words. */
 function nextForMe(post) {
   const stage = stageOf(post);
-  if (stage === "internal") return "Review it";
+  if (stage === "internal") return (lastStep(post) || {}).type === "approved_manager" ? "Give final approval" : "Review it";
   if (stage === "ready") return "Mark it sent to client";
   if (stage === "client") return "Mark it client approved";
   const step = lastStep(post);
@@ -2439,8 +2456,51 @@ function render() {
   $("people-note").textContent = isOwner ? "Admin only" : "Admin only. Reach out to Sonsoles to add someone.";
   $("invite-buttons").hidden = !isOwner;
   $("admin-setting").hidden = !isOwner;
-
+  if (isOwner) renderFinalPick();
 }
+
+function renderFinalPick() {
+  const pick = $("final-pick");
+  if (pick === document.activeElement) return;
+  const current = finalApprover();
+  pick.replaceChildren(el("option", "", "Nobody"));
+  pick.firstChild.value = "";
+  state.invites.filter((person) => person.role !== "client").forEach((person) => {
+    const option = el("option", "", displayName(person.email) === "You" ? person.email.split("@")[0] : displayName(person.email));
+    option.value = person.email;
+    pick.append(option);
+  });
+  pick.value = current;
+}
+$("final-pick").addEventListener("change", async () => {
+  const chosen = $("final-pick").value;
+  const changes = state.invites
+    .filter((person) => person.role !== "client")
+    .map((person) => {
+      const had = (person.roles || []).includes("final");
+      const wants = person.email === chosen;
+      if (had === wants) return null;
+      const roles = wants ? [...(person.roles || []), "final"] : (person.roles || []).filter((role) => role !== "final");
+      return { person, roles };
+    })
+    .filter(Boolean);
+  try {
+    for (const { person, roles } of changes) {
+      if (db) await db.collection("invites").doc(person.id || person.email).update({ roles });
+      person.roles = roles;
+    }
+  } catch (problem) {
+    showToast(saveProblem(problem));
+    renderFinalPick();
+    return;
+  }
+  showToast(chosen ? displayName(chosen) + " now gives final approval" : "No final approval step");
+  render();
+});
+/* The ⋯ menu closes when you click anywhere else. */
+document.addEventListener("click", (event) => {
+  document.querySelectorAll(".more-menu[open]").forEach((menu) => { if (!menu.contains(event.target)) menu.open = false; });
+});
 
 function moveMonth(step) {
   const target = new Date(state.year, state.month + step, 1);
@@ -2458,7 +2518,8 @@ function historyText(entry) {
   switch (entry.type) {
     case "sent": if (entry.passed) return who + " passed this to " + objName((entry.to || [])[0]) + " for review";
       return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + objName((entry.to || [])[0]) + " for review";
-    case "approved_internal": return who + " approved internally";
+    case "approved_internal": return entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally";
+    case "approved_manager": return who + " approved and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + " requested changes" + note;
     case "client": return who + " sent to client";
     case "approved": return who + " marked client approved";
@@ -2586,6 +2647,9 @@ function statusText(post) {
     if (step && step.type === "auto") return "Back to drafting because info was missing" + when;
     return "Drafting";
   }
+  if (stage === "internal" && step && step.type === "approved_manager") {
+    return "Approved by " + displayName(step.by) + " · " + (post.manager === myId ? "with you for final approval" : "with " + displayName(post.manager) + " for final approval") + when;
+  }
   if (stage === "internal") return (post.manager === myId ? "With you for review" : "With " + displayName(post.manager) + " for review") + when;
   if (stage === "ready") return (step && step.type === "approved_internal" ? "Approved by " + displayName(step.by) + " · ready to send to client" : "Ready to send to client") + when;
   if (stage === "client") return "Sent to client" + (step && step.type === "client" ? " by " + displayName(step.by) : "") + when;
@@ -2624,7 +2688,11 @@ function renderActions() {
       option.value = person.email;
       pick.append(option);
     });
-    if (draft.manager && reviewers(editing).some((person) => person.email === draft.manager)) pick.value = draft.manager;
+    /* After changes, it goes back to whoever it was first sent to, not straight to final approval. */
+    const lastSent = [...((editing && editing.history) || [])].reverse().find((entry) => entry.type === "sent" && !entry.passed);
+    const preferred = lastSent ? (lastSent.to || [])[0] : draft.manager;
+    if (preferred && reviewers(editing).some((person) => person.email === preferred)) pick.value = preferred;
+    else if (draft.manager && reviewers(editing).some((person) => person.email === draft.manager)) pick.value = draft.manager;
     pick.addEventListener("change", () => { draft.manager = pick.value; });
     const send = button("Send to manager", true, () => {
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
@@ -2652,13 +2720,31 @@ function renderActions() {
       box.hidden = false;
       return;
     }
+    const final = finalApprover();
     if (editing.manager === myId) {
+      /* A manager's approval goes on to final approval; final approval makes it ready to send. */
+      const onward = final && final !== myId && final !== creatorOf(editing);
       box.append(
-        button("Approve", true, () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
+        button("Approve", true, () => onward
+          ? changeStage("internal", { type: "approved_manager", to: [final] }, { manager: final }, "Sent to " + displayName(final) + " for final approval")
+          : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
         button("Request changes", false, () => openNote("changes"))
       );
     }
-    if (others.length) box.append(button("Change reviewer", false, () => { passOpen = true; renderActions(); }));
+    const more = [];
+    if (final && editing.manager === final && myId !== final) {
+      more.push(["Mark approved by " + displayName(final), () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], onBehalf: final }, {}, "Marked approved by " + displayName(final))]);
+    }
+    if (others.length) more.push(["Change reviewer", () => { passOpen = true; renderActions(); }]);
+    if (more.length) {
+      const menu = el("details", "more-menu");
+      const summary = el("summary", "", "⋯");
+      summary.setAttribute("aria-label", "More actions");
+      const items = el("div", "more-items");
+      more.forEach(([label, run]) => items.append(button(label, false, () => { menu.open = false; run(); })));
+      menu.append(summary, items);
+      box.append(menu);
+    }
   } else if (stage === "ready") {
     box.append(button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
@@ -2750,7 +2836,7 @@ function fieldProblem(fields) {
 
 /* Saves the post and moves it to a new stage, then offers Undo. */
 async function changeStage(nextStage, entry, extra = {}, toast) {
-  if (["sent", "approved_internal", "client", "approved"].includes(entry.type)) {
+  if (["sent", "approved_manager", "approved_internal", "client", "approved"].includes(entry.type)) {
     const missing = draftMissing();
     if (missing.length) {
       $("form-error").textContent = "Fill in " + missing.join(", ") + " first.";
