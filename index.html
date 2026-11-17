@@ -2592,10 +2592,26 @@ function changedFields(fields) {
   const same = (a, b) => JSON.stringify(a ?? "") === JSON.stringify(b ?? "");
   const changed = {};
   Object.keys(fields).forEach((key) => { if (!same(fields[key], editing[key])) changed[key] = fields[key]; });
+  /* If two people changed the files at once, keep both people's additions and removals. */
+  if (changed.assetFiles) {
+    const latest = state.posts.find((post) => post.id === editing.id);
+    const theirs = latest ? latest.assetFiles || [] : [];
+    if (!same(theirs, editing.assetFiles || [])) {
+      const before = new Set((editing.assetFiles || []).map((file) => file.id));
+      const mine = new Set(fields.assetFiles.map((file) => file.id));
+      const removedByMe = [...before].filter((id) => !mine.has(id));
+      const addedByThem = theirs.filter((file) => !before.has(file.id) && !mine.has(file.id));
+      const removedByThem = new Set([...before].filter((id) => !theirs.some((file) => file.id === id)));
+      changed.assetFiles = [...fields.assetFiles.filter((file) => !removedByThem.has(file.id)), ...addedByThem]
+        .filter((file) => !removedByMe.includes(file.id));
+    }
+  }
   return changed;
 }
 /* Stops a save that would undo someone else's step or bring back a deleted post. */
 function conflictProblem() {
+  const clientId = $("f-client").value;
+  if (clientId && clientId !== "__new" && !clientById(clientId)) return "That client was just deleted. Choose another client.";
   if (!editing) return "";
   const latest = state.posts.find((post) => post.id === editing.id);
   if (!latest) return "Someone deleted this post while you had it open.";
@@ -2664,6 +2680,11 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   render();
   const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
   showToast(message, isNew ? null : async () => {
+    const now = state.posts.find((item) => item.id === id);
+    if (!now || stageOf(now) !== nextStage || (now.history || []).length !== update.history.length) {
+      showToast("Someone else changed this post since, so it can't be undone here.");
+      return;
+    }
     try {
       await db.collection("posts").doc(id).update(before);
       const post = state.posts.find((item) => item.id === id);
@@ -3608,10 +3629,14 @@ async function saveClient(event) {
   if (editingClient) {
     $("save-client").disabled = true;
     try {
-      if (db) await db.collection("clients").doc(editingClient.id).update({ name, color: pickedColor });
-      Object.assign(clientById(editingClient.id), { name, color: pickedColor });
+      const changes = {};
+      if (name !== editingClient.name) changes.name = name;
+      if (colorHex(pickedColor) !== colorHex(editingClient.color)) changes.color = pickedColor;
+      if (!clientById(editingClient.id)) throw new Error("gone");
+      if (db && Object.keys(changes).length) await db.collection("clients").doc(editingClient.id).update(changes);
+      Object.assign(clientById(editingClient.id), changes);
     } catch (problem) {
-      error.textContent = saveProblem(problem);
+      error.textContent = clientById(editingClient.id) ? saveProblem(problem) : "Someone deleted this client while you had it open.";
       error.hidden = false;
       $("save-client").disabled = false;
       return;
@@ -3737,6 +3762,11 @@ async function movePost(id, newDate) {
     return;
   }
   showToast("Moved to " + shortDate(newDate), async () => {
+    const now = state.posts.find((item) => item.id === id);
+    if (!now || now.date !== newDate) {
+      showToast("Someone else moved this post since, so it can't be undone here.");
+      return;
+    }
     try {
       await save(oldDate);
       showToast("Undone");
