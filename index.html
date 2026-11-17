@@ -2585,6 +2585,23 @@ function postFields() {
   };
 }
 
+/* Only what this person changed since opening the post, so two people editing at once don't wipe out each other's work. */
+function changedFields(fields) {
+  if (!editing) return fields;
+  const same = (a, b) => JSON.stringify(a ?? "") === JSON.stringify(b ?? "");
+  const changed = {};
+  Object.keys(fields).forEach((key) => { if (!same(fields[key], editing[key])) changed[key] = fields[key]; });
+  return changed;
+}
+/* Stops a save that would undo someone else's step or bring back a deleted post. */
+function conflictProblem() {
+  if (!editing) return "";
+  const latest = state.posts.find((post) => post.id === editing.id);
+  if (!latest) return "Someone deleted this post while you had it open.";
+  if (stageOf(latest) !== stageOf(editing)) return "Someone just moved this post to " + stageName(stageOf(latest)) + ". Close it and open it again to see the latest.";
+  return "";
+}
+
 function fieldProblem(fields) {
   return !fields.title ? "Add a title first."
     : !fields.client || fields.client === "__new" ? "Choose a client first."
@@ -2601,6 +2618,12 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
       return;
     }
   }
+  const conflict = conflictProblem();
+  if (conflict) {
+    $("form-error").textContent = conflict;
+    $("form-error").hidden = false;
+    return;
+  }
   takePendingComment();
   if (isDifferent()) return saveVersions({ nextStage, entry, extra, toast });
   const fields = postFields();
@@ -2614,10 +2637,11 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   const isNew = !editing;
   const before = isNew ? null : { stage: stageOf(editing), manager: editing.manager || null, history: [...(editing.history || [])], lastBump: editing.lastBump || null };
   const record = { ...entry, by: myId, at: Date.now() };
+  const latestPost = isNew ? null : state.posts.find((post) => post.id === editing.id) || editing;
   const update = {
-    ...fields, stage: nextStage,
+    ...(isNew ? fields : changedFields(fields)), stage: nextStage,
     ...(isNew ? {} : { comments: latestComments() }),
-    history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : editing.history || []), record],
+    history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : latestPost.history || []), record],
     ...extra
   };
   try {
@@ -3144,7 +3168,7 @@ async function saveVersions(change) {
   const isNew = !editing;
   const at = Date.now();
   const owner = isNew ? myId : (editing.createdBy || myId);
-  const startHistory = isNew ? [{ type: "created", by: myId, at }] : [...(editing.history || [])];
+  const startHistory = isNew ? [{ type: "created", by: myId, at }] : [...((state.posts.find((post) => post.id === editing.id) || editing).history || [])];
   const ids = { ig: draft.id, tt: newId() };
   const docs = ["ig", "tt"].map((platform) => {
     const version = draft.versions[platform];
@@ -3168,7 +3192,11 @@ async function saveVersions(change) {
     for (const item of docs) {
       const ref = db.collection("posts").doc(item.id);
       if (item.fresh) await ref.set({ ...item.doc, comments: item.platform === "ig" ? draft.comments || [] : [], createdBy: owner });
-      else await ref.update({ ...item.doc, comments: latestComments() });
+      else {
+        const { stage, manager, history, ...content } = item.doc;
+        const extraFields = change ? change.extra || {} : {};
+        await ref.update({ ...changedFields(content), stage, manager, history, ...extraFields, comments: latestComments() });
+      }
     }
   } catch (failure) {
     error.textContent = saveProblem(failure);
@@ -3632,6 +3660,12 @@ async function savePost(event) {
     return;
   }
   const isNew = !editing;
+  const conflict = conflictProblem();
+  if (conflict) {
+    error.textContent = conflict;
+    error.hidden = false;
+    return;
+  }
   if (takePendingComment() && !isNew) fields.comments = draft.comments;
   if (isDifferent()) {
     await saveVersions(null);
@@ -3644,11 +3678,15 @@ async function savePost(event) {
       if (isNew) {
         await ref.set({ ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [{ type: "created", by: myId, at: Date.now() }] });
       } else {
-        if (stageOf(editing) !== "draft" && !isComplete(fields)) {
+        const latest = state.posts.find((post) => post.id === editing.id) || editing;
+        const changes = changedFields(fields);
+        if (fields.comments) changes.comments = fields.comments;
+        if (stageOf(latest) !== "draft" && !isComplete({ ...latest, ...changes })) {
+          changes.stage = "draft";
+          changes.history = [...(latest.history || []), { type: "auto", by: myId, at: Date.now(), to: [] }];
           fields.stage = "draft";
-          fields.history = [...(editing.history || []), { type: "auto", by: myId, at: Date.now(), to: [] }];
         }
-        await ref.update(fields);
+        if (Object.keys(changes).length) await ref.update(changes);
       }
     } else if (isNew) {
       state.posts.push({ id: draft.id, ...fields, comments: draft.comments, createdBy: myId, stage: "draft", history: [{ type: "created", by: myId, at: Date.now() }] });
