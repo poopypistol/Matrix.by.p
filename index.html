@@ -1515,7 +1515,10 @@ function creatorOf(post) {
 function followersOf(post) {
   /* Managers who approved it on the way to final approval keep following it too. */
   const approvers = (post.history || []).filter((entry) => entry.type === "approved_manager").map((entry) => entry.by);
-  return [creatorOf(post), post.manager, ...approvers].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index);
+  /* Dana hears about a post while it's with her, or if it's hers; after that she's left out. */
+  const final = finalApprover();
+  const keepFinal = creatorOf(post) === final || stageOf(post) === "internal";
+  return [creatorOf(post), post.manager, ...approvers].filter((email) => keepFinal || email !== final).filter((email, index, all) => email && email !== myId && all.indexOf(email) === index);
 }
 function withFollowers(entry, post) {
   if (!post || entry.type === "bump") return entry;
@@ -1573,7 +1576,18 @@ function waitingOn(post, stage = stageOf(post)) {
   if (stage === "approved") return [];
   if (stage === "internal") return post.manager ? [post.manager] : [];
   const creator = creatorOf(post);
-  return creator ? [creator] : [];
+  if (stage === "draft") return creator ? [creator] : [];
+  /* Sending to the client and marking it approved is shared: whoever made it or approved it can do it. Not Dana. */
+  const final = finalApprover();
+  const approvers = (post.history || [])
+    .filter((entry) => entry.type === "approved_manager" || entry.type === "approved_internal")
+    .map((entry) => entry.by)
+    .filter((email) => email && email !== final);
+  return [creator, ...approvers].filter((email, index, all) => email && all.indexOf(email) === index);
+}
+function alsoOnIt(post) {
+  const others = waitingOn(post).filter((email) => email !== myId).map(displayName);
+  return others.length ? " · you or " + listText(others) : "";
 }
 
 function isWaitingOnMe(post) {
@@ -1908,8 +1922,8 @@ function noticeItem(post, label, extra) {
 function nextForMe(post) {
   const stage = stageOf(post);
   if (stage === "internal") return (lastStep(post) || {}).type === "approved_manager" ? "Give final approval" : "Review it";
-  if (stage === "ready") return "Mark it sent to client";
-  if (stage === "client") return "Mark it client approved";
+  if (stage === "ready") return "Mark it sent to client" + alsoOnIt(post);
+  if (stage === "client") return "Mark it client approved" + alsoOnIt(post);
   const step = lastStep(post);
   return step && step.type === "changes" ? "Make the requested changes" : "Finish it and send for review";
 }
@@ -2757,8 +2771,7 @@ function renderActions() {
     box.append(button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
     box.append(button("Client approved", true, () => {
-      const to = [creatorOf(editing), editing.manager].filter((email, index, all) => email && all.indexOf(email) === index);
-      changeStage("approved", { type: "approved", to });
+      changeStage("approved", { type: "approved", to: waitingOn(editing) });
     }));
   }
 

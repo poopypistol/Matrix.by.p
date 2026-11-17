@@ -213,13 +213,13 @@ Deno.serve(async (request) => {
     for (const post of posts || []) {
       const isMine = post.created_by === email;
       const mode = (mine.bumpModes || {})[post.client_id] || "mine";
-      // Bumps only go to the coordinator who made the post, never to managers.
+      // Bumps go to whoever made the post, plus anyone who chose "Whole calendar" for that client.
       const creator = post.created_by || adminEmail;
       // New posts get 3 hours before any bump, so nobody is bumped right after making a post.
       const created = (post.history || []).find((entry: any) => entry.type === "created");
       const settled = !created || now - created.at >= 3 * 3600000;
       const deleted = (post.history || []).some((entry: any) => entry.type === "deleted");
-      if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && creator === email) {
+      if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && (creator === email || mode === "all")) {
         const [year, month, day] = post.post_date.split("-").map(Number);
         const passed = schedule.map((slot: any) => {
           const [hour, minute] = slot.time.split(":").map(Number);
