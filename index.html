@@ -230,6 +230,8 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .needs-group h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
 .bump-text .due { color: var(--danger); font-weight: 600; }
 .bump-text small.notice-what { color: var(--fg); letter-spacing: .02em; }
+.notice-gone .bump-text { text-decoration: line-through; text-decoration-color: var(--muted); }
+.notice-gone .bump-text small { text-decoration: none; }
 .notice-quote { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .side-note.bump-intro { max-width: 560px; margin-top: -8px; }
 .bump-status { display: block; margin-top: 2px; font-size: 13px; font-weight: 500; color: var(--muted); }
@@ -1396,7 +1398,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const now = new Date();
 const state = {
   year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStages: { draft: true, internal: true, ready: true, client: true, approved: true }, tab: "needs",
-  clients: [], posts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {},
+  clients: [], posts: [], deletedPosts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {},
   bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
 };
 let db = null;
@@ -1488,6 +1490,37 @@ function adminEmail() {
 function creatorOf(post) {
   return post.createdBy || adminEmail();
 }
+
+/* The creator and the manager follow a post: they hear about it when someone else changes it. */
+function followersOf(post) {
+  return [creatorOf(post), post.manager].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index);
+}
+function withFollowers(entry, post) {
+  if (!post || entry.type === "bump") return entry;
+  const to = [...(entry.to || []), ...followersOf(post)].filter((email, index, all) => email !== myId && all.indexOf(email) === index);
+  return { ...entry, to };
+}
+const CONTENT_NAMES = { title: "title", asset: "asset", assetFiles: "files", coverFile: "cover", copy: "copy", tags: "tags", link: "link", platforms: "platform", kind: "type" };
+/* History lines that tell followers about a date change, or an edit once a post is with the client or approved. */
+function followUps(latest, changes) {
+  const to = followersOf(latest);
+  if (!latest || !to.length) return [];
+  const at = Date.now();
+  const out = [];
+  const date = "date" in changes ? changes.date : latest.date;
+  const time = "time" in changes ? changes.time || "" : latest.time || "";
+  if (date !== latest.date || time !== (latest.time || "")) {
+    out.push({ type: "moved", by: myId, at, to, date, time, oldDate: latest.date, oldTime: latest.time || "" });
+  }
+  const stage = stageOf(latest);
+  if (stage === "client" || stage === "approved") {
+    const fields = Object.keys(CONTENT_NAMES).filter((key) => key in changes).map((key) => CONTENT_NAMES[key]);
+    if (fields.length) out.push({ type: "edited", by: myId, at, to, fields, stage });
+  }
+  return out;
+}
+const isDeletedPost = (post) => (post.history || []).some((entry) => entry.type === "deleted");
+const NOT_STEPS = ["bump", "moved", "edited", "deleted"];
 
 function rolesOf(email) {
   const person = state.invites.find((item) => item.email === email);
@@ -1808,6 +1841,26 @@ function unreadComments() {
       comment.at && comment.by !== myId && comment.at > (state.commentSeen[post.id] || 0)));
 }
 
+/* Changes someone else made to posts you follow, since you last opened them. */
+const UPDATES_SINCE = Date.UTC(2026, 10, 17, 22, 0);
+function updatesForMe(skip) {
+  const out = [];
+  [...state.posts, ...(state.deletedPosts || [])].forEach((post) => {
+    if (!clientById(post.client) || skip.has(post.id)) return;
+    const seen = Math.max(state.commentSeen[post.id] || 0, UPDATES_SINCE, Date.now() - 14 * 86400000);
+    const entries = (post.history || []).filter((entry) => entry.at > seen && entry.by !== myId &&
+      entry.type !== "bump" && (entry.to || []).includes(myId));
+    if (entries.length) out.push({ post, entries });
+  });
+  return out.sort((a, b) => b.entries[b.entries.length - 1].at - a.entries[a.entries.length - 1].at);
+}
+
+/* Marks a post read up to its newest comment or change, even if someone's clock runs ahead of this one. */
+function markSeen(post) {
+  const stamps = [...(post.comments || []), ...(post.history || [])].map((item) => item.at || 0);
+  state.commentSeen[post.id] = Math.max(Date.now(), ...stamps);
+}
+
 function shortDate(date) {
   return new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
@@ -1845,7 +1898,8 @@ function renderBumps() {
     .filter((post) => clientById(post.client) && !isApproved(post) && isWaitingOnMe(post))
     .filter((post) => stageOf(post) !== "draft" || (lastStep(post) || {}).type === "changes")
     .sort((a, b) => a.date.localeCompare(b.date));
-  const total = mine.length + unread.length;
+  const updates = updatesForMe(new Set([...mine, ...unread].map((post) => post.id)));
+  const total = mine.length + unread.length + updates.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
@@ -1855,7 +1909,7 @@ function renderBumps() {
   if (all) button.append(el("span", "bump-count" + (bumpCount ? " bump-view-count" : ""), all > 99 ? "99+" : String(all)));
   button.setAttribute("aria-label", "Notifications and bumps: " + total + " notifications, " + bumpCount + " bumps");
   const menuRow = $("menu-notifs");
-  menuRow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="menu-label">Notifications<small>Sent to you and new comments</small></span>';
+  menuRow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="menu-label">Notifications<small>Sent to you, updates and comments</small></span>';
   if (total) menuRow.append(el("span", "bump-count", total > 99 ? "99+" : String(total)));
   button.hidden = state.readOnly;
   $("pipe-btn").hidden = state.readOnly;
@@ -1873,6 +1927,28 @@ function renderBumps() {
       const step = lastStep(post);
       if (stageOf(post) === "draft" && step && step.type === "changes" && step.note) {
         item.querySelector(".bump-text").append(el("span", "notice-quote", displayName(step.by) + ": “" + step.note + "”"));
+      }
+      group.append(item);
+    });
+    needs.append(group);
+  }
+  if (updates.length) {
+    const group = el("div", "needs-group");
+    group.append(el("h2", "", "Updates on your posts"));
+    updates.forEach(({ post, entries }) => {
+      const latest = entries[entries.length - 1];
+      const item = noticeItem(post, historyText(latest) + (entries.length > 1 ? " (+" + (entries.length - 1) + " more)" : ""));
+      item.querySelector(".bump-text small").classList.add("notice-what");
+      if (isDeletedPost(post)) {
+        const gone = group.appendChild(item.cloneNode(true));
+        gone.classList.add("notice-gone");
+        gone.addEventListener("click", () => {
+          markSeen(post);
+          savePreferences();
+          render();
+          showToast("That post was deleted");
+        });
+        return;
       }
       group.append(item);
     });
@@ -2391,8 +2467,22 @@ function historyText(entry) {
     case "auto": return "Moved back to Draft because info was missing";
     case "split": return who + " made this its own " + (entry.platform === "tt" ? "TikTok" : "Instagram") + " post";
     case "created": return who + " created this post";
+    case "moved": return who + " moved it to " + whenText(entry.date, entry.time);
+    case "edited": return who + " changed the " + listText(entry.fields || []);
+    case "deleted": return who + " deleted this post";
     default: return who + " updated this post";
   }
+}
+
+function whenText(date, time) {
+  return shortDate(date) + (time ? " at " + timeText(time) : "");
+}
+function timeText(time) {
+  const [hour, minute] = time.split(":").map(Number);
+  return (hour % 12 || 12) + (minute ? ":" + String(minute).padStart(2, "0") : "") + (hour < 12 ? "am" : "pm");
+}
+function listText(items) {
+  return items.length < 2 ? items.join("") : items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
 }
 
 function stampText(at) {
@@ -2509,7 +2599,7 @@ function bumpWait(post) {
 
 /* The latest step on a post, shown in gray so anyone can see it's on track. */
 function lastStep(post) {
-  const steps = (post.history || []).filter((entry) => entry.type !== "bump");
+  const steps = (post.history || []).filter((entry) => !NOT_STEPS.includes(entry.type));
   return steps.length ? steps[steps.length - 1] : null;
 }
 
@@ -2686,12 +2776,13 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   }
   const isNew = !editing;
   const before = isNew ? null : { stage: stageOf(editing), manager: editing.manager || null, history: [...(editing.history || [])], lastBump: editing.lastBump || null };
-  const record = { ...entry, by: myId, at: Date.now() };
   const latestPost = isNew ? null : state.posts.find((post) => post.id === editing.id) || editing;
+  const record = { ...withFollowers(entry, latestPost && { ...latestPost, ...extra }), by: myId, at: Date.now() };
+  const edits = isNew ? fields : changedFields(fields);
   const update = {
-    ...(isNew ? fields : changedFields(fields)), stage: nextStage,
+    ...edits, stage: nextStage,
     ...(isNew ? {} : { comments: latestComments() }),
-    history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : latestPost.history || []), record],
+    history: [...(isNew ? [{ type: "created", by: myId, at: record.at }] : [...(latestPost.history || []), ...followUps(latestPost, edits)]), record],
     ...extra
   };
   try {
@@ -2830,8 +2921,8 @@ function openDialog() {
 
 function openPost(post) {
   passOpen = false;
-  if (unreadComments().some((item) => item.id === post.id)) {
-    state.commentSeen[post.id] = Date.now();
+  if (unreadComments().some((item) => item.id === post.id) || updatesForMe(new Set()).some((item) => item.post.id === post.id)) {
+    markSeen(post);
     renderBumps();
     savePreferences();
   }
@@ -3272,13 +3363,17 @@ async function saveVersions(change) {
     if (!isNew && platform === "tt") history.push({ type: "split", platform, by: myId, at });
     let stage = isNew ? "draft" : stageOf(editing);
     let manager = isNew ? null : editing.manager || null;
+    if (!isNew && platform === "ig") {
+      const { stage: _s, manager: _m, history: _h, ...content } = { ...fields };
+      history.push(...followUps(state.posts.find((post) => post.id === editing.id) || editing, changedFields(content)));
+    }
     if (change) {
-      history.push({ ...change.entry, by: myId, at });
+      history.push({ ...(isNew ? change.entry : withFollowers(change.entry, { ...editing, ...(change.extra || {}) })), by: myId, at });
       stage = change.nextStage;
       if (change.extra && "manager" in change.extra) manager = change.extra.manager;
     } else if (stage !== "draft" && !isComplete(fields)) {
       stage = "draft";
-      history.push({ type: "auto", by: myId, at, to: [] });
+      history.push({ type: "auto", by: myId, at, to: isNew ? [] : followersOf(editing) });
     }
     return { platform, id: ids[platform], fresh: isNew || platform === "tt", doc: { ...fields, stage, manager, history, ...(change ? change.extra : {}) } };
   });
@@ -3792,11 +3887,13 @@ async function savePost(event) {
         const latest = state.posts.find((post) => post.id === editing.id) || editing;
         const changes = changedFields(fields);
         if (fields.comments) changes.comments = fields.comments;
+        const notes = followUps(latest, changes);
         if (stageOf(latest) !== "draft" && !isComplete({ ...latest, ...changes })) {
           changes.stage = "draft";
-          changes.history = [...(latest.history || []), { type: "auto", by: myId, at: Date.now(), to: [] }];
+          notes.push({ type: "auto", by: myId, at: Date.now(), to: followersOf(latest) });
           fields.stage = "draft";
         }
+        if (notes.length) changes.history = [...(latest.history || []), ...notes];
         if (Object.keys(changes).length) await ref.update(changes);
       }
     } else if (isNew) {
@@ -3827,13 +3924,15 @@ async function movePost(id, newDate) {
   const post = state.posts.find((item) => item.id === id);
   if (!post || post.date === newDate) return;
   const oldDate = post.date;
-  const save = async (date) => {
-    await db.collection("posts").doc(id).update({ date });
+  const note = followUps(post, { date: newDate })[0];
+  const save = async (date, history) => {
+    await db.collection("posts").doc(id).update(history ? { date, history } : { date });
     post.date = date;
+    if (history) post.history = history;
     renderMonth();
   };
   try {
-    await save(newDate);
+    await save(newDate, note && [...(post.history || []), note]);
   } catch (failure) {
     showToast(saveProblem(failure));
     return;
@@ -3845,7 +3944,8 @@ async function movePost(id, newDate) {
       return;
     }
     try {
-      await save(oldDate);
+      /* Taking the move back also takes back its notice, before anyone is told. */
+      await save(oldDate, note && (now.history || []).filter((entry) => entry !== note && !(entry.type === "moved" && entry.at === note.at && entry.by === myId)));
       showToast("Undone");
     } catch (failure) {
       showToast("That didn't undo. Drag it back instead.");
@@ -3861,8 +3961,11 @@ async function deletePost() {
   }
   button.disabled = true;
   const stored = state.posts.find((post) => post.id === draft.id);
+  const tell = stored ? followersOf(stored) : [];
   try {
-    if (db) await db.collection("posts").doc(draft.id).delete();
+    if (db && tell.length) {
+      await db.collection("posts").doc(draft.id).update({ history: [...(stored.history || []), { type: "deleted", by: myId, at: Date.now(), to: tell }] });
+    } else if (db) await db.collection("posts").doc(draft.id).delete();
   } catch (problem) {
     $("form-error").textContent = saveProblem(problem);
     $("form-error").hidden = false;
@@ -4015,7 +4118,10 @@ async function connect() {
   listen("clients", (rows) => {
     state.clients = rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   }, () => confirmed("clients"));
-  listen("posts", (rows) => { state.posts = rows; }, () => confirmed("posts"));
+  listen("posts", (rows) => {
+    state.posts = rows.filter((post) => !isDeletedPost(post));
+    state.deletedPosts = rows.filter(isDeletedPost);
+  }, () => confirmed("posts"));
   if (!state.readOnly) {
     listen("invites", (rows) => {
       state.invites = rows.sort((a, b) => (a.invitedAt || 0) - (b.invitedAt || 0));

@@ -15,6 +15,8 @@ const DEFAULT_SCHEDULE = [
   { days: 1, time: "10:00" }, { days: 1, time: "15:00" },
 ];
 const WINDOW = 10 * 60 * 1000;
+// Changes are sent once the person making them has paused this long, so a burst becomes one message.
+const QUIET = 2 * 60 * 1000;
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
@@ -86,11 +88,30 @@ function waitingOn(post: any, adminEmail: string) {
   return creator ? [creator] : [];
 }
 
-function historyMessage(entry: any, post: any) {
+function timeText(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return (hour % 12 || 12) + (minute ? ":" + String(minute).padStart(2, "0") : "") + (hour < 12 ? "am" : "pm");
+}
+function whenText(date: string, time: string) {
+  return shortDate(date) + (time ? " at " + timeText(time) : "");
+}
+function listText(items: string[]) {
+  return items.length < 2 ? items.join("") : items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
+}
+
+function historyMessage(entry: any, post: any, email: string) {
   const who = displayName(entry.by);
   const note = entry.note ? "\n\"" + entry.note + "\"" : "";
+  const reviewer = (entry.to || [])[0];
   switch (entry.type) {
-    case "sent": return { title: "Ready for your review", detail: who + " sent this for review" + note };
+    case "sent":
+      if (reviewer === email) return { title: "Ready for your review", detail: who + " sent this for review" + note };
+      return { title: entry.passed ? "Reviewer changed" : "Sent for review", detail: who + (entry.passed ? " passed it to " : " sent it to ") + displayName(reviewer) + " for review" };
+    case "client": return { title: "Sent to client", detail: who + " marked it sent to the client" };
+    case "moved": return { title: "Date changed", detail: who + " moved it to " + whenText(entry.date, entry.time) + " (was " + whenText(entry.oldDate, entry.oldTime) + ")" };
+    case "edited": return { title: entry.stage === "approved" ? "Edited after approval" : "Edited while with the client", detail: who + " changed the " + listText(entry.fields || []) };
+    case "deleted": return { title: "Post deleted", detail: who + " deleted it" };
+    case "auto": return { title: "Moved back to Drafting", detail: "Info went missing after " + who + "'s edit" };
     case "approved_internal": return { title: "Approved internally", detail: who + " approved it. Ready to send to client." };
     case "changes": return { title: "Changes requested", detail: who + " sent this back to Drafting" + note };
     case "approved": return { title: "Approved", detail: who + " marked it client approved. It's green lit." };
@@ -194,7 +215,8 @@ Deno.serve(async (request) => {
       // New posts get 3 hours before any bump, so nobody is bumped right after making a post.
       const created = (post.history || []).find((entry: any) => entry.type === "created");
       const settled = !created || now - created.at >= 3 * 3600000;
-      if (settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && creator === email) {
+      const deleted = (post.history || []).some((entry: any) => entry.type === "deleted");
+      if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && creator === email) {
         const [year, month, day] = post.post_date.split("-").map(Number);
         const passed = schedule.map((slot: any) => {
           const [hour, minute] = slot.time.split(":").map(Number);
@@ -207,12 +229,23 @@ Deno.serve(async (request) => {
           }
         }
       }
+      // One message per person per burst of changes; it waits until they've paused.
+      const byActor: Record<string, any[]> = {};
       for (const entry of post.history || []) {
         const fresh = entry.at && now - entry.at < WINDOW && entry.by !== email && (entry.to || []).includes(email);
-        const message = fresh ? historyMessage(entry, post) : null;
-        if (message && await once("hist:" + post.id + ":" + email + ":" + entry.at)) {
-          await notify(email, wantsSlack, post, message.title, message.detail);
+        if (fresh && historyMessage(entry, post, email)) (byActor[entry.by] = byActor[entry.by] || []).push(entry);
+      }
+      for (const entries of Object.values(byActor)) {
+        if (now - Math.max(...entries.map((entry) => entry.at)) < QUIET) continue;
+        const fresh = [];
+        for (const entry of entries) {
+          if (await once("hist:" + post.id + ":" + email + ":" + entry.at + ":" + entry.type)) fresh.push(entry);
         }
+        if (!fresh.length) continue;
+        const messages = fresh.map((entry) => historyMessage(entry, post, email)!);
+        const step = messages.find((_, index) => !["moved", "edited"].includes(fresh[index].type));
+        const title = step ? step.title : messages.length > 1 ? "Changes to your post" : messages[0].title;
+        await notify(email, wantsSlack, post, title, messages.map((message) => message.detail).join("\n"));
       }
       if (commentMode !== "off" && (commentMode === "all" || isMine)) {
         for (const comment of notesByPost[post.id] || []) {
@@ -226,6 +259,12 @@ Deno.serve(async (request) => {
     }
   }
 
+  // Deleted posts stay just long enough for their followers to be told, then go for good.
+  const gone = (posts || []).filter((post) => (post.history || []).some((entry: any) => entry.type === "deleted" && now - entry.at > 30 * 60 * 1000));
+  for (const post of gone) {
+    await db.from("post_comments").delete().eq("post_id", post.id);
+    await db.from("posts").delete().eq("id", post.id);
+  }
   await db.from("sent_notifications").delete().lt("sent_at", new Date(now - 7 * 86400000).toISOString());
   return Response.json({ sent });
 });
