@@ -1554,7 +1554,8 @@ function finalApprover() {
 /* Who can review a post: anyone on the team except the person who made it. */
 function reviewers(post) {
   const creator = post ? creatorOf(post) : myId;
-  return managers().filter((person) => person.email !== creator);
+  /* The final approver can review her own posts; nobody else can. */
+  return managers().filter((person) => person.email !== creator || person.email === finalApprover());
 }
 
 function managers() {
