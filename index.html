@@ -162,6 +162,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .notif-menu[hidden] { display: none; }
 .cover-row { display: flex; align-items: center; gap: 14px; }
 .cover-thumb { display: grid; place-items: center; flex: none; width: 72px; aspect-ratio: 4 / 5; overflow: hidden; border: 1.5px dashed var(--line); border-radius: 4px; color: var(--muted); font-size: 11px; text-align: center; padding: 4px; }
+.cover-thumb.is-tall { width: 52px; aspect-ratio: 9 / 16; }
 .cover-thumb.has-image { border: 1px solid var(--line); padding: 0; }
 .cover-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -3279,9 +3280,17 @@ async function saveVersions(change) {
   showToast(change && change.toast ? change.toast : change ? "Moved to " + stageName(change.nextStage) + " as two posts" : "Saved as an Instagram post and a TikTok post");
 }
 
+/* The cover box takes the shape of the grid it lands on: TikTok is 9:16, Instagram 4:5. */
+function renderCoverShape() {
+  if (!draft) return;
+  const only = draft.platforms || [];
+  const tiktok = (only.length === 1 && only[0] === "tt") || (isDifferent() && draft.activeVersion === "tt");
+  $("cover-thumb").classList.toggle("is-tall", tiktok);
+}
 function renderPlatformPick() {
   const picked = (draft && draft.platforms) || [];
   renderVariantRow();
+  renderCoverShape();
   document.querySelectorAll("[data-platform]").forEach((button) => {
     button.setAttribute("aria-pressed", String(picked.includes(button.dataset.platform)));
     button.disabled = state.readOnly;
@@ -3323,6 +3332,7 @@ function coverUrl(file) {
 
 async function renderCoverPreview() {
   const box = $("cover-thumb");
+  renderCoverShape();
   const file = draft && draft.coverFile;
   $("upload-cover").textContent = file ? "Replace cover" : "Upload cover";
   const source = file && file.source;
