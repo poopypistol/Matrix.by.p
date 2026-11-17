@@ -2916,6 +2916,12 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
       showToast("Someone else changed this post since, so it can't be undone here.");
       return;
     }
+    /* Undo can't put a post back in review or later if it has since lost something it needs. */
+    const missing = before.stage !== "draft" ? missingFields(now) : [];
+    if (missing.length) {
+      showToast("Can't undo: it's missing " + listText(missing.map((field) => field.toLowerCase())) + " now.");
+      return;
+    }
     try {
       await db.collection("posts").doc(id).update(before);
       const post = state.posts.find((item) => item.id === id);
