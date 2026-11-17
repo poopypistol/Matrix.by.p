@@ -228,6 +228,8 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .needs-group { display: flex; flex-direction: column; gap: 4px; max-width: 640px; }
 .needs-group h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
 .bump-text .due { color: var(--danger); font-weight: 600; }
+.bump-text small.notice-what { color: var(--fg); letter-spacing: .02em; }
+.notice-quote { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .side-note.bump-intro { max-width: 560px; margin-top: -8px; }
 .bump-status { display: block; margin-top: 2px; font-size: 13px; font-weight: 500; color: var(--muted); }
 .bump-view-count { background: var(--danger) !important; color: #fff !important; }
@@ -1823,6 +1825,16 @@ function noticeItem(post, label, extra) {
   return item;
 }
 
+/* What a post is waiting on you to do, in a few words. */
+function nextForMe(post) {
+  const stage = stageOf(post);
+  if (stage === "internal") return "Review it";
+  if (stage === "ready") return "Mark it sent to client";
+  if (stage === "client") return "Mark it client approved";
+  const step = lastStep(post);
+  return step && step.type === "changes" ? "Make the requested changes" : "Finish it and send for review";
+}
+
 function renderBumps() {
   renderBumpList();
   const unread = unreadComments();
@@ -1851,13 +1863,26 @@ function renderBumps() {
   if (mine.length) {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "Waiting on you"));
-    mine.forEach((post) => group.append(noticeItem(post, clientById(post.client).name, due.has(post.id) ? "Bump due" : "")));
+    mine.forEach((post) => {
+      const item = noticeItem(post, nextForMe(post));
+      item.querySelector(".bump-text small").classList.add("notice-what");
+      group.append(item);
+    });
     needs.append(group);
   }
   if (unread.length) {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "New comments"));
-    unread.forEach((post) => group.append(noticeItem(post, "New comment · " + clientById(post.client).name)));
+    unread.forEach((post) => {
+      const latest = (post.comments || []).filter((comment) => comment.by !== myId).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+      const item = noticeItem(post, "New comment from " + displayName(latest ? latest.by : ""));
+      item.querySelector(".bump-text small").classList.add("notice-what");
+      if (latest && latest.text) {
+        const text = latest.text.length > 80 ? latest.text.slice(0, 80) + "…" : latest.text;
+        item.querySelector(".bump-text").append(el("span", "notice-quote", "“" + text + "”"));
+      }
+      group.append(item);
+    });
     needs.append(group);
   }
 
