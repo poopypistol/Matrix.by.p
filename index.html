@@ -2708,7 +2708,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   else state.posts.push({ id: draft.id, ...update, comments: draft.comments, createdBy: myId });
   const id = draft.id;
   purgeRemovedFiles(draft.removedFiles);
-  $("post-dialog").close();
+  closePost();
   state.hidden.delete(fields.client);
   render();
   const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
@@ -2772,7 +2772,17 @@ function requestClosePost() {
   const dialog = $("post-dialog");
   if (!dialog.open) return;
   if (!state.readOnly && postSnapshot() !== openSnapshot) askDiscard(true);
-  else dialog.close();
+  else {
+    purgeUnused(uploadsThisOpen);
+    uploadsThisOpen = [];
+    closePost();
+  }
+}
+/* Every close we mean goes through here; anything else (Chrome closes on a fast second Esc) is caught below. */
+let closingOnPurpose = false;
+function closePost() {
+  closingOnPurpose = true;
+  $("post-dialog").close();
 }
 
 function openDialog() {
@@ -2797,6 +2807,7 @@ function openDialog() {
   $("asset-file").value = "";
   galleryIndex = 0;
   draft.removedFiles = [];
+  uploadsThisOpen = [];
   assetUrls.clear();
   renderAssetPreview();
   $("save-post").hidden = state.readOnly;
@@ -3086,6 +3097,27 @@ function purgeRemovedFiles(ids) {
   if (assets && ids.length) assets.remove(ids).catch(() => {});
 }
 
+/* Files uploaded while a post is open; if the changes are thrown away, so are they. */
+let uploadsThisOpen = [];
+/* Deletes files from storage unless a post (other than the ones skipped) still uses them. */
+function purgeUnused(ids, skipPostIds) {
+  const skip = new Set(skipPostIds || []);
+  const inUse = new Set();
+  state.posts.filter((post) => !skip.has(post.id)).forEach((post) => {
+    if (post.coverFile) inUse.add(post.coverFile.id);
+    (post.assetFiles || []).forEach((file) => inUse.add(file.id));
+  });
+  ids = [...new Set(ids || [])].filter((id) => id && !inUse.has(id));
+  if (assets && ids.length) assets.remove(ids).catch(() => {});
+}
+function postFileIds(post) {
+  if (!post) return [];
+  const ids = (post.assetFiles || []).map((file) => file.id);
+  if (post.coverFile) ids.push(post.coverFile.id);
+  Object.values(post.versions || {}).forEach((version) => ids.push(...postFileIds(version)));
+  return ids;
+}
+
 /* Stories skip the cover (they never show on the grid); copy and tags are optional. */
 function renderKindPick() {
   const story = draft && draft.kind === "story";
@@ -3275,7 +3307,7 @@ async function saveVersions(change) {
   });
   state.hidden.delete(base.client);
   if (isNew) state.showStages = ALL_STAGES_ON();
-  $("post-dialog").close();
+  closePost();
   render();
   showToast(change && change.toast ? change.toast : change ? "Moved to " + stageName(change.nextStage) + " as two posts" : "Saved as an Instagram post and a TikTok post");
 }
@@ -3378,6 +3410,7 @@ async function uploadCover(file) {
   const version = draft.activeVersion;
   try {
     const stored = await assets.upload(file);
+    uploadsThisOpen.push(stored.id);
     const cover = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload" };
     if (draft !== owner) {
       button.disabled = false;
@@ -3429,6 +3462,7 @@ async function frameBlob(video) {
 async function saveFrameAsCover(blob, name, source) {
   const file = new File([blob], name.replace(/\.[^.]+$/, "") + "-cover.jpg", { type: "image/jpeg" });
   const stored = await assets.upload(file);
+  uploadsThisOpen.push(stored.id);
   draft.coverFile = { id: stored.id, name: file.name, type: "image/jpeg", source };
   renderCoverPreview();
   renderAssetPreview();
@@ -3495,6 +3529,7 @@ async function uploadAssets(list) {
     upload.textContent = ready.length > 1 ? "Uploading " + (index + 1) + " of " + ready.length : "Uploading";
     try {
       const stored = await assets.upload(file);
+      uploadsThisOpen.push(stored.id);
       const entry = { id: stored.id, name: file.name, type: stored.contentType || file.type };
       if (draft !== owner) continue;
       if (version && owner.versions && owner.activeVersion !== version) {
@@ -3782,7 +3817,7 @@ async function savePost(event) {
   const [year, month] = fields.date.split("-").map(Number);
   state.year = year;
   state.month = month - 1;
-  $("post-dialog").close();
+  closePost();
   render();
   showToast(fields.stage === "draft" && !isNew ? "Saved and moved back to Draft" : "Post saved");
 }
@@ -3825,6 +3860,7 @@ async function deletePost() {
     return;
   }
   button.disabled = true;
+  const stored = state.posts.find((post) => post.id === draft.id);
   try {
     if (db) await db.collection("posts").doc(draft.id).delete();
   } catch (problem) {
@@ -3834,8 +3870,10 @@ async function deletePost() {
     return;
   }
   button.disabled = false;
+  purgeUnused([...postFileIds(stored), ...postFileIds(draft), ...uploadsThisOpen], [draft.id]);
+  uploadsThisOpen = [];
   state.posts = state.posts.filter((post) => post.id !== draft.id);
-  $("post-dialog").close();
+  closePost();
   render();
   showToast("Post deleted");
 }
@@ -3848,6 +3886,7 @@ async function deleteClient() {
     return;
   }
   const id = editingClient.id;
+  const gone = state.posts.filter((post) => post.client === id);
   button.disabled = true;
   try {
     if (db) {
@@ -3863,6 +3902,7 @@ async function deleteClient() {
     return;
   }
   button.disabled = false;
+  purgeUnused(gone.flatMap(postFileIds), gone.map((post) => post.id));
   state.posts = state.posts.filter((post) => post.client !== id);
   state.clients = state.clients.filter((client) => client.id !== id);
   state.hidden.delete(id);
@@ -4191,12 +4231,24 @@ $("post-form").addEventListener("input", (event) => {
 $("close-dialog").addEventListener("click", requestClosePost);
 $("cancel").addEventListener("click", requestClosePost);
 $("keep-editing").addEventListener("click", () => askDiscard(false));
-$("discard-changes").addEventListener("click", () => { askDiscard(false); $("post-dialog").close(); });
+$("discard-changes").addEventListener("click", () => {
+  askDiscard(false);
+  purgeUnused(uploadsThisOpen);
+  uploadsThisOpen = [];
+  closePost();
+});
 $("post-dialog").addEventListener("cancel", (event) => {
   event.preventDefault();
   requestClosePost();
 });
 $("post-dialog").addEventListener("close", () => {
+  const meant = closingOnPurpose;
+  closingOnPurpose = false;
+  if (!meant && draft && !state.readOnly && postSnapshot() !== openSnapshot) {
+    $("post-dialog").showModal();
+    askDiscard(true);
+    return;
+  }
   askDiscard(false);
   if (postInHistory) {
     postInHistory = false;
@@ -4372,7 +4424,7 @@ window.addEventListener("popstate", () => {
       postInHistory = true;
       askDiscard(true);
     } else {
-      dialog.close();
+      closePost();
     }
     return;
   }
