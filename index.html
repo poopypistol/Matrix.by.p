@@ -1475,7 +1475,7 @@ const isApproved = (post) => stageOf(post) === "approved";
 function displayName(email) {
   if (!email) return "Someone";
   if (email === myId) return "You";
-  const name = String(email).split("@")[0].replace(/[._-]+/g, " ");
+  const name = String(email).split("@")[0].split("+")[0].replace(/[._-]+/g, " ");
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
