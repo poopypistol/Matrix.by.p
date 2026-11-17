@@ -262,14 +262,7 @@ Deno.serve(async (request) => {
     }
   }
 
-  // Deleted posts stay just long enough for their followers to be told, then go for good.
-  const gone = (posts || []).filter((post) => (post.history || []).some((entry: any) => entry.type === "deleted" && now - entry.at > 30 * 60 * 1000));
-  for (const post of gone) {
-    await db.from("post_comments").delete().eq("post_id", post.id);
-    const { error, count } = await db.from("posts").delete({ count: "exact" }).eq("id", post.id);
-    if (error || !count) console.error("Couldn't remove deleted post", post.id, error ? error.message : "no rows removed");
-  }
-  if (gone.length) console.log("Removed deleted posts:", gone.length);
+  // Deleted posts are removed for good by the site 30 minutes after deletion (this function only reads posts).
   await db.from("sent_notifications").delete().lt("sent_at", new Date(now - 7 * 86400000).toISOString());
   return Response.json({ sent });
 });

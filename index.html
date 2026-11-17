@@ -1545,6 +1545,18 @@ function followUps(latest, changes) {
   return out;
 }
 const isDeletedPost = (post) => (post.history || []).some((entry) => entry.type === "deleted");
+/* A deleted post stays 30 minutes so the people following it get told; after that, whoever on the team is in declan removes it for good. */
+const clearing = new Set();
+function clearOldDeleted() {
+  if (state.readOnly || !db) return;
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  (state.deletedPosts || [])
+    .filter((post) => !clearing.has(post.id) && post.history.some((entry) => entry.type === "deleted" && entry.at < cutoff))
+    .forEach((post) => {
+      clearing.add(post.id);
+      db.collection("posts").doc(post.id).delete().catch(() => clearing.delete(post.id));
+    });
+}
 const NOT_STEPS = ["bump", "moved", "edited", "deleted"];
 
 /* The one person who gives final approval after a manager approves (Dana). Empty when nobody is set. */
@@ -4234,6 +4246,7 @@ async function connect() {
   listen("posts", (rows) => {
     state.posts = rows.filter((post) => !isDeletedPost(post));
     state.deletedPosts = rows.filter(isDeletedPost);
+    clearOldDeleted();
   }, () => confirmed("posts"));
   if (!state.readOnly) {
     listen("invites", (rows) => {
@@ -4613,6 +4626,7 @@ $("asset-file").addEventListener("change", (event) => {
 
 let lastBumpCheck = new Date();
 setInterval(() => {
+  clearOldDeleted();
   const time = new Date();
   const due = bumpPosts(time).filter((post) => bumpTimes(post).some((slot) => slot > lastBumpCheck && slot <= time));
   lastBumpCheck = time;
