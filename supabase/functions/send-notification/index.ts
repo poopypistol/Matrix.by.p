@@ -196,10 +196,19 @@ Deno.serve(async (request) => {
   const notesByPost = Object.fromEntries((notes || []).map((row) => [row.post_id, row.comments || []]));
   let sent = 0;
 
-  const notify = async (email: string, wantsSlack: boolean, post: any, title: string, detail: string) => {
+  // Links open the post at the part the message is about: comments, the action buttons, or caption options.
+  const notify = async (email: string, wantsSlack: boolean, post: any, title: string, detail: string, spot = "") => {
     const name = post.title + " · " + (clientName[post.client_id] || "");
-    sent += await send(all, email, { title, body: name, url: "/#post-" + post.id });
-    if (wantsSlack && await sendSlack(email, title, [name, ...String(detail).split("\n")], SITE + "/#post-" + post.id)) sent++;
+    const path = "/#post-" + post.id + (spot ? "~" + spot : "");
+    sent += await send(all, email, { title, body: name, url: path });
+    if (wantsSlack && await sendSlack(email, title, [name, ...String(detail).split("\n")], SITE + path)) sent++;
+  };
+  const spotFor = (types: string[], post: any) => {
+    if (types.some((type) => type === "changes" || type === "comment")) return "comments";
+    if (types.some((type) => ["sent", "approved_manager", "approved_internal", "client", "bump"].includes(type))) {
+      return Array.isArray(post.copy_options) && post.copy_options.length > 1 ? "options" : "actions";
+    }
+    return "";
   };
 
   for (const member of (members || []).filter((item) => item.role !== "client")) {
@@ -228,7 +237,7 @@ Deno.serve(async (request) => {
         if (passed.length) {
           const at = Math.max(...passed);
           if (await once("bump:" + post.id + ":" + email + ":" + at)) {
-            await notify(email, wantsSlack, post, "BUMP", "Waiting on " + STAGE_NAMES[stageOf(post)] + ". Post date: " + shortDate(post.post_date));
+            await notify(email, wantsSlack, post, "BUMP", "Waiting on " + STAGE_NAMES[stageOf(post)] + ". Post date: " + shortDate(post.post_date), "actions");
           }
         }
       }
@@ -248,14 +257,14 @@ Deno.serve(async (request) => {
         const messages = fresh.map((entry) => historyMessage(entry, post, email)!);
         const step = messages.find((_, index) => !["moved", "edited"].includes(fresh[index].type));
         const title = step ? step.title : messages.length > 1 ? "Changes to your post" : messages[0].title;
-        await notify(email, wantsSlack, post, title, messages.map((message) => message.detail).join("\n"));
+        await notify(email, wantsSlack, post, title, messages.map((message) => message.detail).join("\n"), spotFor(fresh.map((entry) => entry.type), post));
       }
       if (commentMode !== "off" && (commentMode === "all" || isMine)) {
         for (const comment of notesByPost[post.id] || []) {
           const fresh = comment.at && now - comment.at < WINDOW && comment.by !== email;
           if (fresh && await once("comment:" + post.id + ":" + email + ":" + comment.at)) {
             const author = String(comment.by || "Someone").split("@")[0];
-            await notify(email, wantsSlack, post, "New comment", author + ": " + comment.text);
+            await notify(email, wantsSlack, post, "New comment", author + ": " + comment.text, "comments");
           }
         }
       }
