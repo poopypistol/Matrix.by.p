@@ -747,8 +747,8 @@ body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
     </div>
     <div class="setting" id="posting-setting">
       <div class="side-label">Posts</div>
-      <h3 class="group-title" id="loose-title">Bumpers</h3>
-      <p class="empty">Like bowling bumpers for your posts: a post can't move on until every field is filled in, even if it's just "n/a". Turn them off to leave tags and link empty when they don't apply.</p>
+      <h3 class="group-title" id="loose-title">Training Wheels Protocol</h3>
+      <p class="empty">A post can't move on until every field is filled in, even if it's just "n/a". Turn it off once you've got the hang of it, and tags and link can stay empty when they don't apply.</p>
       <div class="theme-options push-options">
         <div class="mode-options switch" id="loose-modes" role="switch" tabindex="0" aria-labelledby="loose-title">
           <button class="quiet" type="button" data-loose="on">On</button>
@@ -1654,7 +1654,7 @@ function isWaitingOnMe(post) {
   return waitingOn(post).includes(myId);
 }
 
-/* What a post needs. "strict" is the Bumpers setting: tags and link must be filled too, even if just "n/a".
+/* What a post needs. "strict" is the Training Wheels Protocol setting: tags and link must be filled too, even if just "n/a".
    Anything that checks someone else's post uses the relaxed rules, so one person's setting never blocks another's post. */
 function missingFields(post, strict = false) {
   const missing = [];
@@ -2884,7 +2884,7 @@ function updateHint() {
   if (!missing.length) {
     hint.replaceChildren(stage === "draft" ? el("strong", "", "Everything is filled in. ") : "", stage === "draft" ? "Send it to a manager when it's ready." : "");
   } else {
-    /* Only what every post needs moves it back to drafting; Bumpers extras just ask. */
+    /* Only what every post needs moves it back to drafting; Training Wheels extras just ask. */
     const movesBack = stage !== "draft" && draftMissing(false).length > 0;
     const naOk = missing.some((field) => /tags|link/i.test(field)) ? " (n/a is fine)" : "";
     hint.replaceChildren(
