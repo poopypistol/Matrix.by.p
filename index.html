@@ -804,6 +804,52 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .cover-thumb { position: relative; }
 .cover-thumb .close-x { top: 4px; right: 4px; width: 22px; height: 22px; }
 .cover-thumb .close-x svg { width: 10px; height: 10px; }
+/* Post window, first-day pass:
+   - the next step (Send, Approve…) sits at the bottom right in a footer that stays put, with what's
+     still missing written right above it
+   - comments open from "Add a note" in the top bar and slide in beside the form */
+#post-dialog { padding-bottom: 0; }
+#post-dialog .dlg-foot { position: sticky; bottom: 0; z-index: 3; margin: 8px -24px 0; padding: 12px 24px 18px; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--fg) 8%, transparent); border-radius: 0 0 28px 28px; }
+#post-dialog .dlg-foot .hint { flex-basis: 100%; order: -2; font-size: 13px; }
+#post-dialog .dlg-foot .hint:empty { display: none; }
+#post-dialog .dlg-foot .post-actions { display: contents; }
+#post-dialog .dlg-foot .post-actions > * { order: 3; }
+#post-dialog .dlg-foot .post-actions .bump-action { order: -1; margin: 0 auto 0 0; }
+#post-dialog .dlg-foot .post-actions .action-note { order: -2; flex-basis: 100%; }
+#post-dialog .dlg-foot .post-actions .more-menu .more-items { top: auto; bottom: calc(100% + 6px); left: auto; right: 0; }
+#post-dialog .dlg-foot .error { order: -1; }
+#post-dialog .dlg-foot .danger-btn { order: -1; margin-right: auto; }
+/* The trash icon at the top deletes; the footer only shows the "are you sure" step. */
+#post-dialog .dlg-foot #delete-post:not(.armed) { display: none; }
+#post-dialog .dlg-foot .post-actions > .more-menu { order: 3; }
+#post-dialog .dlg-foot .post-actions > .quiet, #post-dialog .dlg-foot .post-actions > select { order: 4; }
+#post-dialog .dlg-foot .post-actions > .primary { order: 5; }
+#post-dialog .dlg-foot #cancel, #post-dialog .dlg-foot #save-post { order: 2; }
+.dlg-tools { display: flex; align-items: center; gap: 4px; }
+.notes-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-right: 4px; padding: 0 12px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); font-size: 13px; font-weight: 600; transition: background .15s, transform .1s; }
+.notes-toggle:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.notes-toggle:active { transform: scale(.96); }
+.notes-toggle svg { width: 16px; height: 16px; }
+.notes-toggle[hidden] { display: none; }
+.notes-head { display: flex; align-items: center; justify-content: space-between; }
+.notes-head h2 { margin: 0; }
+.notes-close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 20px; line-height: 1; }
+.notes-close:hover { background: var(--hover); color: var(--fg); }
+#post-dialog:not(.notes-open) .dlg-body { grid-template-columns: minmax(0, 1fr); }
+#post-dialog:not(.notes-open) .notes { display: none; }
+#post-dialog.notes-open .notes { animation: notes-in .28s cubic-bezier(.2, .8, .2, 1); }
+@keyframes notes-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.paste-split { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 8px 0 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 13px; animation: pop-in .18s ease-out; }
+.paste-split[hidden] { display: none; }
+.paste-split .link-btn { color: var(--accent); text-decoration: none; }
+.title-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-width: 0; }
+.title-row h1 { grid-column: auto; padding-right: 0; }
+.waiting-pill { flex: none; min-height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform .1s; }
+.waiting-pill:active { transform: scale(.96); }
+.waiting-pill[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #post-dialog.notes-open .notes, .paste-split { animation: none; } }
+@media (max-width: 680px) { .notes-toggle span { display: none; } .notes-toggle { padding: 0 10px; } #post-dialog .dlg-foot { margin: 8px -16px 0; padding: 10px 16px 14px; } }
+
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
    Post/Story, platform and grid-shape toggles. */
@@ -878,7 +924,10 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 
   <main class="main" id="calendar-view">
     <header class="top">
-      <h1 id="month-title" aria-live="polite"></h1>
+      <div class="title-row">
+        <h1 id="month-title" aria-live="polite"></h1>
+        <button class="waiting-pill" id="waiting-pill" type="button" hidden></button>
+      </div>
       <div class="top-left">
         <div class="filter-row">
           <p class="count" id="count" role="group" aria-label="Stages"></p>
@@ -1054,12 +1103,13 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
     <div class="dlg-head">
       <div class="tracker" id="tracker" role="group" aria-label="Post stage"></div>
       <div class="dlg-tools">
+        <button class="notes-toggle" id="notes-toggle" type="button" aria-expanded="false" aria-controls="notes-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg><span id="notes-toggle-label">Add a note</span></button>
+        <button class="close" id="share-post" type="button" aria-label="Copy for Slack" title="Copy for Slack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
         <button class="close" id="duplicate-post" type="button" aria-label="Duplicate post" title="Duplicate post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
         <button class="close trash-btn" id="delete-top" type="button" aria-label="Delete post" title="Delete post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/></svg><span class="trash-confirm">Delete?</span></button>
         <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
       </div>
     </div>
-    <div class="post-actions" id="post-actions"></div>
     <fieldset id="post-fields">
     <input class="title-input" id="f-title" type="text" placeholder="Post title" aria-label="Post title" autocomplete="off">
     <div class="meta-row">
@@ -1121,7 +1171,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
             <input id="cover-file" type="file" accept="image/*" aria-label="Choose a cover image" hidden>
           </div>
         </div>
-        <div class="field" id="copy-field"><label for="f-copy">Copy <span class="optional-note" id="copy-optional" hidden>Optional</span></label><textarea id="f-copy" placeholder="Final caption"></textarea><div class="copy-options" id="copy-options" hidden></div><button class="text-btn add-option" id="add-option" type="button">+ Add option</button></div>
+        <div class="field" id="copy-field"><label for="f-copy">Copy <span class="optional-note" id="copy-optional" hidden>Optional</span></label><textarea id="f-copy" placeholder="Final caption"></textarea><p class="paste-split" id="paste-split" hidden><span id="paste-split-text"></span> <button class="link-btn" id="paste-split-yes" type="button">Split into options</button> <button class="link-btn" id="paste-split-no" type="button">Keep as one</button></p><div class="copy-options" id="copy-options" hidden></div><button class="text-btn add-option" id="add-option" type="button">+ Add option</button></div>
         <div class="field" id="tags-field"><label for="f-tags">Tags <span class="optional-note" id="tags-optional" hidden>Optional</span></label><input id="f-tags" type="text" placeholder="Accounts to tag, or n/a" autocomplete="off"></div>
         <div class="field">
           <label for="f-link">Link <span class="optional-note" id="link-optional" hidden>Optional</span></label>
@@ -1130,10 +1180,9 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
             <a class="quiet link-open" id="open-link" target="_blank" rel="noopener" hidden>Open</a>
           </div>
         </div>
-        <p class="hint" id="hint"></p>
       </section>
-      <aside class="notes" aria-label="Comments">
-        <h2>Comments</h2>
+      <aside class="notes" id="notes-panel" aria-label="Comments">
+        <div class="notes-head"><h2>Comments</h2><button class="notes-close" id="notes-close" type="button" aria-label="Hide comments">&times;</button></div>
         <div class="comment-list" id="comment-list"></div>
         <textarea id="comment-input" placeholder="Extra instructions or notes" aria-label="Add a comment"></textarea>
         <button class="quiet" id="add-comment" type="button">Add comment</button>
@@ -1146,10 +1195,12 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         <button class="quiet" id="keep-editing" type="button">Keep editing</button>
         <button class="primary" id="discard-changes" type="button">Discard</button>
       </div>
+      <p class="hint" id="hint"></p>
       <p class="error" id="form-error" hidden></p>
       <button class="quiet danger-btn" id="delete-post" type="button">Delete post</button>
       <button class="quiet" id="cancel" type="button">Cancel</button>
-      <button class="primary" id="save-post" type="submit">Save post</button>
+      <button class="primary" id="save-post" type="submit">Save draft</button>
+      <div class="post-actions" id="post-actions"></div>
     </div>
   </form>
 </dialog>
@@ -2311,6 +2362,10 @@ function renderBumps() {
     .filter((post) => stageOf(post) !== "draft" || (lastStep(post) || {}).type === "changes")
     .sort((a, b) => a.date.localeCompare(b.date));
   const updates = updatesForMe(new Set([...mine, ...unread].map((post) => post.id)));
+  /* The first thing anyone wants to know when they log in: is anything waiting on me? */
+  const pill = $("waiting-pill");
+  pill.hidden = !mine.length || state.readOnly;
+  pill.textContent = mine.length === 1 ? "1 post waiting on you" : mine.length + " posts waiting on you";
   const total = mine.length + unread.length + updates.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
@@ -3066,13 +3121,27 @@ function stampText(at) {
   return new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(" AM", "am").replace(" PM", "pm");
 }
 
+/* Comments stay out of the way until there's something in them: a post with no comments or steps yet
+   starts with the panel closed, and "Add a note" in the top bar opens it. */
+let notesOpen = null;
+function setNotesOpen(open, focus) {
+  notesOpen = open;
+  $("post-dialog").classList.toggle("notes-open", open);
+  $("notes-toggle").setAttribute("aria-expanded", String(open));
+  $("notes-toggle").hidden = open;
+  if (open && focus && !state.readOnly) $("comment-input").focus();
+}
 function renderComments() {
   const list = $("comment-list");
   list.replaceChildren();
+  const count = draft.comments.length;
+  $("notes-toggle-label").textContent = count ? (count === 1 ? "1 comment" : count + " comments") : "Add a note";
   const entries = [
     ...draft.comments.map((comment) => ({ kind: "comment", at: comment.at || 0, comment })),
     ...(draft.history || []).map((entry) => ({ kind: "history", at: entry.at || 0, entry }))
   ].sort((a, b) => a.at - b.at);
+  if (notesOpen === null) setNotesOpen(entries.length > 0 && !matchMedia("(max-width: 680px)").matches);
+  else setNotesOpen(notesOpen);
   if (!entries.length) {
     list.append(el("p", "comment-empty", "No comments yet."));
     return;
@@ -3366,6 +3435,12 @@ function renderActions() {
     }
   }
   box.hidden = !box.children.length;
+  /* One main button at a time: when there's a next step it leads, and saving steps back. */
+  const save = $("save-post");
+  save.textContent = stage === "draft" ? "Save draft" : "Save";
+  const leads = !!box.querySelector(".primary");
+  save.classList.toggle("primary", !leads);
+  save.classList.toggle("quiet", leads);
 }
 
 function openNote(kind) {
@@ -3610,9 +3685,13 @@ function openDialog() {
   $("delete-top").hidden = $("delete-post").hidden;
   $("duplicate-post").hidden = state.readOnly || !editing;
   $("delete-top").classList.remove("armed");
+  $("delete-post").classList.remove("armed");
   $("comment-input").hidden = state.readOnly;
   $("add-comment").hidden = state.readOnly;
+  $("share-post").hidden = !editing;
+  $("paste-split").hidden = true;
   renderTracker();
+  notesOpen = null;
   renderComments();
   updateHint();
   askDiscard(false);
@@ -5192,6 +5271,79 @@ document.querySelectorAll(".switch").forEach((toggle) => {
 $("close-client").addEventListener("click", () => $("client-dialog").close());
 $("cancel-client").addEventListener("click", () => $("client-dialog").close());
 $("add-comment").addEventListener("click", addComment);
+$("notes-toggle").addEventListener("click", () => setNotesOpen(true, true));
+$("notes-close").addEventListener("click", () => setNotesOpen(false));
+$("waiting-pill").addEventListener("click", (event) => { event.stopPropagation(); setNotifMenu(true); });
+
+function slackStatus(post) {
+  const stage = stageOf(post);
+  if (stage === "draft") return "Drafting";
+  if (stage === "internal") {
+    const name = String(post.manager || "").split("@")[0].split("+")[0].replace(/[._-]+/g, " ");
+    return "In review with " + (name ? name.charAt(0).toUpperCase() + name.slice(1) : "a manager");
+  }
+  if (stage === "ready") return "Ready to send to the client";
+  if (stage === "client") return "With the client";
+  return "Approved";
+}
+/* Copy for Slack: a short message with the post and a link that opens it here. */
+$("share-post").addEventListener("click", async () => {
+  if (!editing) return;
+  const client = clientById(editing.client);
+  const [y, m, d] = editing.date.split("-").map(Number);
+  const when = MONTHS[m - 1].slice(0, 3) + " " + d + (editing.time ? ", " + formatTime(editing.time) : "");
+  const where = (editing.platforms || []).map((id) => id === "tt" ? "TikTok" : "Instagram").join(" + ");
+  const text = "*" + (client ? client.name : "") + "* · " + when + (where ? " · " + where : "") + "\n"
+    + editing.title + " — " + slackStatus(editing) + "\n"
+    + location.origin + "/#post-" + editing.id;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied. Paste it in Slack.");
+  } catch (error) {
+    showToast("Couldn't copy. Your browser blocked it.");
+  }
+});
+
+/* Pasting caption options from Slack: if what you paste is numbered like "1." "2." or "Option 1:",
+   offer to split it into caption options. Nothing shows unless it looks like options. */
+function splitOptions(text) {
+  const marker = /^\s*(?:\*{0,2})(?:option|opt|caption|version|v)?\s*#?\s*([1-3])\s*(?:\*{0,2})\s*[:.)\-–—]\s*(?:\*{0,2})\s*/i;
+  const parts = [];
+  let expected = 1;
+  text.replace(/\r/g, "").split("\n").forEach((line) => {
+    const match = line.match(marker);
+    if (match && Number(match[1]) === expected) {
+      parts.push(line.replace(marker, ""));
+      expected += 1;
+    } else if (parts.length) {
+      parts[parts.length - 1] += "\n" + line;
+    }
+  });
+  const clean = parts.map((part) => part.trim()).filter(Boolean);
+  return clean.length >= 2 ? clean.slice(0, MAX_OPTIONS) : null;
+}
+let pastedOptions = null;
+$("f-copy").addEventListener("paste", (event) => {
+  const text = (event.clipboardData || window.clipboardData).getData("text");
+  const options = splitOptions(text || "");
+  const empty = !$("f-copy").value.trim();
+  pastedOptions = options && empty && !$("add-option").hidden ? options : null;
+  $("paste-split").hidden = !pastedOptions;
+  if (pastedOptions) $("paste-split-text").textContent = "This looks like " + pastedOptions.length + " caption options.";
+});
+$("f-copy").addEventListener("input", () => { if (!$("f-copy").value.trim()) $("paste-split").hidden = true; });
+$("paste-split-yes").addEventListener("click", () => {
+  if (!pastedOptions) return;
+  draft.copyOptions = [...pastedOptions];
+  draft.copy = "";
+  $("f-copy").value = "";
+  pastedOptions = null;
+  $("paste-split").hidden = true;
+  renderCopyOptions();
+  updateHint();
+  showToast("Split into " + draft.copyOptions.length + " options. The reviewer picks one.");
+});
+$("paste-split-no").addEventListener("click", () => { pastedOptions = null; $("paste-split").hidden = true; });
 $("color-wheel").addEventListener("pointerdown", (event) => {
   $("color-wheel").setPointerCapture(event.pointerId);
   pickFromWheel(event);
@@ -5270,11 +5422,15 @@ $("close-invite").addEventListener("click", () => $("invite-dialog").close());
 $("cancel-invite").addEventListener("click", () => $("invite-dialog").close());
 $("delete-post").addEventListener("click", async () => {
   await deletePost();
-  $("delete-top").classList.toggle("armed", $("delete-post").textContent !== "Delete post");
+  const armed = $("delete-post").textContent !== "Delete post";
+  $("delete-top").classList.toggle("armed", armed);
+  $("delete-post").classList.toggle("armed", armed);
 });
 $("delete-top").addEventListener("click", async () => {
   await deletePost();
-  $("delete-top").classList.toggle("armed", $("delete-post").textContent !== "Delete post");
+  const armed = $("delete-post").textContent !== "Delete post";
+  $("delete-top").classList.toggle("armed", armed);
+  $("delete-post").classList.toggle("armed", armed);
 });
 $("delete-client").addEventListener("click", deleteClient);
 $("upload-asset").addEventListener("click", () => $("asset-file").click());
