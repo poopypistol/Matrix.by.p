@@ -744,6 +744,28 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
   .top-icons .settings-btn { padding: 0 10px; }
   .side { position: static; }
 }
+
+/* Calendar filters as chips: each group sits in a recessed track, and a filter that is on
+   is a raised chip, like a segmented control you can switch on several parts of. */
+.filter-row { gap: 10px; }
+.filter-row .count, .filter-row .platform-bar { display: inline-flex; flex-wrap: wrap; gap: 3px; padding: 3px; margin: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--fg) 6%, transparent); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .06); }
+.filter-row .count-btn, .filter-row .text-toggle.mode-options .quiet { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 13px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); opacity: 1; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s, transform .1s; }
+.filter-row .count-btn:hover, .filter-row .text-toggle.mode-options .quiet:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); color: var(--fg); opacity: 1; }
+.filter-row .count-btn:active, .filter-row .text-toggle.mode-options .quiet:active { transform: scale(.96); }
+.filter-row .count-btn[aria-pressed="true"], .filter-row .text-toggle.mode-options .quiet[aria-pressed="true"] { background: var(--surface); color: var(--fg); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 2px 8px rgba(0, 0, 0, .06); }
+.filter-row .count-btn.is-approved[aria-pressed="true"] { color: var(--good); }
+.chip-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px dashed currentColor; box-sizing: border-box; opacity: .5; }
+.chip-dot.solid { border-style: solid; background: currentColor; }
+.count-btn[aria-pressed="true"] .chip-dot { opacity: 1; }
+.chip-num { min-width: 18px; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: center; }
+.count-btn[aria-pressed="false"] .chip-num { background: none; }
+@media (max-width: 680px) {
+  .filter-row .count, .filter-row .platform-bar { flex-wrap: nowrap; padding: 3px; }
+  .filter-row .count-btn, .filter-row .text-toggle.mode-options .quiet { padding: 0 10px; gap: 5px; font-size: 13px; }
+  .filter-row .count-btn .chip-dot { display: none; }
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .filter-row [aria-pressed="true"], :root:not([data-theme="light"]) .filter-row .text-toggle.mode-options .quiet[aria-pressed="true"] { background: color-mix(in srgb, var(--fg) 16%, var(--surface)); } }
+:root[data-theme="dark"] .filter-row [aria-pressed="true"], :root[data-theme="dark"] .filter-row .text-toggle.mode-options .quiet[aria-pressed="true"] { background: color-mix(in srgb, var(--fg) 16%, var(--surface)); }
 </style>
 </head>
 <body>
@@ -791,7 +813,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       <h1 id="month-title" aria-live="polite"></h1>
       <div class="top-left">
         <div class="filter-row">
-          <p class="count" id="count"></p>
+          <p class="count" id="count" role="group" aria-label="Stages"></p>
         <div class="platform-bar mode-options text-toggle" role="group" aria-label="Platform">
           <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Double-click to show only these.">Instagram</button>
           <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Double-click to show only these.">TikTok</button>
@@ -908,7 +930,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       </div>
       <div class="sub-setting">
         <h3 class="sub-title" id="bump-timing-title">Bump timing</h3>
-        <p class="empty">Choose when you get bumped, based on each post's date. All times are Pacific Time.</p>
+        <p class="empty">Choose when you get bumped, based on each post's date. Bumps only come on weekdays: days are counted Monday to Friday, and a weekend post counts back from the Friday before it. All times are Pacific Time.</p>
         <div class="timing-list" id="bump-timing" role="group" aria-labelledby="bump-timing-title"></div>
         <button class="quiet add-timing" id="add-timing" type="button">+ Add bump time</button>
       </div>
@@ -1930,12 +1952,24 @@ function pacificTime(year, month, day, hour) {
   return new Date(guess.getTime() - offset);
 }
 
-/* Bump times come from each person's schedule, in Pacific Time, counted back from the post date. */
+/* Bumps only land on weekdays. A weekend post counts back from the Friday before it, since nobody
+   is around to act on Saturday or Sunday, and each "day before" is a workday (Mon to Fri). */
+function bumpDay(year, month, day, days) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const step = () => date.setUTCDate(date.getUTCDate() - 1);
+  const weekend = () => date.getUTCDay() === 0 || date.getUTCDay() === 6;
+  while (weekend()) step();
+  for (let left = days; left > 0;) { step(); if (!weekend()) left--; }
+  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()];
+}
+
+/* Bump times come from each person's schedule, in Pacific Time, counted back from the post date in workdays. */
 function bumpTimes(post) {
   const [year, month, day] = post.date.split("-").map(Number);
   return state.bumpSchedule.map(({ days, time }) => {
     const [hour, minute] = time.split(":").map(Number);
-    return new Date(pacificTime(year, month, day - days, hour).getTime() + minute * 60000);
+    const [y, m, d] = bumpDay(year, month, day, days);
+    return new Date(pacificTime(y, m, d, hour).getTime() + minute * 60000);
   });
 }
 
@@ -2393,7 +2427,7 @@ function renderBumpTiming() {
     days.id = "bump-days-" + index;
     days.setAttribute("aria-label", "Days before the post");
     for (let count = 7; count >= 0; count--) {
-      const option = el("option", "", count === 0 ? "On the post date" : count === 1 ? "1 day before" : count + " days before");
+      const option = el("option", "", count === 0 ? "On the post date" : count === 1 ? "1 workday before" : count + " workdays before");
       option.value = String(count);
       days.append(option);
     }
@@ -2557,7 +2591,11 @@ function renderCount(counts) {
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
     button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
-    button.append(total + " " + group.label);
+    const dot = el("span", "chip-dot" + (group.id === "approved" ? " solid" : ""));
+    dot.setAttribute("aria-hidden", "true");
+    const num = el("span", "chip-num");
+    num.textContent = total;
+    button.append(dot, group.label, num);
     button.addEventListener("click", () => {
       const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
       const tap = doubleTap("group-" + group.id, solo);

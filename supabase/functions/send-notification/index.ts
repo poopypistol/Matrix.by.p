@@ -10,6 +10,17 @@ const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 const SITE = "https://declanbyp.vercel.app";
 const slackToken = Deno.env.get("SLACK_BOT_TOKEN");
 const slackIds: Record<string, string> = {};
+/* Bumps only land on weekdays. A weekend post counts back from the Friday before it, since nobody
+   is around to act on Saturday or Sunday, and each "day before" is a workday (Mon to Fri). */
+function bumpDay(year: number, month: number, day: number, days: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const step = () => date.setUTCDate(date.getUTCDate() - 1);
+  const weekend = () => date.getUTCDay() === 0 || date.getUTCDay() === 6;
+  while (weekend()) step();
+  for (let left = days; left > 0;) { step(); if (!weekend()) left--; }
+  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()];
+}
+
 const DEFAULT_SCHEDULE = [
   { days: 3, time: "10:00" }, { days: 2, time: "10:00" },
   { days: 1, time: "10:00" }, { days: 1, time: "15:00" },
@@ -232,7 +243,8 @@ Deno.serve(async (request) => {
         const [year, month, day] = post.post_date.split("-").map(Number);
         const passed = schedule.map((slot: any) => {
           const [hour, minute] = slot.time.split(":").map(Number);
-          return pacificTime(year, month, day - slot.days, hour, minute).getTime();
+          const [y, m, d] = bumpDay(year, month, day, slot.days);
+          return pacificTime(y, m, d, hour, minute).getTime();
         }).filter((at: number) => at <= now && now - at < 3 * 86400000);
         if (passed.length) {
           const at = Math.max(...passed);
