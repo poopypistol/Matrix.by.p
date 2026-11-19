@@ -965,7 +965,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 
   <section class="settings-page notify-page" id="pipe-view" aria-labelledby="pipe-title" hidden>
     <h1 id="pipe-title">Matrix</h1>
-    <p class="side-note bump-intro">Every post that isn’t approved yet, by step.</p>
+    <p class="side-note bump-intro">Every post that isn’t approved yet, by step. Shows the clients picked on the left.</p>
     <div class="board" id="pipeline-view"></div>
   </section>
 
@@ -2441,7 +2441,7 @@ function renderBumps() {
   board.replaceChildren();
   STAGES.filter((stage) => stage.id !== "approved").forEach((stage) => {
     const posts = state.posts
-      .filter((post) => clientById(post.client) && stageOf(post) === stage.id)
+      .filter((post) => clientById(post.client) && isShown(post.client) && stageOf(post) === stage.id)
       .sort((a, b) => a.date.localeCompare(b.date));
     const column = el("div", "column");
     const heading = el("h2", "", stage.name);
@@ -5079,7 +5079,7 @@ function showView(view, fromHistory) {
   $("cal-btn").classList.toggle("is-active", view === "calendar" || view === "feed");
   $("bumps").classList.toggle("is-active", view === "notifications" || view === "bumps");
   $("calendar-view").hidden = view !== "calendar";
-  $("client-panel").hidden = view !== "calendar" && view !== "feed";
+  $("client-panel").hidden = view !== "calendar" && view !== "feed" && view !== "pipeline";
   renderClients();
   renderFeed();
   const address = view === "calendar" ? location.pathname : "#" + view;
