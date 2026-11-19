@@ -844,8 +844,17 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .paste-split .link-btn { color: var(--accent); text-decoration: none; }
 .title-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-width: 0; }
 .title-row h1 { grid-column: auto; padding-right: 0; }
-.waiting-pill { flex: none; min-height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); transition: transform .1s; }
-.waiting-pill:active { transform: scale(.96); }
+.waiting-pill { flex: none; display: inline-flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); color: var(--fg); font-size: 15px; font-weight: 500; letter-spacing: -.01em; box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 4px 14px rgba(0, 0, 0, .07); transition: transform .1s, box-shadow .15s; }
+.waiting-pill:hover { box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 6px 18px rgba(0, 0, 0, .1); }
+.waiting-pill:active { transform: scale(.97); }
+.waiting-pill b { font-weight: 700; }
+/* A small dot in declan navy that gently pulses, the one bit of color here. */
+.waiting-pill::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: waiting-pulse 2s ease-out infinite; }
+.waiting-pill::after { content: "›"; margin-left: 1px; color: var(--faint); font-size: 20px; line-height: 1; }
+@keyframes waiting-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 70% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .waiting-pill::before { animation: none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .waiting-pill { background: color-mix(in srgb, var(--fg) 10%, var(--surface)); } }
+:root[data-theme="dark"] .waiting-pill { background: color-mix(in srgb, var(--fg) 10%, var(--surface)); }
 .waiting-pill[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { #post-dialog.notes-open .notes, .paste-split { animation: none; } }
 @media (max-width: 680px) { .notes-toggle span { display: none; } .notes-toggle { padding: 0 10px; } #post-dialog .dlg-foot { margin: 8px -16px 0; padding: 10px 16px 14px; } }
@@ -2365,7 +2374,10 @@ function renderBumps() {
   /* The first thing anyone wants to know when they log in: is anything waiting on me? */
   const pill = $("waiting-pill");
   pill.hidden = !mine.length || state.readOnly;
-  pill.textContent = mine.length === 1 ? "1 post waiting on you" : mine.length + " posts waiting on you";
+  const words = el("span");
+  words.append(el("b", "", String(mine.length)), mine.length === 1 ? " post waiting on you" : " posts waiting on you");
+  pill.replaceChildren(words);
+  pill.setAttribute("aria-label", mine.length + (mine.length === 1 ? " post" : " posts") + " waiting on you. Open notifications.");
   const total = mine.length + unread.length + updates.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
