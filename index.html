@@ -757,8 +757,24 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .client.off .check { background: transparent; border-color: var(--cbg); box-shadow: none; transform: scale(.85); }
 .client-name { padding-right: 8px; font-weight: 500; color: var(--fg); transition: color .2s, opacity .2s; }
 .client.off .client-name { color: var(--fg); opacity: .4; }
-.client .client-edit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 28px; padding: 0 10px; border-radius: 999px; background: var(--surface); box-shadow: var(--chip-shadow); }
-@media (hover: none) { .client .client-edit { position: static; transform: none; align-self: center; margin-right: 4px; background: none; box-shadow: none; } }
+.client-name { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 0 8px 0 12px; -webkit-touch-callout: none; user-select: none; }
+.client-label { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.client.off .client-name { opacity: 1; }
+.client.off .client-label { opacity: .4; }
+.client-only, .client-menu > summary { position: absolute; top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity .12s; }
+.client-only { right: 36px; min-height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: var(--surface); box-shadow: var(--chip-shadow); color: var(--fg); font-size: 12px; font-weight: 600; }
+.client-only:active { transform: translateY(-50%) scale(.95); }
+.client-menu { position: static; }
+.client:has(.client-menu[open]) { z-index: 20; }
+.client-menu .more-items { z-index: 20; background: var(--glass-strong); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8); border: 0; border-radius: 14px; box-shadow: var(--glass-edge), 0 16px 40px rgba(0, 0, 0, .16); }
+.client-menu > summary { right: 4px; padding: 4px 8px; font-size: 16px; }
+.client:hover .client-only, .client:hover .client-menu > summary, .client-only:focus-visible, .client-menu > summary:focus-visible, .client-menu[open] > summary { opacity: 1; }
+.client .client-name[aria-pressed] { font-weight: 500; }
+.client:hover, .client:has(.client-menu[open]) { background: color-mix(in srgb, var(--fg) 6%, var(--surface)); }
+.client-menu > summary { background: color-mix(in srgb, var(--fg) 6%, var(--surface)); border-radius: 999px; }
+.client-only::before { content: ""; position: absolute; right: 100%; top: 0; bottom: 0; width: 24px; background: linear-gradient(to right, transparent, color-mix(in srgb, var(--fg) 6%, var(--surface))); pointer-events: none; }
+.client-menu .more-items { top: calc(100% - 4px); left: auto; right: 0; min-width: 180px; }
+@media (hover: none) { .client-only, .client-menu > summary { display: none; } }
 .clients-note { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -2px 0 6px; padding: 6px 6px 6px 10px; border-radius: 10px; background: var(--hover); font-size: 13px; color: var(--muted); }
 .clients-note[hidden] { display: none; }
 .clients-note span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -842,8 +858,8 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         <div class="filter-row">
           <p class="count" id="count" role="group" aria-label="Stages"></p>
         <div class="platform-bar mode-options text-toggle" role="group" aria-label="Platform">
-          <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Double-click to show only these.">Instagram</button>
-          <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Double-click to show only these.">TikTok</button>
+          <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Option-click to show only these.">Instagram</button>
+          <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Option-click to show only these.">TikTok</button>
         </div>
         </div>
         <p class="start-note" id="start-note" hidden>Add your first client, then click any day to add a post.</p>
@@ -1957,42 +1973,68 @@ function renderClients() {
     const solo = !feedMode && shown && shownCount === 1 && state.clients.length > 1;
     const row = el("div", "client " + colorClass(client.color) + (shown ? "" : " off"));
 
-    const check = el("button", "client-check");
-    check.type = "button";
-    check.setAttribute("aria-pressed", String(shown));
-    check.setAttribute("aria-label", "Show " + client.name + " on the calendar");
-    check.title = shown ? "Hide this client" : "Show this client";
-    check.append(el("span", "check"));
-    check.addEventListener("click", () => {
+    const others = state.clients.filter((other) => other.id !== client.id).map((other) => other.id);
+    const showOnly = () => setHidden(new Set(solo ? [] : others));
+
+    /* The whole row is one switch: click to show or hide this client. Option-click shows only this one. */
+    const toggle = el("button", "client-name");
+    toggle.type = "button";
+    toggle.setAttribute("aria-pressed", String(shown));
+    toggle.title = feedMode ? "Show this client's feed" : (shown ? "Hide " : "Show ") + client.name + " on the calendar";
+    toggle.append(el("span", "check"), el("span", "client-label", client.name));
+    let held = false;
+    toggle.addEventListener("click", (event) => {
+      if (held) { held = false; return; }
       if (feedMode) return pickFeed(client);
-      const tap = doubleTap("client-" + client.id, solo);
+      if (event.altKey) return showOnly();
       const next = new Set(state.hidden);
-      if (tap) {
-        setHidden(new Set(tap.wasSolo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id)));
-        return;
-      }
       if (shown) next.add(client.id);
       else next.delete(client.id);
       setHidden(next);
     });
+    row.append(toggle);
 
-    const name = el("button", "client-name", client.name);
-    name.type = "button";
-    name.setAttribute("aria-pressed", String(solo));
-    name.title = solo ? "Show all clients" : "Show only this client";
-    name.addEventListener("click", () => {
-      if (feedMode) return pickFeed(client);
-      if (doubleTap("name-" + client.id)) return;
-      setHidden(new Set(solo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id)));
-    });
+    if (!feedMode) {
+      /* On hover: "Only" right on the row, and a ⋯ menu that holds Edit. On a phone, press and hold the
+         row for the same menu. */
+      const only = el("button", "client-only", solo ? "All" : "Only");
+      only.type = "button";
+      only.setAttribute("aria-label", solo ? "Show all clients" : "Show only " + client.name);
+      only.addEventListener("click", showOnly);
 
-    row.append(check, name);
-    if (!state.readOnly) {
-      const edit = el("button", "client-edit", "Edit");
-      edit.type = "button";
-      edit.setAttribute("aria-label", "Edit " + client.name);
-      edit.addEventListener("click", () => openClientDialog(client));
-      row.append(edit);
+      const menu = el("details", "more-menu client-menu");
+      const summary = el("summary", "", "⋯");
+      summary.setAttribute("aria-label", "More for " + client.name);
+      const items = el("div", "more-items");
+      const onlyItem = el("button", "", solo ? "Show all clients" : "Show only " + client.name);
+      onlyItem.type = "button";
+      onlyItem.addEventListener("click", () => { menu.open = false; showOnly(); });
+      items.append(onlyItem);
+      if (!state.readOnly) {
+        const edit = el("button", "", "Edit client");
+        edit.type = "button";
+        edit.setAttribute("aria-label", "Edit " + client.name);
+        edit.addEventListener("click", () => { menu.open = false; openClientDialog(client); });
+        items.append(edit);
+      }
+      menu.append(summary, items);
+      row.append(only, menu);
+
+      let pressTimer = 0;
+      toggle.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch") return;
+        pressTimer = setTimeout(() => {
+          held = true;
+          document.querySelectorAll(".more-menu[open]").forEach((open) => { open.open = false; });
+          menu.open = true;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }, 450);
+      });
+      ["pointerup", "pointercancel", "pointerleave", "pointermove"].forEach((type) => toggle.addEventListener(type, (event) => {
+        if (type === "pointermove" && Math.abs(event.movementX) + Math.abs(event.movementY) < 6) return;
+        clearTimeout(pressTimer);
+      }));
+      toggle.addEventListener("contextmenu", (event) => { if (event.pointerType === "touch" || held) event.preventDefault(); });
     }
     list.append(row);
   });
@@ -2648,17 +2690,16 @@ function renderCount(counts) {
     const button = el("button", "count-btn" + (group.id === "approved" ? " is-approved" : ""));
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
-    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
+    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Option-click to show only these.";
     const dot = el("span", "chip-dot" + (group.id === "approved" ? " solid" : ""));
     dot.setAttribute("aria-hidden", "true");
     const num = el("span", "chip-num");
     num.textContent = total;
     button.append(dot, group.label, num);
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
       const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
-      const tap = doubleTap("group-" + group.id, solo);
-      if (tap) {
-        FILTER_GROUPS.forEach((other) => setGroup(other, tap.wasSolo || other.id === group.id));
+      if (event.altKey) {
+        FILTER_GROUPS.forEach((other) => setGroup(other, solo || other.id === group.id));
       } else {
         setGroup(group, !shown);
       }
@@ -4808,15 +4849,14 @@ document.querySelectorAll("[data-ratio]").forEach((button) => button.addEventLis
   state.feedRatio = button.dataset.ratio;
   renderFeed();
 }));
-document.querySelectorAll("[data-platform-view]").forEach((button) => button.addEventListener("click", () => {
+document.querySelectorAll("[data-platform-view]").forEach((button) => button.addEventListener("click", (event) => {
   const platform = button.dataset.platformView;
   const other = platform === "ig" ? "tt" : "ig";
   const solo = platformsShown[platform] && !platformsShown[other];
-  /* Double-click shows only this platform, or both again if it already was the only one. */
-  const tap = doubleTap("platform-" + platform, solo);
-  if (tap) {
-    platformsShown = { [platform]: true, [other]: tap.wasSolo };
-    if (!tap.wasSolo) state.feedRatio = platform;
+  /* Option-click shows only this platform, or both again if it already was the only one. */
+  if (event.altKey) {
+    platformsShown = { [platform]: true, [other]: solo };
+    if (!solo) state.feedRatio = platform;
     try { localStorage.setItem("declan-platforms", JSON.stringify(platformsShown)); } catch (error) {}
     renderPlatformView();
   } else {
