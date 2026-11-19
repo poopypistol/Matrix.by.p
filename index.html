@@ -785,6 +785,15 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .post.leaving { animation: post-out .18s ease-in forwards; pointer-events: none; }
 .post.entering { animation: post-in .24s cubic-bezier(.2, .9, .3, 1.15); }
 @media (prefers-reduced-motion: reduce) { .client, .client .check, .post.leaving, .post.entering { transition: none; animation: none; } }
+
+/* The round x for removing an upload or a cover. */
+.close-x { position: absolute; top: 8px; right: 8px; z-index: 2; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .55); color: #FFFFFF; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 1px 4px rgba(0, 0, 0, .2); cursor: pointer; transition: background .15s, transform .1s; }
+.close-x:hover { background: rgba(0, 0, 0, .75); }
+.close-x:active { transform: scale(.9); }
+.gallery-count { top: auto; bottom: 8px; }
+.cover-thumb { position: relative; }
+.cover-thumb .close-x { top: 4px; right: 4px; width: 22px; height: 22px; }
+.cover-thumb .close-x svg { width: 10px; height: 10px; }
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
    Post/Story, platform and grid-shape toggles. */
@@ -3641,6 +3650,17 @@ async function fillMedia(box, file, small, isCurrent) {
   }
 }
 
+/* The small round x in the top right corner of an image, for removing it. */
+function closeX(label, onClick) {
+  const x = el("button", "close-x");
+  x.type = "button";
+  x.setAttribute("aria-label", label);
+  x.title = label;
+  x.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  x.addEventListener("click", (event) => { event.stopPropagation(); onClick(); });
+  return x;
+}
+
 function renderAssetPreview() {
   const preview = $("asset-preview");
   const files = (draft && draft.assetFiles) || [];
@@ -3676,6 +3696,11 @@ function renderAssetPreview() {
     );
   }
   if (draft.coverFile && draft.coverFile.id === file.id) stage.append(el("span", "gallery-badge", "Cover"));
+  if (!state.readOnly) {
+    const remove = closeX("Remove " + file.name, removeAsset);
+    remove.classList.add("remove");
+    stage.append(remove);
+  }
   preview.append(stage);
 
   if (many) {
@@ -3731,11 +3756,6 @@ function renderAssetPreview() {
       });
       actions.append(grab);
     }
-    const remove = el("button", "quiet remove", "Remove");
-    remove.type = "button";
-    remove.addEventListener("click", removeAsset);
-    remove.setAttribute("aria-label", "Remove " + file.name);
-    actions.append(remove);
   }
   const open = el("a", "", "Open file");
   open.target = "_blank";
@@ -4136,9 +4156,24 @@ async function renderCoverPreview() {
     image.src = url;
     image.alt = "Cover image";
     box.append(image);
+    if (!state.readOnly && (file.source === "upload" || file.source === "frame")) box.append(closeX("Remove cover", removeCover));
   } else {
     box.append(el("span", "", "Can't preview"));
   }
+}
+
+/* Removing a cover you uploaded (or a frame you picked) goes back to the automatic cover: the
+   first image in the uploads, or none. */
+function removeCover() {
+  const old = draft.coverFile;
+  if (!old) return;
+  if (old.source === "upload" || old.source === "frame") draft.removedFiles = [...(draft.removedFiles || []), old.id];
+  draft.coverFile = null;
+  const image = (draft.assetFiles || []).find((file) => fileKind(file) === "image");
+  if (image) draft.coverFile = { id: image.id, name: image.name, type: image.type, source: "asset" };
+  renderCoverPreview();
+  renderAssetPreview();
+  updateHint();
 }
 
 async function uploadCover(file) {
