@@ -2031,6 +2031,13 @@ function renderClients() {
       button.addEventListener("click", (event) => {
         if (held) { held = false; return; }
         if (event.altKey) return showOnlyClient(client);
+        /* The quiet shortcut: double-click shows only this client, or everyone again if it already was. */
+        const solo = shown && state.clients.every((other) => other.id === client.id || !isShown(other.id));
+        const tap = doubleTap("client-" + client.id, solo);
+        if (tap) {
+          setHidden(new Set(tap.wasSolo ? [] : state.clients.filter((other) => other.id !== client.id).map((other) => other.id)));
+          return;
+        }
         const next = new Set(state.hidden);
         if (shown) next.add(client.id);
         else next.delete(client.id);
