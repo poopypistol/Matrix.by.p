@@ -745,6 +745,21 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
   .side { position: static; }
 }
 
+/* Client list without check marks: a client that's showing is a soft pill tinted in its own color with a
+   solid dot; a hidden one goes flat, with grey text and an empty ring. */
+.clients { gap: 3px; }
+.client { background: color-mix(in srgb, var(--cbg) 16%, transparent); transition: background .15s, opacity .15s; }
+.client:hover { background: color-mix(in srgb, var(--cbg) 26%, transparent); }
+.client.off { background: transparent; }
+.client.off:hover { background: var(--hover); }
+.client .check { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--cbg); background: var(--cbg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 12%, transparent); transition: background .15s, transform .1s; }
+.client-check:active .check { transform: scale(.8); }
+.client.off .check { background: none; border-color: var(--cbg); opacity: .7; box-shadow: none; }
+.client-name { font-weight: 600; }
+.client.off .client-name { color: var(--chip-off-fg); font-weight: 500; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .client:not(.off) { background: color-mix(in srgb, var(--cbg) 28%, #3A3A3F); } :root:not([data-theme="light"]) .client .check { box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); } }
+:root[data-theme="dark"] .client:not(.off) { background: color-mix(in srgb, var(--cbg) 28%, #3A3A3F); }
+:root[data-theme="dark"] .client .check { box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); }
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
    Post/Story, platform and grid-shape toggles. */
@@ -1905,7 +1920,7 @@ function renderClients() {
     check.setAttribute("aria-pressed", String(shown));
     check.setAttribute("aria-label", "Show " + client.name + " on the calendar");
     check.title = shown ? "Hide this client" : "Show this client";
-    check.append(el("span", "check", "✓"));
+    check.append(el("span", "check"));
     check.addEventListener("click", () => {
       if (feedMode) return pickFeed(client);
       const tap = doubleTap("client-" + client.id, solo);
