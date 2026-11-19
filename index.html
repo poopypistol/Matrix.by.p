@@ -804,6 +804,24 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .cover-thumb { position: relative; }
 .cover-thumb .close-x { top: 4px; right: 4px; width: 22px; height: 22px; }
 .cover-thumb .close-x svg { width: 10px; height: 10px; }
+/* Calendar filters in the same style as the client list: a check circle in declan navy, the name,
+   and a small grey count. No tracks or chips, so every filter on the page looks and works alike. */
+.filter-row { gap: 4px 14px; }
+.filter-row p.count.count, .filter-row .platform-bar.text-toggle.mode-options { gap: 2px; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.filter-row .platform-bar.text-toggle.mode-options { padding-left: 14px; border-left: 1px solid var(--line); }
+.filter-row .count .count-btn, .filter-row .platform-bar.text-toggle.mode-options .quiet { gap: 8px; min-height: 34px; padding: 0 10px 0 6px; border-radius: 10px; background: none; box-shadow: none; color: var(--fg); font-weight: 500; }
+.filter-row .count .count-btn:hover, .filter-row .platform-bar.text-toggle.mode-options .quiet:hover { background: var(--hover); }
+.filter-row .count .count-btn::before, .filter-row .platform-bar.text-toggle.mode-options .quiet::before { content: ""; flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--accent); border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 11px no-repeat; transition: background-color .18s, border-color .18s, transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.filter-row .count .count-btn:active::before, .filter-row .platform-bar.text-toggle.mode-options .quiet:active::before { transform: scale(.88); }
+.filter-row .count .count-btn[aria-pressed="false"]::before, .filter-row .platform-bar.text-toggle.mode-options .quiet[aria-pressed="false"]::before { background: transparent; border-color: var(--faint); }
+.filter-row .count .count-btn[aria-pressed="false"], .filter-row .platform-bar.text-toggle.mode-options .quiet[aria-pressed="false"] { color: var(--muted); }
+.filter-row .count .count-btn[aria-pressed="true"], .filter-row .count .count-btn.is-approved[aria-pressed="true"], .filter-row .platform-bar.text-toggle.mode-options .quiet[aria-pressed="true"] { background: none; box-shadow: none; color: var(--fg); font-weight: 500; }
+.filter-row .count .count-btn[aria-pressed="true"]:hover, .filter-row .platform-bar.text-toggle.mode-options .quiet[aria-pressed="true"]:hover { background: var(--hover); }
+.filter-row .chip-dot { display: none; }
+.filter-row .chip-num, .filter-row .count-btn[aria-pressed="false"] .chip-num { min-width: 0; padding: 0; background: none; color: var(--faint); font-weight: 500; }
+@media (max-width: 680px) { .filter-row .platform-bar.text-toggle.mode-options { padding-left: 10px; } .filter-row .count .count-btn, .filter-row .platform-bar.text-toggle.mode-options .quiet { padding: 0 8px 0 4px; gap: 6px; } }
+@media (prefers-reduced-motion: reduce) { .filter-row .count .count-btn::before, .filter-row .platform-bar.text-toggle.mode-options .quiet::before { transition: none; } }
+
 /* Post window, first-day pass:
    - the next step (Send, Approve…) sits at the bottom right in a footer that stays put, with what's
      still missing written right above it
@@ -941,8 +959,8 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         <div class="filter-row">
           <p class="count" id="count" role="group" aria-label="Stages"></p>
         <div class="platform-bar mode-options text-toggle" role="group" aria-label="Platform">
-          <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Option-click to show only these.">Instagram</button>
-          <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Option-click to show only these.">TikTok</button>
+          <button class="quiet" type="button" data-platform-view="ig" aria-pressed="true" title="Show or hide Instagram posts. Double-click to show only these.">Instagram</button>
+          <button class="quiet" type="button" data-platform-view="tt" aria-pressed="true" title="Show or hide TikTok posts. Double-click to show only these.">TikTok</button>
         </div>
         </div>
         <p class="start-note" id="start-note" hidden>Add your first client, then click any day to add a post.</p>
@@ -2814,7 +2832,7 @@ function renderCount(counts) {
     const button = el("button", "count-btn" + (group.id === "approved" ? " is-approved" : ""));
     button.type = "button";
     button.setAttribute("aria-pressed", String(shown));
-    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Option-click to show only these.";
+    button.title = (shown ? "Hide " : "Show ") + group.label + " posts. Double-click to show only these.";
     const dot = el("span", "chip-dot" + (group.id === "approved" ? " solid" : ""));
     dot.setAttribute("aria-hidden", "true");
     const num = el("span", "chip-num");
@@ -2822,8 +2840,10 @@ function renderCount(counts) {
     button.append(dot, group.label, num);
     button.addEventListener("click", (event) => {
       const solo = shown && FILTER_GROUPS.every((other) => other.id === group.id || !isOn(other));
-      if (event.altKey) {
-        FILTER_GROUPS.forEach((other) => setGroup(other, solo || other.id === group.id));
+      const tap = doubleTap("group-" + group.id, solo);
+      if (event.altKey || tap) {
+        const wasSolo = tap ? tap.wasSolo : solo;
+        FILTER_GROUPS.forEach((other) => setGroup(other, wasSolo || other.id === group.id));
       } else {
         setGroup(group, !shown);
       }
@@ -5036,10 +5056,12 @@ document.querySelectorAll("[data-platform-view]").forEach((button) => button.add
   const platform = button.dataset.platformView;
   const other = platform === "ig" ? "tt" : "ig";
   const solo = platformsShown[platform] && !platformsShown[other];
-  /* Option-click shows only this platform, or both again if it already was the only one. */
-  if (event.altKey) {
-    platformsShown = { [platform]: true, [other]: solo };
-    if (!solo) state.feedRatio = platform;
+  /* Double-click (or Option-click) shows only this platform, or both again if it already was the only one. */
+  const tap = doubleTap("platform-" + platform, solo);
+  if (event.altKey || tap) {
+    const wasSolo = tap ? tap.wasSolo : solo;
+    platformsShown = { [platform]: true, [other]: wasSolo };
+    if (!wasSolo) state.feedRatio = platform;
     try { localStorage.setItem("declan-platforms", JSON.stringify(platformsShown)); } catch (error) {}
     renderPlatformView();
   } else {
