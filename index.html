@@ -745,20 +745,23 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
   .side { position: static; }
 }
 
-/* Client list without check marks: a client that's showing is a frosted grey pill like the top bar,
-   with a solid dot in its color; a hidden one goes flat, with grey text and an empty ring. */
-:root { --pill: #EEEEF2; --pill-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 1px rgba(0, 0, 0, .03), 0 1px 3px rgba(0, 0, 0, .06); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pill: #2E2E33; --pill-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(255, 255, 255, .04), 0 1px 3px rgba(0, 0, 0, .4); } }
-:root[data-theme="dark"] { --pill: #2E2E33; --pill-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), inset 0 0 0 1px rgba(255, 255, 255, .04), 0 1px 3px rgba(0, 0, 0, .4); }
-.clients { gap: 3px; }
-.client { background: var(--pill); box-shadow: var(--pill-shadow); transition: background .15s, box-shadow .15s; }
-.client:hover { background: color-mix(in srgb, var(--fg) 5%, var(--pill)); }
+/* Client list without check marks, using the same look as the calendar filters: the list sits in a
+   sunken track and each client that's showing is a raised chip, with its color only in the dot. */
+.clients { gap: 2px; padding: 3px; border-radius: 16px; background: var(--track); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .08); }
+.client { margin-left: 0; background: var(--chip-on); box-shadow: var(--chip-shadow); border-radius: 13px; transition: background .15s, box-shadow .15s; }
+.client .client-check, .client .client-name { border-radius: 13px; }
+.client:hover { background: var(--chip-on); }
 .client.off { background: transparent; box-shadow: none; }
-.client.off:hover { background: var(--hover); }
+.client.off:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .client .check { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--cbg); background: var(--cbg); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 14%, transparent); transition: background .15s, transform .1s; }
 .client-check:active .check { transform: scale(.8); }
 .client.off .check { background: none; border-color: var(--cbg); opacity: .7; box-shadow: none; }
-.client-name { font-weight: 600; }
+.client-name { font-weight: 600; color: var(--chip-on-fg); }
+.client { position: relative; }
+.client-name { padding-right: 8px; }
+.client .client-edit { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 28px; padding: 0 10px; border-radius: 999px; background: var(--chip-on); box-shadow: var(--chip-shadow); }
+.client.off .client-edit { background: var(--surface); }
+@media (hover: none) { .client .client-edit { position: static; transform: none; align-self: center; margin-right: 4px; background: none; box-shadow: none; } }
 .client.off .client-name { color: var(--chip-off-fg); font-weight: 500; }
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
