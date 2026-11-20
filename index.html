@@ -5099,7 +5099,13 @@ let viewHistoryReady = false;
 function showView(view, fromHistory) {
   const changed = view !== currentView;
   currentView = view;
-  if (view === "feed" && !clientById(state.feedClient) && state.clients.length) state.feedClient = state.clients[0].id;
+  /* The feed opens on the client you're working with: the one you're showing alone on the calendar,
+     else the last client you made a post for, else the first. */
+  if (view === "feed" && state.clients.length) {
+    const shownNow = state.clients.filter((client) => isShown(client.id));
+    if (shownNow.length === 1) state.feedClient = shownNow[0].id;
+    else if (!clientById(state.feedClient)) state.feedClient = clientById(state.lastClient) ? state.lastClient : state.clients[0].id;
+  }
   $("feed-view").hidden = view !== "feed";
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
@@ -5307,7 +5313,7 @@ $("cancel-client").addEventListener("click", () => $("client-dialog").close());
 $("add-comment").addEventListener("click", addComment);
 $("notes-toggle").addEventListener("click", () => setNotesOpen(true, true));
 $("notes-close").addEventListener("click", () => setNotesOpen(false));
-$("waiting-pill").addEventListener("click", (event) => { event.stopPropagation(); setNotifMenu(true); });
+$("waiting-pill").addEventListener("click", (event) => { event.stopPropagation(); setNotifMenu(false); showView("notifications"); });
 
 function slackStatus(post) {
   const stage = stageOf(post);
