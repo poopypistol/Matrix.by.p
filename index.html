@@ -877,6 +877,14 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 @media (prefers-reduced-motion: reduce) { #post-dialog.notes-open .notes, .paste-split { animation: none; } }
 @media (max-width: 680px) { .notes-toggle span { display: none; } .notes-toggle { padding: 0 10px; } #post-dialog .dlg-foot { margin: 8px -16px 0; padding: 10px 16px 14px; } }
 
+/* Post window top bar: smaller, matching icons, and a "Link copied" bubble under the share button. */
+.dlg-tools .close svg, .dlg-tools .trash-btn svg { width: 18px; height: 18px; }
+#share-post { position: relative; }
+#share-post::after { content: "Link copied"; position: absolute; top: calc(100% + 6px); left: 50%; transform: translate(-50%, -4px); padding: 6px 10px; border-radius: 10px; background: var(--fg); color: var(--bg); font-size: 12px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; }
+#share-post.copied::after { opacity: 1; transform: translate(-50%, 0); }
+#share-post.copied { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { #share-post::after { transition: none; } }
+
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
    Post/Story, platform and grid-shape toggles. */
@@ -5338,7 +5346,13 @@ $("share-post").addEventListener("click", async () => {
   if (!editing) return;
   try {
     await navigator.clipboard.writeText(location.origin + "/#post-" + editing.id);
-    showToast("Link copied");
+    /* The usual toast sits behind the open post, so the confirmation appears right under the button. */
+    const button = $("share-post");
+    button.classList.remove("copied");
+    void button.offsetWidth;
+    button.classList.add("copied");
+    clearTimeout(button.copiedTimer);
+    button.copiedTimer = setTimeout(() => button.classList.remove("copied"), 1600);
   } catch (error) {
     showToast("Couldn't copy. Your browser blocked it.");
   }
