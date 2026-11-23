@@ -1030,25 +1030,6 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 
   <section class="settings-page" id="settings-view" aria-labelledby="settings-title" hidden>
     <h1 id="settings-title">Settings</h1>
-    <div class="setting">
-      <div class="side-label" id="theme-label">Appearance</div>
-      <div class="theme-options" id="theme-options" role="group" aria-labelledby="theme-label">
-        <button class="quiet" type="button" data-theme-choice="light">Light</button>
-        <button class="quiet" type="button" data-theme-choice="dark">Dark</button>
-        <button class="quiet" type="button" data-theme-choice="system">Auto</button>
-      </div>
-    </div>
-    <div class="setting" id="posting-setting">
-      <div class="side-label">Posts</div>
-      <h3 class="group-title" id="loose-title">Training Wheels Protocol</h3>
-      <p class="empty">A post can't move on until every field is filled in, even if it's just "n/a". Turn it off once you've got the hang of it, and tags and link can stay empty when they don't apply.</p>
-      <div class="theme-options push-options">
-        <div class="mode-options switch" id="loose-modes" role="switch" tabindex="0" aria-labelledby="loose-title">
-          <button class="quiet" type="button" data-loose="on">On</button>
-          <button class="quiet" type="button" data-loose="off">Off</button>
-        </div>
-      </div>
-    </div>
     <div class="setting" id="bump-setting">
       <div class="side-label">Notifications</div>
       <h3 class="group-title">This device</h3>
@@ -1070,7 +1051,20 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         </div>
         <button class="quiet" id="slack-test" type="button" hidden>Send a Slack test</button>
       </div>
-      <h3 class="group-title">Bumps</h3>
+      <h3 class="group-title" id="comment-setting-title">Comments</h3>
+      <p class="empty">Get notified when someone else leaves a comment.</p>
+      <div class="sub-setting">
+        <p class="empty"><strong>Off:</strong> No comment notifications.</p>
+        <p class="empty"><strong>My posts:</strong> Comments on posts you added.</p>
+        <p class="empty"><strong>All posts:</strong> Comments on every post.</p>
+        <div class="mode-options comment-modes" id="comment-modes" role="group" aria-labelledby="comment-setting-title">
+          <button class="quiet" type="button" data-comment-mode="off">Off</button>
+          <button class="quiet" type="button" data-comment-mode="mine">My posts</button>
+          <button class="quiet" type="button" data-comment-mode="all">All posts</button>
+        </div>
+      </div>
+    </div>    <div class="setting" id="bumps-setting">
+      <div class="side-label">Bumps</div>
       <p class="empty">Bumps remind you when a post is still waiting on someone close to its post date.</p>
       <div class="sub-setting">
         <h3 class="sub-title" id="bump-calendar-title">Bumps by calendar</h3>
@@ -1086,18 +1080,26 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         <div class="timing-list" id="bump-timing" role="group" aria-labelledby="bump-timing-title"></div>
         <button class="quiet add-timing" id="add-timing" type="button">+ Add bump time</button>
       </div>
-      <h3 class="group-title" id="comment-setting-title">Comments</h3>
-      <p class="empty">Get notified when someone else leaves a comment.</p>
-      <div class="sub-setting">
-        <p class="empty"><strong>Off:</strong> No comment notifications.</p>
-        <p class="empty"><strong>My posts:</strong> Comments on posts you added.</p>
-        <p class="empty"><strong>All posts:</strong> Comments on every post.</p>
-        <div class="mode-options comment-modes" id="comment-modes" role="group" aria-labelledby="comment-setting-title">
-          <button class="quiet" type="button" data-comment-mode="off">Off</button>
-          <button class="quiet" type="button" data-comment-mode="mine">My posts</button>
-          <button class="quiet" type="button" data-comment-mode="all">All posts</button>
-        </div>
+    </div>
+    <div class="setting">
+      <div class="side-label" id="theme-label">Appearance</div>
+      <div class="theme-options" id="theme-options" role="group" aria-labelledby="theme-label">
+        <button class="quiet" type="button" data-theme-choice="light">Light</button>
+        <button class="quiet" type="button" data-theme-choice="dark">Dark</button>
+        <button class="quiet" type="button" data-theme-choice="system">Auto</button>
       </div>
+    </div>    <div class="setting">
+      <div class="side-label">Account</div>
+      <p class="empty">Signed in as <span id="account-email"></span>.</p>
+      <form class="password-row" id="password-form">
+        <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password">
+        <button class="quiet" type="submit">Change password</button>
+      </form>
+      <div class="theme-options"><button class="quiet" id="sign-out" type="button">Sign out</button></div>
+    </div>    <div class="setting">
+      <div class="side-label">Dance</div>
+      <p class="empty">Tap to make him dance.</p>
+      <button class="dance-btn" id="dance" type="button" aria-label="Make him dance"></button>
     </div>
     <div class="setting" id="people-setting">
       <div class="side-label">Add people</div>
@@ -1108,29 +1110,23 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
         <button class="quiet" id="invite-team" type="button">Add team member</button>
         <button class="quiet" id="invite-client" type="button">Add client access</button>
       </div>
-    </div>
-    <div class="setting">
-      <div class="side-label">Account</div>
-      <p class="empty">Signed in as <span id="account-email"></span>.</p>
-      <form class="password-row" id="password-form">
-        <input id="new-password" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password">
-        <button class="quiet" type="submit">Change password</button>
-      </form>
-      <div class="theme-options"><button class="quiet" id="sign-out" type="button">Sign out</button></div>
-    </div>
-    <div class="setting" id="admin-setting" hidden>
+    </div>    <div class="setting" id="admin-setting" hidden>
       <div class="side-label admin-title">Admin</div>
+      <h3 class="group-title" id="loose-title">Training Wheels Protocol</h3>
+      <p class="empty">A post can't move on until every field is filled in, even if it's just "n/a". Applies to everyone on the team. Turn it off once the team has the hang of it, and tags and link can stay empty when they don't apply.</p>
+      <div class="theme-options push-options">
+        <div class="mode-options switch" id="loose-modes" role="switch" tabindex="0" aria-labelledby="loose-title">
+          <button class="quiet" type="button" data-loose="on">On</button>
+          <button class="quiet" type="button" data-loose="off">Off</button>
+        </div>
+      </div>
+      <h3 class="group-title">Analytics</h3>
       <button class="quiet stats-open" id="open-stats" type="button">Open analytics</button>
       <p class="empty">See who has finished setting up and what's still missing.</p>
-      <label class="final-row">Final approval <select id="final-pick" aria-label="Who gives final approval"></select></label>
+      <h3 class="group-title">Final approval</h3>
+      <label class="final-row">Who gives the final OK <select id="final-pick" aria-label="Who gives final approval"></select></label>
       <div class="invite-list" id="invite-list"></div>
-    </div>
-    <div class="setting">
-      <div class="side-label">Dance</div>
-      <p class="empty">Tap to make him dance.</p>
-      <button class="dance-btn" id="dance" type="button" aria-label="Make him dance"></button>
-    </div>
-  </section>
+    </div>  </section>
 </div>
 
 <dialog id="post-dialog" aria-label="Post details">
@@ -2719,8 +2715,7 @@ function savePreferences() {
     commentMode: state.commentMode,
     slack: state.slackOn,
     commentSeen: { ...state.commentSeen },
-    lastClient: state.lastClient || "",
-    noLooseEnds: state.noLooseEnds
+    lastClient: state.lastClient || ""
   };
   preferenceWrite = preferenceWrite
     .then(() => preferences.set(data))
@@ -2959,6 +2954,7 @@ function renderMonth() {
 }
 
 function render() {
+  if (state.invites.length) state.noLooseEnds = teamTrainingWheels();
   renderClients();
   renderMonth();
   if (!$("stats-view").hidden) renderStats();
@@ -2973,7 +2969,6 @@ function render() {
   document.querySelectorAll("[data-loose]").forEach((button) => {
     button.setAttribute("aria-pressed", String((button.dataset.loose === "on") === state.noLooseEnds));
   });
-  $("posting-setting").hidden = state.readOnly;
   document.querySelectorAll("[data-comment-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.commentMode === state.commentMode));
   });
@@ -4963,7 +4958,6 @@ async function connect() {
         state.slackOn = Boolean(stored.slack);
         state.commentSeen = { ...(stored.commentSeen || {}) };
         state.lastClient = stored.lastClient || "";
-        if (typeof stored.noLooseEnds === "boolean") state.noLooseEnds = stored.noLooseEnds;
       }
     } catch (problem) { /* bumps stay on for every calendar until the choice can load */ }
   }
@@ -5416,12 +5410,30 @@ $("color-hex").addEventListener("input", () => {
   setPickedColor(hex.toLowerCase());
   showPickedColor(true);
 });
-$("loose-modes").addEventListener("click", (event) => {
+/* Training Wheels Protocol is one setting for the whole team, set by the admin. It's kept on the
+   admin's own member row ("relaxed" when off), which everyone can read. */
+function teamAdmin() {
+  return state.invites.find((person) => person.role === "admin");
+}
+function teamTrainingWheels() {
+  const admin = teamAdmin();
+  return !(admin && (admin.roles || []).includes("relaxed"));
+}
+$("loose-modes").addEventListener("click", async (event) => {
   const choice = event.target.dataset.loose;
-  if (!choice) return;
-  state.noLooseEnds = choice === "on";
-  render();
-  savePreferences();
+  const admin = teamAdmin();
+  if (!choice || !isOwner || !admin) return;
+  const on = choice === "on";
+  if (on === teamTrainingWheels()) return;
+  const roles = on ? (admin.roles || []).filter((role) => role !== "relaxed") : [...(admin.roles || []), "relaxed"];
+  try {
+    if (db) await db.collection("invites").doc(admin.id || admin.email).update({ roles });
+    admin.roles = roles;
+    render();
+    showToast(on ? "Training Wheels is on for everyone" : "Training Wheels is off for everyone");
+  } catch (problem) {
+    showToast("That didn't save. Try again.");
+  }
 });
 $("slack-modes").addEventListener("click", (event) => {
   const choice = event.target.dataset.slack;
