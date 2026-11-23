@@ -3602,6 +3602,9 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   state.hidden.delete(fields.client);
   render();
   const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
+  /* When this step hands the post to someone, offer a ready-made Slack message for nudging them. */
+  const handedTo = (record.to || []).filter((email) => email !== myId);
+  const nudge = entry.type !== "bump" && handedTo.length ? { label: "Copy for Slack", action: () => copyForSlack(state.posts.find((item) => item.id === id), handedTo) } : null;
   showToast(message, isNew ? null : async () => {
     const now = state.posts.find((item) => item.id === id);
     if (!now || stageOf(now) !== nextStage || (now.history || []).length !== update.history.length) {
@@ -3623,7 +3626,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
     } catch (failure) {
       showToast("That didn't undo. Try moving it back from the post.");
     }
-  });
+  }, nudge);
 }
 
 function fillClientOptions() {
@@ -4611,9 +4614,15 @@ function openClientDialog(client) {
   $("c-name").focus();
 }
 
-function showToast(message, undo) {
+function showToast(message, undo, extra) {
   const toast = $("toast");
   toast.replaceChildren(el("span", "", message));
+  if (extra) {
+    const button = el("button", "", extra.label);
+    button.type = "button";
+    button.addEventListener("click", () => { extra.action(); });
+    toast.append(button);
+  }
   if (undo) {
     const button = el("button", "", "Undo");
     button.type = "button";
@@ -4625,7 +4634,7 @@ function showToast(message, undo) {
   }
   toast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.hidden = true; }, undo ? 7000 : 2800);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, undo || extra ? 8000 : 2800);
 }
 
 function saveProblem(error) {
@@ -5318,30 +5327,46 @@ $("waiting-pill").addEventListener("click", (event) => { event.stopPropagation()
 function slackStatus(post) {
   const stage = stageOf(post);
   if (stage === "draft") return "Drafting";
-  if (stage === "internal") {
-    const name = String(post.manager || "").split("@")[0].split("+")[0].replace(/[._-]+/g, " ");
-    return "In review with " + (name ? name.charAt(0).toUpperCase() + name.slice(1) : "a manager");
-  }
+  if (stage === "internal") return "In review with " + firstName(post.manager);
   if (stage === "ready") return "Ready to send to the client";
   if (stage === "client") return "With the client";
   return "Approved";
 }
-/* Copy for Slack: a short message with the post and a link that opens it here. */
-$("share-post").addEventListener("click", async () => {
-  if (!editing) return;
-  const client = clientById(editing.client);
-  const [y, m, d] = editing.date.split("-").map(Number);
-  const when = MONTHS[m - 1].slice(0, 3) + " " + d + (editing.time ? ", " + formatTime(editing.time) : "");
-  const where = (editing.platforms || []).map((id) => id === "tt" ? "TikTok" : "Instagram").join(" + ");
-  const text = "*" + (client ? client.name : "") + "* · " + when + (where ? " · " + where : "") + "\n"
-    + editing.title + " — " + slackStatus(editing) + "\n"
-    + location.origin + "/#post-" + editing.id;
+function firstName(email) {
+  const name = String(email || "").split("@")[0].split("+")[0].replace(/[._-]+/g, " ").trim();
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : "a manager";
+}
+/* A short Slack message for a post, with a link that opens it here. When the post is waiting on
+   someone else, it starts with a friendly ask to them. */
+function slackText(post, askWho) {
+  const client = clientById(post.client);
+  const [, m, d] = post.date.split("-").map(Number);
+  const when = MONTHS[m - 1].slice(0, 3) + " " + d + (post.time ? ", " + formatTime(post.time) : "");
+  const where = (post.platforms || []).map((id) => id === "tt" ? "TikTok" : "Instagram").join(" + ");
+  const stage = stageOf(post);
+  const names = (askWho || []).map(firstName);
+  const who = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0];
+  const ask = !who ? "" : stage === "internal" ? who + ", could you review this one when you get a sec?" : stage === "ready" ? who + ", this one's approved and ready to send to the client." : who + ", could you take a look at this one?";
+  return (ask ? ask + "\n" : "")
+    + "*" + (client ? client.name : "") + "* · " + when + (where ? " · " + where : "") + "\n"
+    + post.title + " — " + slackStatus(post) + "\n"
+    + location.origin + "/#post-" + post.id;
+}
+async function copyForSlack(post, askWho) {
+  if (!post) return;
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(slackText(post, askWho));
     showToast("Copied. Paste it in Slack.");
   } catch (error) {
     showToast("Couldn't copy. Your browser blocked it.");
   }
+}
+/* The share icon: if the post is waiting on someone else, the message asks them; otherwise it's a plain update. */
+$("share-post").addEventListener("click", () => {
+  if (!editing) return;
+  const post = state.posts.find((item) => item.id === editing.id) || editing;
+  const waiting = waitingOn(post).filter((email) => email && email !== myId);
+  copyForSlack(post, waiting);
 });
 
 /* Pasting caption options from Slack: if what you paste is numbered like "1." "2." or "Option 1:",
