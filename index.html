@@ -4617,12 +4617,6 @@ function openClientDialog(client) {
 function showToast(message, undo, extra) {
   const toast = $("toast");
   toast.replaceChildren(el("span", "", message));
-  if (extra) {
-    const button = el("button", "", extra.label);
-    button.type = "button";
-    button.addEventListener("click", () => { extra.action(); });
-    toast.append(button);
-  }
   if (undo) {
     const button = el("button", "", "Undo");
     button.type = "button";
@@ -4630,6 +4624,12 @@ function showToast(message, undo, extra) {
       toast.hidden = true;
       undo();
     });
+    toast.append(button);
+  }
+  if (extra) {
+    const button = el("button", "", extra.label);
+    button.type = "button";
+    button.addEventListener("click", () => { extra.action(); });
     toast.append(button);
   }
   toast.hidden = false;
