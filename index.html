@@ -5255,6 +5255,9 @@ $("discard-changes").addEventListener("click", () => {
   closePost();
 });
 $("post-dialog").addEventListener("cancel", (event) => {
+  /* Cancelling a file picker inside the post also sends "cancel", and it bubbles up here.
+     Only Esc on the post itself should close it. */
+  if (event.target !== event.currentTarget) return;
   event.preventDefault();
   requestClosePost();
 });
