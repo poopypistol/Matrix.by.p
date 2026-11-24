@@ -3463,6 +3463,7 @@ const fitSelects = () => document.querySelectorAll(".post-actions select, #final
 document.addEventListener("change", (event) => { if (event.target.matches && event.target.matches(".post-actions select, #final-pick")) fitSelect(event.target); });
 if (document.fonts) document.fonts.ready.then(fitSelects);
 
+const pickedReviewer = new Map();
 function renderActions() {
   requestAnimationFrame(fitSelects);
   const box = $("post-actions");
@@ -3487,11 +3488,16 @@ function renderActions() {
     });
     /* After changes, it goes back to whoever it was first sent to, not straight to final approval. */
     const lastSent = [...((editing && editing.history) || [])].reverse().find((entry) => entry.type === "sent" && !entry.passed);
-    const preferred = lastSent ? (lastSent.to || [])[0] : draft.manager;
-    if (preferred && reviewers(editing).some((person) => person.email === preferred)) pick.value = preferred;
-    else if (draft.manager && reviewers(editing).some((person) => person.email === draft.manager)) pick.value = draft.manager;
-    pick.addEventListener("change", () => { draft.manager = pick.value; });
+    /* Who it goes to: whoever it was last sent to, else whoever you picked for it (even if you undid the send), else the first
+       reviewer who isn't the final approver, so a post doesn't skip straight to final approval by default. */
+    const canPick = (email) => email && reviewers(editing).some((person) => person.email === email);
+    const preferred = [lastSent && (lastSent.to || [])[0], pickedReviewer.get(draft.id), draft.manager].find(canPick)
+      || (reviewers(editing).find((person) => person.email !== finalApprover() && (person.roles || []).includes("manager"))
+        || reviewers(editing).find((person) => person.email !== finalApprover()) || {}).email;
+    if (canPick(preferred)) pick.value = preferred;
+    pick.addEventListener("change", () => { draft.manager = pick.value; pickedReviewer.set(draft.id, pick.value); });
     const send = button("Send to manager", true, () => {
+      pickedReviewer.set(draft.id, pick.value);
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
     });
     send.disabled = draftMissing().length > 0 || !pick.options.length;
