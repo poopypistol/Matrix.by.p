@@ -2521,8 +2521,8 @@ function renderBumps() {
   /* The two main cards always show, so you can see at a glance that nothing's there. */
   {
     const group = el("div", "needs-group");
-    group.append(el("h2", "", "Waiting on you"));
-    if (!mine.length) group.append(el("p", "empty needs-empty", "Nothing's waiting on you right now."));
+    group.append(el("h2", "", "Notifications"));
+    if (!mine.length) group.append(el("p", "empty needs-empty", "Nothing needs you right now."));
     mine.forEach((post) => {
       const item = noticeItem(post, nextForMe(post), "", hasOptions(post) && stageOf(post) === "internal" ? "options" : "actions");
       item.querySelector(".bump-text small").classList.add("notice-what");
