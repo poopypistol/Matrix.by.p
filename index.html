@@ -701,6 +701,16 @@ h1 { font-weight: 700; letter-spacing: -.04em; }
 .post { border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); transition: transform .2s cubic-bezier(.2, .8, .2, 1), box-shadow .2s; }
 .post:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, .12); }
 .post.unapproved { box-shadow: none; }
+/* Updates on your posts: folded, quieter, at the bottom of Notifications. */
+.updates-group summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.updates-group summary::-webkit-details-marker { display: none; }
+.updates-group summary::after { content: ""; width: 7px; height: 7px; margin-left: 2px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; }
+.updates-group[open] summary::after { transform: rotate(45deg); }
+.updates-group summary h2 { margin: 0; color: var(--muted); }
+.updates-count { font-size: 12px; font-weight: 600; color: var(--muted); }
+.needs-group.updates-group { background: none; box-shadow: none; padding: 6px 14px; }
+.needs-group.updates-group[open] { background: var(--card); box-shadow: var(--card-shadow); padding: 14px; }
+.updates-group[open] summary { margin-bottom: 6px; }
 /* Which platforms a post goes to, as small greyed icons above the title. */
 .post-platforms { display: flex; gap: 3px; margin-bottom: 2px; }
 .post-platforms i { width: 10px; height: 10px; background: currentColor; opacity: .45; -webkit-mask: var(--pf) center / contain no-repeat; mask: var(--pf) center / contain no-repeat; }
@@ -2451,6 +2461,7 @@ function nextForMe(post) {
   return step && step.type === "changes" ? "Make the requested changes" : "Finish it and send for review";
 }
 
+let updatesOpen = false;
 function renderBumps() {
   renderBumpList();
   const unread = unreadComments();
@@ -2468,7 +2479,8 @@ function renderBumps() {
   words.append(el("b", "", String(mine.length)), mine.length === 1 ? " post waiting on you" : " posts waiting on you");
   pill.replaceChildren(words);
   pill.setAttribute("aria-label", mine.length + (mine.length === 1 ? " post" : " posts") + " waiting on you. Open notifications.");
-  const total = mine.length + unread.length + updates.length;
+  /* General updates on your posts don't count toward the badge: only what needs you, and new comments. */
+  const total = mine.length + unread.length;
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
@@ -2487,6 +2499,8 @@ function renderBumps() {
   const needs = $("needs-view");
   needs.replaceChildren();
   if (!total) needs.append(el("p", "empty", "You're all caught up. Nothing needs you right now."));
+  /* Updates on your posts are nice to know, not to-dos: they sit at the bottom, folded away. */
+  const updatesGroup = el("details", "needs-group updates-group");
   if (mine.length) {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "Waiting on you"));
@@ -2502,8 +2516,10 @@ function renderBumps() {
     needs.append(group);
   }
   if (updates.length) {
-    const group = el("div", "needs-group");
-    group.append(el("h2", "", "Updates on your posts"));
+    const group = updatesGroup;
+    const summary = el("summary", "");
+    summary.append(el("h2", "", "Updates on your posts"), el("span", "updates-count", String(updates.length)));
+    group.append(summary);
     updates.forEach(({ post, entries }) => {
       const latest = entries[entries.length - 1];
       const item = noticeItem(post, historyText(latest) + (entries.length > 1 ? " (+" + (entries.length - 1) + " more)" : ""));
@@ -2521,7 +2537,6 @@ function renderBumps() {
       }
       group.append(item);
     });
-    needs.append(group);
   }
   if (unread.length) {
     const group = el("div", "needs-group");
@@ -2537,6 +2552,11 @@ function renderBumps() {
       group.append(item);
     });
     needs.append(group);
+  }
+  if (updates.length) {
+    updatesGroup.open = updatesOpen;
+    updatesGroup.addEventListener("toggle", () => { updatesOpen = updatesGroup.open; });
+    needs.append(updatesGroup);
   }
 
   const board = $("pipeline-view");
