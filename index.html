@@ -81,6 +81,10 @@ button { background: none; border: 0; cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+/* Lift whatever has keyboard focus above its neighbors, so the ring isn't hidden behind the button or
+   field next to it. Things already placed on purpose (absolute) keep their spot. */
+:is(button, input, select, textarea, summary, a):focus-visible { position: relative; z-index: 2; }
+:is(.day-add, .gallery-arrow, .close-x):focus-visible { position: absolute; }
 
 .c0 { --cbg: var(--c0-bg); --cfg: var(--c0-fg); }
 .c1 { --cbg: var(--c1-bg); --cfg: var(--c1-fg); }
@@ -217,11 +221,18 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .phase-line { width: 22px; height: 1.5px; background: var(--line); }
 .phase-line.done { background: var(--fg); }
 .phase-status { margin: 0; font-size: 13px; color: var(--muted); }
+/* A reviewer sent it back: say so in red, so the feedback is the first thing you read. */
+.phase-status.is-changes { font-size: 14px; font-weight: 700; color: var(--danger); }
 .post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .post-actions select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); max-width: 100%; }
 .post-actions .action-note { flex-basis: 100%; margin: 0; font-size: 12.5px; color: var(--muted); }
 .post-actions .bump-action { margin-left: auto; }
 .history-line { color: var(--muted); font-size: 12px; font-style: italic; }
+/* New since you last opened the post: a small "New" line, then each new item tinted in declan navy. */
+.new-divider { display: flex; align-items: center; gap: 8px; margin: 2px 0 -2px !important; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.new-divider::after { content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.comment-list .is-new { margin: 0 -10px !important; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--fg); font-style: normal; }
+.notes-toggle.has-new { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
 .toast { display: flex; align-items: center; gap: 12px; }
 .toast button { padding: 2px 8px; border: 1px solid currentColor; border-radius: 3px; font-weight: 700; }
 .settings-page.notify-page { max-width: none; width: 100%; gap: 24px; }
@@ -495,7 +506,8 @@ dialog {
 }
 dialog.small { width: min(420px, calc(100vw - 32px)); }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
-#post-form, #client-form, #post-fields { display: flex; flex-direction: column; gap: 16px; }
+#post-form, #client-form, #post-fields, #note-form, #stage-form, #invite-form { display: flex; flex-direction: column; gap: 16px; }
+#note-form .hint, #stage-form .hint { margin-top: -8px; }
 #post-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .dlg-title { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
 .wheel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
@@ -852,6 +864,8 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .notes-toggle:active { transform: scale(.96); }
 .notes-toggle svg { width: 16px; height: 16px; }
 .notes-toggle[hidden] { display: none; }
+/* On a phone the step tracker and its status line get the full width under the icons, so a long note reads as a sentence. */
+@media (max-width: 680px) { #post-dialog .dlg-head { flex-wrap: wrap; row-gap: 6px; } #post-dialog .dlg-head .dlg-tools { order: -1; margin-left: auto; } #post-dialog .dlg-head .tracker { flex-basis: 100%; } }
 .notes-head { display: flex; align-items: center; justify-content: space-between; }
 .notes-head h2 { margin: 0; }
 .notes-close { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 20px; line-height: 1; }
@@ -3185,7 +3199,9 @@ function renderComments() {
   const list = $("comment-list");
   list.replaceChildren();
   const count = draft.comments.length;
-  $("notes-toggle-label").textContent = count ? (count === 1 ? "1 comment" : count + " comments") : "Add a note";
+  const fresh = [...draft.comments, ...(draft.history || [])].filter(isNewItem).length;
+  $("notes-toggle-label").textContent = fresh ? fresh + " new" : count ? (count === 1 ? "1 comment" : count + " comments") : "Add a note";
+  $("notes-toggle").classList.toggle("has-new", fresh > 0);
   const entries = [
     ...draft.comments.map((comment) => ({ kind: "comment", at: comment.at || 0, comment })),
     ...(draft.history || []).map((entry) => ({ kind: "history", at: entry.at || 0, entry }))
@@ -3196,12 +3212,15 @@ function renderComments() {
     list.append(el("p", "comment-empty", "No comments yet."));
     return;
   }
+  let markedNew = false;
   entries.forEach((item) => {
+    const fresh = isNewItem(item.kind === "history" ? item.entry : item.comment);
+    if (fresh && !markedNew) { list.append(el("p", "new-divider", "New")); markedNew = true; }
     if (item.kind === "history") {
-      list.append(el("p", "history-line", historyText(item.entry) + " · " + stampText(item.at)));
+      list.append(el("p", "history-line" + (fresh ? " is-new" : ""), historyText(item.entry) + " · " + stampText(item.at)));
       return;
     }
-    const line = el("p", "", item.comment.text);
+    const line = el("p", fresh ? "is-new" : "", item.comment.text);
     line.prepend(el("b", "", displayName(item.comment.by)));
     list.append(line);
   });
@@ -3351,7 +3370,8 @@ function renderTracker() {
     }
     steps.append(step);
   });
-  tracker.append(steps, el("p", "phase-status", statusText(editing)));
+  const changesAsked = editing && stageOf(editing) === "draft" && (lastStep(editing) || {}).type === "changes";
+  tracker.append(steps, el("p", "phase-status" + (changesAsked ? " is-changes" : ""), statusText(editing)));
 }
 
 /* One plain sentence: where this post is inside its phase. */
@@ -3766,9 +3786,15 @@ function openDialog() {
   if (!editing) $("f-title").focus();
 }
 
+/* What's new on the post you just opened: comments and steps from other people since you last looked. */
+let newSince = Infinity;
+const isNewItem = (item) => (item.at || 0) > newSince && item.by && item.by !== myId && item.type !== "bump";
+
 function openPost(post) {
   passOpen = false;
+  newSince = Infinity;
   if (unreadComments().some((item) => item.id === post.id) || updatesForMe(new Set()).some((item) => item.post.id === post.id)) {
+    newSince = Math.max(state.commentSeen[post.id] || 0, UPDATES_SINCE, Date.now() - 14 * 86400000);
     markSeen(post);
     renderBumps();
     savePreferences();
@@ -3779,6 +3805,7 @@ function openPost(post) {
 }
 
 function openNewPost(date) {
+  newSince = Infinity;
   const today = new Date();
   const inView = today.getFullYear() === state.year && today.getMonth() === state.month;
   const fallback = dateKey(inView ? today : new Date(state.year, state.month, 1));
