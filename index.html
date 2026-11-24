@@ -833,6 +833,11 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .cover-thumb { position: relative; }
 .cover-thumb .close-x { top: 4px; right: 4px; width: 22px; height: 22px; }
 .cover-thumb .close-x svg { width: 10px; height: 10px; }
+/* Download sits to the left of the remove x (or in its spot when there's nothing to remove). */
+.close-x.download-x { right: 8px; }
+.close-x.download-x:has(+ .close-x) { right: 44px; }
+.cover-thumb .close-x.download-x { top: auto; bottom: 4px; right: 4px; }
+.cover-thumb .close-x.download-x:has(+ .close-x) { right: 4px; }
 /* Calendar filters in the same style as the client list: a check circle in declan navy, the name,
    and a small grey count. No tracks or chips, so every filter on the page looks and works alike. */
 .filter-row { gap: 4px 14px; }
@@ -1057,7 +1062,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 
   <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
     <h1 id="bump-title">Bumps</h1>
-    <p class="side-note bump-intro">Your posts coming up that aren’t approved yet. Follow up, or finish them. They leave this list once they’re approved.</p>
+    <p class="side-note bump-intro">Posts waiting on you that are coming up and aren’t approved yet. They leave this list once they move on or are approved.</p>
     <div id="bump-list"></div>
   </section>
 
@@ -1672,8 +1677,8 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       const { error } = await sb.storage.from("assets").remove(ids);
       if (error) throw error;
     },
-    async signedUrl(id) {
-      const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600);
+    async signedUrl(id, downloadName) {
+      const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600, downloadName ? { download: downloadName } : undefined);
       if (error) throw error;
       return data.signedUrl;
     }
@@ -2005,6 +2010,16 @@ let platformsShown = { ig: true, tt: true };
 try { platformsShown = { ...platformsShown, ...JSON.parse(localStorage.getItem("declan-platforms") || "{}") }; } catch (error) {}
 // A post with no platform picked yet shows under both, so nothing goes missing.
 const onPlatform = (post) => !(post.platforms || []).length || post.platforms.some((platform) => platformsShown[platform]);
+/* After saving, make sure the post's platforms are showing, so it doesn't vanish from a TikTok-only or Instagram-only calendar. */
+function revealPlatforms(platforms) {
+  const wanted = (platforms || []).filter((platform) => platform in platformsShown);
+  if (!wanted.length || wanted.some((platform) => platformsShown[platform])) return;
+  wanted.forEach((platform) => { platformsShown[platform] = true; });
+  try { localStorage.setItem("declan-platforms", JSON.stringify(platformsShown)); } catch (error) {}
+  renderPlatformView();
+}
+/* A new post starts on whatever platform the calendar is showing: TikTok only, Instagram only, or both. */
+const platformsInView = () => ["ig", "tt"].filter((platform) => platformsShown[platform]);
 function renderPlatformView() {
   document.querySelectorAll("[data-platform-view]").forEach((button) => button.setAttribute("aria-pressed", String(Boolean(platformsShown[button.dataset.platformView]))));
 }
@@ -2277,13 +2292,14 @@ function bumpPosts(time = new Date()) {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
       if (mode === "all") return true;
-      return isMyPost(post);
+      /* "My posts" means posts waiting on you, not posts you made. */
+      return isWaitingOnMe(post);
     })
     .filter((post) => !inBumpGrace(post, time) && bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/* The Bumps list: my posts coming up that aren't approved yet, from the first bump time on. */
+/* The Bumps list: posts waiting on me (or on anyone, for "Whole calendar" clients) coming up and not approved yet, from the first bump time on. */
 function bumpListPosts(time = new Date()) {
   return state.posts
     .filter((post) => clientById(post.client) && !isApproved(post))
@@ -2291,7 +2307,8 @@ function bumpListPosts(time = new Date()) {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
       if (mode === "all") return true;
-      return isMyPost(post);
+      /* "My posts" means posts waiting on you, not posts you made. */
+      return isWaitingOnMe(post);
     })
     .filter((post) => !inBumpGrace(post, time) && bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
@@ -2829,6 +2846,7 @@ function goToPost(post) {
   state.year = year;
   state.month = month - 1;
   state.hidden.delete(post.client);
+  revealPlatforms(post.platforms);
   state.showStages = ALL_STAGES_ON();
   $("post-search").value = "";
   closeSearch();
@@ -3679,6 +3697,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   purgeRemovedFiles(draft.removedFiles);
   closePost();
   state.hidden.delete(fields.client);
+  revealPlatforms(fields.platforms);
   render();
   /* Moving a post back a step or bumping someone isn't a handoff: you're still working on it, so it stays open. */
   const stayOpen = entry.type === "back" || entry.type === "bump";
@@ -3854,7 +3873,7 @@ function openNewPost(date) {
   editing = null;
   draft = {
     id: newId(), client: shownClients.length === 1 ? shownClients[0].id : clientById(state.lastClient) ? state.lastClient : "", title: "",
-    date: date || fallback, time: "09:00", kind: "post", asset: "", copy: "", tags: "", link: "", assetFiles: [], comments: [],
+    date: date || fallback, time: "09:00", kind: "post", platforms: platformsInView(), asset: "", copy: "", tags: "", link: "", assetFiles: [], comments: [],
     stage: "draft", manager: "", history: []
   };
   openDialog();
@@ -3910,6 +3929,30 @@ async function fillMedia(box, file, small, isCurrent) {
 }
 
 /* The small round x in the top right corner of an image, for removing it. */
+/* Save an uploaded file to your computer, under its original name. */
+async function downloadFile(file) {
+  try {
+    const url = await assets.signedUrl(file.id, file.name || "declan-file");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name || "";
+    document.body.append(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    showToast("Couldn't download that file. Try again.");
+  }
+}
+function downloadButton(file) {
+  const button = el("button", "close-x download-x");
+  button.type = "button";
+  const label = "Download " + (file.name || "file");
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>';
+  button.addEventListener("click", (event) => { event.stopPropagation(); downloadFile(file); });
+  return button;
+}
 function closeX(label, onClick) {
   const x = el("button", "close-x");
   x.type = "button";
@@ -3955,6 +3998,7 @@ function renderAssetPreview() {
     );
   }
   if (draft.coverFile && draft.coverFile.id === file.id) stage.append(el("span", "gallery-badge", "Cover"));
+  stage.append(downloadButton(file));
   if (!state.readOnly) {
     const remove = closeX("Remove " + file.name, removeAsset);
     remove.classList.add("remove");
@@ -4336,6 +4380,7 @@ async function saveVersions(change) {
     else state.posts.push({ id: item.id, ...item.doc, comments: item.platform === "ig" ? draft.comments || [] : [], createdBy: owner });
   });
   state.hidden.delete(base.client);
+  revealPlatforms(["ig", "tt"]);
   if (isNew) state.showStages = ALL_STAGES_ON();
   closePost();
   render();
@@ -4415,6 +4460,7 @@ async function renderCoverPreview() {
     image.src = url;
     image.alt = "Cover image";
     box.append(image);
+    box.append(downloadButton(file));
     if (!state.readOnly && (file.source === "upload" || file.source === "frame")) box.append(closeX("Remove cover", removeCover));
   } else {
     box.append(el("span", "", "Can't preview"));
@@ -4876,6 +4922,7 @@ async function savePost(event) {
   $("save-post").disabled = false;
   purgeRemovedFiles(draft.removedFiles);
   state.hidden.delete(fields.client);
+  revealPlatforms(fields.platforms);
   if (isNew) state.showStages = ALL_STAGES_ON();
   const [year, month] = fields.date.split("-").map(Number);
   state.year = year;

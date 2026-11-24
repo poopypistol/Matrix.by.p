@@ -91,12 +91,19 @@ function displayName(email: string) {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-function waitingOn(post: any, adminEmail: string) {
+// Who a post is waiting on, the same way the site works it out.
+function waitingOn(post: any, adminEmail: string, finalEmail = "") {
   const stage = stageOf(post);
   if (stage === "approved") return [];
   if (stage === "internal") return post.manager ? [post.manager] : [];
   const creator = post.created_by || adminEmail;
-  return creator ? [creator] : [];
+  if (stage === "draft") return creator ? [creator] : [];
+  // Sending to the client and marking it approved is shared: whoever made it or approved it can do it. Not the final approver.
+  const approvers = (post.history || [])
+    .filter((entry: any) => entry.type === "approved_manager" || entry.type === "approved_internal")
+    .map((entry: any) => entry.by)
+    .filter((email: string) => email && email !== finalEmail);
+  return [creator, ...approvers].filter((email: string, index: number, all: string[]) => email && all.indexOf(email) === index);
 }
 
 function timeText(time: string) {
@@ -202,6 +209,7 @@ Deno.serve(async (request) => {
       db.from("posts").select("*"), db.from("post_comments").select("*"), db.from("preferences").select("*"),
     ]);
   const adminEmail = ((members || []).find((item) => item.role === "admin") || {}).email || "";
+  const finalEmail = ((members || []).find((item) => item.role !== "client" && (item.roles || []).includes("final")) || {}).email || "";
   const clientName = Object.fromEntries((clients || []).map((client) => [client.id, client.name]));
   const prefs = Object.fromEntries((preferences || []).map((row) => [row.email, row.data || {}]));
   const notesByPost = Object.fromEntries((notes || []).map((row) => [row.post_id, row.comments || []]));
@@ -233,13 +241,13 @@ Deno.serve(async (request) => {
     for (const post of posts || []) {
       const isMine = post.created_by === email;
       const mode = (mine.bumpModes || {})[post.client_id] || "mine";
-      // Bumps go to whoever made the post, plus anyone who chose "Whole calendar" for that client.
-      const creator = post.created_by || adminEmail;
+      // Bumps go to whoever the post is waiting on, plus anyone who chose "Whole calendar" for that client.
+      const waiting = waitingOn(post, adminEmail, finalEmail);
       // New posts get 3 hours before any bump, so nobody is bumped right after making a post.
       const created = (post.history || []).find((entry: any) => entry.type === "created");
       const settled = !created || now - created.at >= 3 * 3600000;
       const deleted = (post.history || []).some((entry: any) => entry.type === "deleted");
-      if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && (creator === email || mode === "all")) {
+      if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && (waiting.includes(email) || mode === "all")) {
         const [year, month, day] = post.post_date.split("-").map(Number);
         const passed = schedule.map((slot: any) => {
           const [hour, minute] = slot.time.split(":").map(Number);
