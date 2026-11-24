@@ -266,7 +266,8 @@ Deno.serve(async (request) => {
       for (const entry of post.history || []) {
         // Only what needs them: a step that leaves the post waiting on them, or a bump. General updates
         // (date moved, edits, approvals that don't need them) stay on the site, folded under "Updates on your posts".
-        const needsThem = entry.type === "bump" || (waiting.includes(email) && !["moved", "edited", "deleted"].includes(entry.type));
+        // Anyone who turned on "Notify me" for updates on their posts gets those too.
+        const needsThem = mine.updatesMode === "notify" || entry.type === "bump" || (waiting.includes(email) && !["moved", "edited", "deleted"].includes(entry.type));
         const fresh = needsThem && entry.at && now - entry.at < WINDOW && entry.by !== email && (entry.to || []).includes(email);
         if (fresh && historyMessage(entry, post, email)) (byActor[entry.by] = byActor[entry.by] || []).push(entry);
       }

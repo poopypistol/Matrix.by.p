@@ -702,6 +702,7 @@ h1 { font-weight: 700; letter-spacing: -.04em; }
 .post:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, .12); }
 .post.unapproved { box-shadow: none; }
 /* Updates on your posts: folded, quieter, at the bottom of Notifications. */
+.notice-comment { color: var(--accent) !important; font-style: normal; }
 .needs-empty { margin: 2px 8px 4px; font-size: 14px; color: var(--muted); }
 .updates-group summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
 .updates-group summary::-webkit-details-marker { display: none; }
@@ -1110,6 +1111,16 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
           <button class="quiet" type="button" data-comment-mode="off">Off</button>
           <button class="quiet" type="button" data-comment-mode="mine">My posts</button>
           <button class="quiet" type="button" data-comment-mode="all">All posts</button>
+        </div>
+      </div>
+      <h3 class="group-title" id="updates-setting-title">Updates on your posts</h3>
+      <p class="empty">Changes to your posts that don't need you, like a new date, an edit, or a step someone else took. They're always listed at the bottom of Notifications.</p>
+      <div class="sub-setting">
+        <p class="empty"><strong>Quiet:</strong> Listed on the site only, folded away.</p>
+        <p class="empty"><strong>Notify me:</strong> Also count them on the bell and send them to Slack and your phone.</p>
+        <div class="mode-options comment-modes" id="updates-modes" role="group" aria-labelledby="updates-setting-title">
+          <button class="quiet" type="button" data-updates-mode="quiet">Quiet</button>
+          <button class="quiet" type="button" data-updates-mode="notify">Notify me</button>
         </div>
       </div>
     </div>    <div class="setting" id="bumps-setting">
@@ -1806,7 +1817,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 const now = new Date();
 const state = {
   year: now.getFullYear(), month: now.getMonth(), hidden: new Set(), showStages: { draft: true, internal: true, ready: true, client: true, approved: true }, tab: "needs",
-  clients: [], posts: [], deletedPosts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", commentSeen: {}, lastClient: "", noLooseEnds: true,
+  clients: [], posts: [], deletedPosts: [], loaded: false, readOnly: false, bumpModes: {}, invites: [], access: [], slackOn: false, commentMode: "mine", updatesMode: "quiet", commentSeen: {}, lastClient: "", noLooseEnds: true,
   bumpSchedule: [{ days: 3, time: "10:00" }, { days: 2, time: "10:00" }, { days: 1, time: "10:00" }, { days: 1, time: "15:00" }]
 };
 let db = null;
@@ -2482,7 +2493,11 @@ function renderBumps() {
   pill.replaceChildren(words);
   pill.setAttribute("aria-label", mine.length + (mine.length === 1 ? " post" : " posts") + " waiting on you. Open notifications.");
   /* General updates on your posts don't count toward the badge: only what needs you, and new comments. */
-  const total = mine.length + unread.length;
+  /* A new comment on a post that's waiting on you shows on that post's line, not twice. */
+  const mineIds = new Set(mine.map((post) => post.id));
+  const commentsOnly = unread.filter((post) => !mineIds.has(post.id));
+  const latestComment = (post) => (post.comments || []).filter((comment) => comment.by !== myId).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+  const total = mine.length + commentsOnly.length + (state.updatesMode === "notify" ? updates.length : 0);
   if (notificationsReady && unread.length > lastUnread) showToast("New comment on " + unread[0].title);
   lastUnread = unread.length;
   const button = $("bumps");
@@ -2501,7 +2516,8 @@ function renderBumps() {
   const needs = $("needs-view");
   needs.replaceChildren();
   /* Updates on your posts are nice to know, not to-dos: they sit at the bottom, folded away. */
-  const updatesGroup = el("details", "needs-group updates-group");
+  const quietUpdates = state.updatesMode !== "notify";
+  const updatesGroup = el(quietUpdates ? "details" : "div", quietUpdates ? "needs-group updates-group" : "needs-group");
   /* The two main cards always show, so you can see at a glance that nothing's there. */
   {
     const group = el("div", "needs-group");
@@ -2514,15 +2530,24 @@ function renderBumps() {
       if (stageOf(post) === "draft" && step && step.type === "changes" && step.note) {
         item.querySelector(".bump-text").append(el("span", "notice-quote", displayName(step.by) + ": “" + step.note + "”"));
       }
+      if (unread.includes(post)) {
+        const comment = latestComment(post);
+        if (comment) {
+          const text = comment.text && comment.text.length > 80 ? comment.text.slice(0, 80) + "…" : comment.text || "";
+          item.querySelector(".bump-text").append(el("span", "notice-quote notice-comment", "New comment from " + displayName(comment.by) + (text ? ": “" + text + "”" : "")));
+        }
+      }
       group.append(item);
     });
     needs.append(group);
   }
   if (updates.length) {
     const group = updatesGroup;
-    const summary = el("summary", "");
-    summary.append(el("h2", "", "Updates on your posts"), el("span", "updates-count", String(updates.length)));
-    group.append(summary);
+    if (quietUpdates) {
+      const summary = el("summary", "");
+      summary.append(el("h2", "", "Updates on your posts"), el("span", "updates-count", String(updates.length)));
+      group.append(summary);
+    } else group.append(el("h2", "", "Updates on your posts"));
     updates.forEach(({ post, entries }) => {
       const latest = entries[entries.length - 1];
       const item = noticeItem(post, historyText(latest) + (entries.length > 1 ? " (+" + (entries.length - 1) + " more)" : ""));
@@ -2544,9 +2569,9 @@ function renderBumps() {
   {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "New comments"));
-    if (!unread.length) group.append(el("p", "empty needs-empty", state.commentMode === "off" ? "Comment notifications are off in Settings." : "No new comments."));
-    unread.forEach((post) => {
-      const latest = (post.comments || []).filter((comment) => comment.by !== myId).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+    if (!commentsOnly.length) group.append(el("p", "empty needs-empty", state.commentMode === "off" ? "Comment notifications are off in Settings." : unread.length ? "No other new comments." : "No new comments."));
+    commentsOnly.forEach((post) => {
+      const latest = latestComment(post);
       const item = noticeItem(post, "New comment from " + displayName(latest ? latest.by : ""), "", "comments");
       item.querySelector(".bump-text small").classList.add("notice-what");
       if (latest && latest.text) {
@@ -2558,8 +2583,10 @@ function renderBumps() {
     needs.append(group);
   }
   if (updates.length) {
-    updatesGroup.open = updatesOpen;
-    updatesGroup.addEventListener("toggle", () => { updatesOpen = updatesGroup.open; });
+    if (quietUpdates) {
+      updatesGroup.open = updatesOpen;
+      updatesGroup.addEventListener("toggle", () => { updatesOpen = updatesGroup.open; });
+    }
     needs.append(updatesGroup);
   }
 
@@ -2805,6 +2832,7 @@ function savePreferences() {
     bumpModes: { ...state.bumpModes },
     bumpSchedule: state.bumpSchedule.map((slot) => ({ ...slot })),
     commentMode: state.commentMode,
+    updatesMode: state.updatesMode,
     slack: state.slackOn,
     commentSeen: { ...state.commentSeen },
     lastClient: state.lastClient || ""
@@ -3065,6 +3093,9 @@ function render() {
   });
   document.querySelectorAll("[data-comment-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.commentMode === state.commentMode));
+  });
+  document.querySelectorAll("[data-updates-mode]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.updatesMode === state.updatesMode));
   });
   $("add-client").hidden = state.readOnly;
   $("new-post").hidden = state.readOnly;
@@ -5140,6 +5171,7 @@ async function connect() {
         Object.assign(state.bumpModes, stored.bumpModes || {});
         if (stored.bumpSchedule) state.bumpSchedule = stored.bumpSchedule.map((slot) => ({ ...slot }));
         if (stored.commentMode) state.commentMode = stored.commentMode;
+        if (stored.updatesMode) state.updatesMode = stored.updatesMode;
         state.slackOn = Boolean(stored.slack);
         state.commentSeen = { ...(stored.commentSeen || {}) };
         state.lastClient = stored.lastClient || "";
@@ -5626,6 +5658,13 @@ $("slack-modes").addEventListener("click", (event) => {
   const choice = event.target.dataset.slack;
   if (!choice) return;
   state.slackOn = choice === "on";
+  render();
+  savePreferences();
+});
+$("updates-modes").addEventListener("click", (event) => {
+  const mode = event.target.dataset.updatesMode;
+  if (!mode) return;
+  state.updatesMode = mode;
   render();
   savePreferences();
 });
