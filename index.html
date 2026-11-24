@@ -5333,8 +5333,7 @@ $("post-form").addEventListener("keydown", (event) => {
 });
 $("client-form").addEventListener("submit", saveClient);
 $("post-form").addEventListener("input", (event) => {
-  if (["f-asset", "f-copy", "f-tags"].includes(event.target.id)) updateHint();
-  if (event.target.id === "f-link") readTemplate();
+  if (["f-asset", "f-copy", "f-tags", "f-link"].includes(event.target.id)) updateHint();
 });
 $("close-dialog").addEventListener("click", requestClosePost);
 $("cancel").addEventListener("click", requestClosePost);
