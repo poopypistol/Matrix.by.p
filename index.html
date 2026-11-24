@@ -4027,7 +4027,9 @@ function renderAssetPreview() {
       el("span", "gallery-count", (galleryIndex + 1) + " / " + files.length)
     );
   }
-  if (draft.coverFile && draft.coverFile.id === file.id) stage.append(el("span", "gallery-badge", "Cover"));
+  /* Stories have no cover (they never show on the grid), so no "Cover" tag or cover buttons on them. */
+  const story = draft.kind === "story";
+  if (!story && draft.coverFile && draft.coverFile.id === file.id) stage.append(el("span", "gallery-badge", "Cover"));
   stage.append(downloadButton(file));
   if (!state.readOnly) {
     const remove = closeX("Remove " + file.name, removeAsset);
@@ -4067,7 +4069,7 @@ function renderAssetPreview() {
   }
 
   const actions = el("div", "gallery-actions");
-  if (!state.readOnly) {
+  if (!state.readOnly && !story) {
     const isCover = draft.coverFile && draft.coverFile.id === file.id;
     if (fileKind(file) === "image" && !isCover) {
       const pick = el("button", "quiet", "Use as cover");
@@ -4218,6 +4220,7 @@ function renderKindPick() {
     button.disabled = state.readOnly;
   });
   $("cover-drop").hidden = story;
+  if (draft) renderAssetPreview();
   $("copy-optional").hidden = !story;
   $("copy-field").classList.toggle("is-optional", story);
   $("f-copy").placeholder = story ? "Only if the story has text" : "Final caption";
