@@ -1836,9 +1836,18 @@ const stageIndex = (id) => STAGES.findIndex((stage) => stage.id === id);
 const stageName = (id) => (STAGES.find((stage) => stage.id === id) || STAGES[0]).name;
 const isApproved = (post) => stageOf(post) === "approved";
 
+/* A person can have a display name saved on their member row (as "name:…" in roles);
+   otherwise the name comes from their email. */
+function savedName(email) {
+  const person = state.invites.find((item) => item.email === email);
+  const saved = person && (person.roles || []).find((role) => typeof role === "string" && role.startsWith("name:"));
+  return saved ? saved.slice(5) : "";
+}
+
 function displayName(email) {
   if (!email) return "Someone";
   if (email === myId) return "You";
+  if (savedName(email)) return savedName(email);
   const name = String(email).split("@")[0].split("+")[0].replace(/[._-]+/g, " ");
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
