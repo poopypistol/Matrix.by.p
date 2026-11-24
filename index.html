@@ -3105,6 +3105,7 @@ function renderFinalPick() {
     pick.append(option);
   });
   pick.value = current;
+  requestAnimationFrame(() => fitSelect(pick));
 }
 $("final-pick").addEventListener("change", async () => {
   const chosen = $("final-pick").value;
@@ -3405,7 +3406,24 @@ function lastStep(post) {
   return steps.length ? steps[steps.length - 1] : null;
 }
 
+/* Dropdowns that sit in a row of buttons (who reviews this, who gives the final OK) are as wide as
+   the name that's picked, so the arrow sits right after it instead of far off to the right. */
+function fitSelect(select) {
+  if (!select || !select.isConnected) return;
+  const style = getComputedStyle(select);
+  const text = (select.selectedOptions[0] || {}).textContent || "";
+  const ctx = (fitSelect.canvas ||= document.createElement("canvas")).getContext("2d");
+  ctx.font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
+  const width = Math.ceil(ctx.measureText(text).width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+    + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth) + 30;
+  select.style.width = width + "px";
+}
+const fitSelects = () => document.querySelectorAll(".post-actions select, #final-pick").forEach(fitSelect);
+document.addEventListener("change", (event) => { if (event.target.matches && event.target.matches(".post-actions select, #final-pick")) fitSelect(event.target); });
+if (document.fonts) document.fonts.ready.then(fitSelects);
+
 function renderActions() {
+  requestAnimationFrame(fitSelects);
   const box = $("post-actions");
   box.replaceChildren();
   box.hidden = state.readOnly;
