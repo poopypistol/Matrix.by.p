@@ -885,6 +885,8 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 #share-post.copied { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { #share-post::after { transition: none; } }
 
+/* The confirmation message is a popover so it shows in front of an open post. */
+.toast[popover] { top: auto; right: auto; margin: 0; border: 0; overflow: visible; width: max-content; height: auto; inset-inline-start: 50%; }
 /* On/off toggles as chips: each set sits in a sunken track, and whatever is on is a raised chip,
    like a segmented control where several parts can be on. Used by the calendar filters and the
    Post/Story, platform and grid-shape toggles. */
@@ -1310,7 +1312,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
   </form>
 </dialog>
 
-<div class="toast" id="toast" role="status" hidden></div>
+<div class="toast" id="toast" role="status" popover="manual" hidden></div>
 
 <div class="gate" id="gate">
   <form class="gate-form" id="gate-form" hidden>
@@ -3604,6 +3606,15 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
   closePost();
   state.hidden.delete(fields.client);
   render();
+  /* Moving a post back a step or bumping someone isn't a handoff: you're still working on it, so it stays open. */
+  const stayOpen = entry.type === "back" || entry.type === "bump";
+  if (stayOpen) {
+    /* Wait for the browser to finish stepping back from the closed post before opening it again. */
+    setTimeout(() => {
+      const reopened = state.posts.find((item) => item.id === id);
+      if (reopened && !$("post-dialog").open) openPost(reopened);
+    }, 150);
+  }
   const message = toast || (entry.type === "bump" ? "Bump sent" : entry.type === "back" ? "Moved back to " + phaseName(nextStage) : "Moved to " + stageName(nextStage));
   showToast(message, isNew ? null : async () => {
     const now = state.posts.find((item) => item.id === id);
@@ -3622,6 +3633,11 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
       const post = state.posts.find((item) => item.id === id);
       if (post) Object.assign(post, before);
       render();
+      /* If the post is still open, show it as it is again. */
+      if (post && $("post-dialog").open && draft && draft.id === id) {
+        closePost();
+        openPost(post);
+      }
       showToast("Undone");
     } catch (failure) {
       showToast("That didn't undo. Try moving it back from the post.");
@@ -4614,6 +4630,12 @@ function openClientDialog(client) {
   $("c-name").focus();
 }
 
+function hideToast() {
+  const toast = $("toast");
+  toast.hidden = true;
+  try { if (toast.hidePopover && toast.matches(":popover-open")) toast.hidePopover(); } catch (ignore) {}
+}
+
 function showToast(message, undo, extra) {
   const toast = $("toast");
   toast.replaceChildren(el("span", "", message));
@@ -4621,7 +4643,7 @@ function showToast(message, undo, extra) {
     const button = el("button", "", "Undo");
     button.type = "button";
     button.addEventListener("click", () => {
-      toast.hidden = true;
+      hideToast();
       undo();
     });
     toast.append(button);
@@ -4633,8 +4655,10 @@ function showToast(message, undo, extra) {
     toast.append(button);
   }
   toast.hidden = false;
+  /* As a popover the message sits in front of an open post, not behind it. */
+  try { if (toast.showPopover) { if (toast.matches(":popover-open")) toast.hidePopover(); toast.showPopover(); } } catch (ignore) {}
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.hidden = true; }, undo || extra ? 8000 : 2800);
+  toastTimer = setTimeout(() => { hideToast(); }, undo || extra ? 8000 : 2800);
 }
 
 function saveProblem(error) {
