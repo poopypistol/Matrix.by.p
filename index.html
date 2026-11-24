@@ -458,6 +458,8 @@ h1 em { color: var(--faint); font-style: normal; }
   font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
 }
 .day.out .date { color: var(--faint); font-weight: 500; }
+.day.out .post { opacity: .7; }
+.day.out .post:hover { opacity: 1; }
 .day.today .date { background: var(--accent); color: var(--on-accent); }
 
 .post {
@@ -2920,11 +2922,12 @@ function renderMonth() {
       });
     }
 
-    if (inMonth) {
+    /* Days from the next or last month show their posts too (a little faded); only this month's count toward the totals and the list. */
+    {
       const dayPosts = postsOn(key);
-      dayPosts.forEach((post) => { counts[stageOf(post)]++; });
+      if (inMonth) dayPosts.forEach((post) => { counts[stageOf(post)]++; });
       const posts = dayPosts.filter((post) => state.showStages[stageOf(post)]);
-      shownTotal += posts.length;
+      if (inMonth) shownTotal += posts.length;
       const dots = el("div", "dots");
       /* A busy day shows a few posts and a "+ more" link, so one day can't stretch the whole week. */
       const limit = 3;
@@ -2945,7 +2948,7 @@ function renderMonth() {
       }
       dayCell.append(dots);
 
-      if (posts.length) {
+      if (inMonth && posts.length) {
         const group = el("div");
         group.append(el("h2", "", date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })));
         const list = el("div", "list");
