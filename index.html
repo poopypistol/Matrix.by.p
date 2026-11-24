@@ -702,6 +702,7 @@ h1 { font-weight: 700; letter-spacing: -.04em; }
 .post:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 0, 0, .12); }
 .post.unapproved { box-shadow: none; }
 /* Updates on your posts: folded, quieter, at the bottom of Notifications. */
+.needs-empty { margin: 2px 8px 4px; font-size: 14px; color: var(--muted); }
 .updates-group summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
 .updates-group summary::-webkit-details-marker { display: none; }
 .updates-group summary::after { content: ""; width: 7px; height: 7px; margin-left: 2px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(-45deg); transition: transform .2s; }
@@ -1103,7 +1104,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       <p class="empty">Get notified when someone else leaves a comment.</p>
       <div class="sub-setting">
         <p class="empty"><strong>Off:</strong> No comment notifications.</p>
-        <p class="empty"><strong>My posts:</strong> Comments on posts you added.</p>
+        <p class="empty"><strong>My posts:</strong> Comments on posts you added, and on posts waiting on you.</p>
         <p class="empty"><strong>All posts:</strong> Comments on every post.</p>
         <div class="mode-options comment-modes" id="comment-modes" role="group" aria-labelledby="comment-setting-title">
           <button class="quiet" type="button" data-comment-mode="off">Off</button>
@@ -2408,7 +2409,8 @@ function unreadComments() {
   if (state.commentMode === "off") return [];
   return state.posts
     .filter((post) => clientById(post.client))
-    .filter((post) => state.commentMode === "all" || isMyPost(post))
+    /* "My posts": posts you made, and posts waiting on you. */
+    .filter((post) => state.commentMode === "all" || isMyPost(post) || isWaitingOnMe(post))
     .filter((post) => (post.comments || []).some((comment) =>
       comment.at && comment.by !== myId && comment.at > (state.commentSeen[post.id] || 0)));
 }
@@ -2498,12 +2500,13 @@ function renderBumps() {
 
   const needs = $("needs-view");
   needs.replaceChildren();
-  if (!total) needs.append(el("p", "empty", "You're all caught up. Nothing needs you right now."));
   /* Updates on your posts are nice to know, not to-dos: they sit at the bottom, folded away. */
   const updatesGroup = el("details", "needs-group updates-group");
-  if (mine.length) {
+  /* The two main cards always show, so you can see at a glance that nothing's there. */
+  {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "Waiting on you"));
+    if (!mine.length) group.append(el("p", "empty needs-empty", "Nothing's waiting on you right now."));
     mine.forEach((post) => {
       const item = noticeItem(post, nextForMe(post), "", hasOptions(post) && stageOf(post) === "internal" ? "options" : "actions");
       item.querySelector(".bump-text small").classList.add("notice-what");
@@ -2538,9 +2541,10 @@ function renderBumps() {
       group.append(item);
     });
   }
-  if (unread.length) {
+  {
     const group = el("div", "needs-group");
     group.append(el("h2", "", "New comments"));
+    if (!unread.length) group.append(el("p", "empty needs-empty", state.commentMode === "off" ? "Comment notifications are off in Settings." : "No new comments."));
     unread.forEach((post) => {
       const latest = (post.comments || []).filter((comment) => comment.by !== myId).sort((a, b) => (b.at || 0) - (a.at || 0))[0];
       const item = noticeItem(post, "New comment from " + displayName(latest ? latest.by : ""), "", "comments");

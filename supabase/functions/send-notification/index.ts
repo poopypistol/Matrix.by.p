@@ -264,7 +264,10 @@ Deno.serve(async (request) => {
       // One message per person per burst of changes; it waits until they've paused.
       const byActor: Record<string, any[]> = {};
       for (const entry of post.history || []) {
-        const fresh = entry.at && now - entry.at < WINDOW && entry.by !== email && (entry.to || []).includes(email);
+        // Only what needs them: a step that leaves the post waiting on them, or a bump. General updates
+        // (date moved, edits, approvals that don't need them) stay on the site, folded under "Updates on your posts".
+        const needsThem = entry.type === "bump" || (waiting.includes(email) && !["moved", "edited", "deleted"].includes(entry.type));
+        const fresh = needsThem && entry.at && now - entry.at < WINDOW && entry.by !== email && (entry.to || []).includes(email);
         if (fresh && historyMessage(entry, post, email)) (byActor[entry.by] = byActor[entry.by] || []).push(entry);
       }
       for (const entries of Object.values(byActor)) {
@@ -279,7 +282,8 @@ Deno.serve(async (request) => {
         const title = step ? step.title : messages.length > 1 ? "Changes to your post" : messages[0].title;
         await notify(email, wantsSlack, post, title, messages.map((message) => message.detail).join("\n"), spotFor(fresh.map((entry) => entry.type), post));
       }
-      if (commentMode !== "off" && (commentMode === "all" || isMine)) {
+      // "My posts": posts they made, and posts waiting on them.
+      if (commentMode !== "off" && (commentMode === "all" || isMine || waiting.includes(email))) {
         for (const comment of notesByPost[post.id] || []) {
           const fresh = comment.at && now - comment.at < WINDOW && comment.by !== email;
           if (fresh && await once("comment:" + post.id + ":" + email + ":" + comment.at)) {
