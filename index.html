@@ -3082,7 +3082,7 @@ function renderFinalPick() {
   pick.replaceChildren(el("option", "", "Nobody"));
   pick.firstChild.value = "";
   state.invites.filter((person) => person.role !== "client").forEach((person) => {
-    const option = el("option", "", displayName(person.email) === "You" ? person.email.split("@")[0] : displayName(person.email));
+    const option = el("option", "", displayName(person.email) === "You" ? (savedName(person.email) || person.email.split("@")[0]) + " (you)" : displayName(person.email));
     option.value = person.email;
     pick.append(option);
   });
