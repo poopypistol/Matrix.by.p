@@ -10,7 +10,16 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="declan">
-<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
+/* Every dropdown draws the same small arrow, 10px in from its right edge, in every browser. Browsers'
+   own arrows sit at different distances, which made short names look like they had a gap before the arrow. */
+:root { --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%236E6E73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23A1A1A6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); } }
+:root[data-theme="dark"] { --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23A1A1A6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+select { -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right: 30px !important;
+  background-image: var(--select-arrow) !important; background-repeat: no-repeat !important; background-position: right 10px center !important; background-size: 12px 12px !important; }
+select::-ms-expand { display: none; }
+</style>
 <title>declan.by.p</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -834,7 +843,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 .filter-row .count .count-btn[aria-pressed="true"]:hover, .filter-row .platform-bar.text-toggle.mode-options .quiet[aria-pressed="true"]:hover { background: var(--hover); }
 .filter-row .chip-dot { display: none; }
 .filter-row .chip-num, .filter-row .count-btn[aria-pressed="false"] .chip-num { min-width: 0; padding: 0; background: none; color: var(--faint); font-weight: 500; }
-@media (max-width: 680px) { .filter-row .platform-bar.text-toggle.mode-options { padding-left: 10px; } .filter-row .count .count-btn, .filter-row .platform-bar.text-toggle.mode-options .quiet { padding: 0 8px 0 4px; gap: 6px; } }
+@media (max-width: 680px) { .filter-row { row-gap: 2px !important; } .filter-row .platform-bar.text-toggle.mode-options { padding-left: 0; border-left: 0; margin-left: -4px; } .filter-row .count .count-btn, .filter-row .platform-bar.text-toggle.mode-options .quiet { padding: 0 8px 0 4px; gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .filter-row .count .count-btn::before, .filter-row .platform-bar.text-toggle.mode-options .quiet::before { transition: none; } }
 
 /* Post window, first-day pass:
@@ -3415,7 +3424,7 @@ function fitSelect(select) {
   const ctx = (fitSelect.canvas ||= document.createElement("canvas")).getContext("2d");
   ctx.font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
   const width = Math.ceil(ctx.measureText(text).width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-    + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth) + 30;
+    + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth) + 2;
   select.style.width = width + "px";
 }
 const fitSelects = () => document.querySelectorAll(".post-actions select, #final-pick").forEach(fitSelect);
