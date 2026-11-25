@@ -66,6 +66,100 @@ async function sendSlack(email: string, title: string, lines: string[], link: st
   return Boolean(result.ok);
 }
 
+/* ---------- Approval cards ----------
+   When a post is waiting on someone's approval, their Slack message is a card: a simplified post
+   with buttons that do what declan's buttons do. Taps go to the slack-actions function. */
+function nameOf(members: any[], email: string) {
+  if (!email) return "Someone";
+  const person = members.find((item) => item.email === email);
+  const saved = person && (person.roles || []).find((role: any) => typeof role === "string" && role.startsWith("name:"));
+  if (saved) return saved.slice(5);
+  return displayName(email);
+}
+function firstName(members: any[], email: string) {
+  const full = nameOf(members, email);
+  const tag = full.match(/\(([^)]+)\)/);
+  const first = full.split(/\s+/)[0];
+  const clash = members.some((person) => person.email !== email && person.role !== "client" && nameOf(members, person.email).split(/\s+/)[0] === first);
+  return clash ? (tag ? tag[1] : full) : first;
+}
+/* Must match slack-actions: a tap only goes through if the post still matches what the card showed. */
+function fingerprint(post: any) {
+  const text = JSON.stringify([post.copy_text || "", post.copy_options || null, post.tags || "", post.link || "", (post.cover_file || {}).id || "", post.stage || "", post.manager || "", post.post_date || ""]);
+  let hash = 5381;
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+  return (hash >>> 0).toString(36);
+}
+const PLATFORM_NAMES: Record<string, string> = { ig: "Instagram", tt: "TikTok", tiktok: "TikTok", instagram: "Instagram" };
+async function coverLink(post: any) {
+  const files = [post.cover_file, ...(Array.isArray(post.asset_file) ? post.asset_file : post.asset_file ? [post.asset_file] : [])];
+  const image = files.find((file: any) => file && file.id && String(file.type || "").startsWith("image/"));
+  if (!image) return "";
+  // A week is longer than any review should take; after that the card simply shows no picture.
+  const { data } = await db.storage.from("assets").createSignedUrl(image.id, 7 * 86400);
+  return data ? data.signedUrl : "";
+}
+function clip(text: string, max: number) {
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
+}
+async function cardBlocks(post: any, members: any[], email: string, clientName: string, title: string, detail: string, finalEmail: string, adminEmail: string) {
+  const creator = post.created_by || adminEmail;
+  const isFinal = email === finalEmail;
+  const onward = finalEmail && !isFinal && finalEmail !== creator;
+  // Names line, like the top of a post: done names struck through, you in bold.
+  const approvers = (post.history || []).filter((entry: any) => entry.type === "approved_manager").map((entry: any) => entry.by)
+    .filter((who: string, i: number, all: string[]) => who !== creator && who !== email && all.indexOf(who) === i);
+  const names = ["~" + nameOf(members, creator) + "~", ...approvers.map((who: string) => "~" + nameOf(members, who) + "~"), "*● You*",
+    ...(onward ? [nameOf(members, finalEmail)] : []), "Client"].join("  →  ");
+  const platforms = (post.platforms || []).map((key: string) => PLATFORM_NAMES[key] || key).join(" + ");
+  const when = post.post_date ? whenText(post.post_date, post.post_time || "") : "No date";
+  const head: any = { type: "section", text: { type: "mrkdwn", text: "*" + escapeSlack(post.title || "Untitled post") + "*  ·  " + escapeSlack(clientName) + "\n" + escapeSlack([when, platforms].filter(Boolean).join("  ·  ")) } };
+  const image = await coverLink(post);
+  if (image) head.accessory = { type: "image", image_url: image, alt_text: "Cover" };
+  const blocks: any[] = [
+    { type: "section", text: { type: "mrkdwn", text: "*" + escapeSlack(title) + "*\n" + names } },
+    head,
+  ];
+  if (detail) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: escapeSlack(clip(detail, 2900)) }] });
+  const offered = Array.isArray(post.copy_options) && post.copy_options.length > 1 ? post.copy_options : [];
+  const picked = (() => {
+    const entry = [...(post.history || [])].reverse().find((item: any) => item.type === "picked");
+    return entry && entry.option >= 1 && entry.option <= offered.length ? entry.option : 0;
+  })();
+  if (offered.length) {
+    offered.forEach((text: string, index: number) => {
+      blocks.push({ type: "section", text: { type: "mrkdwn", text: "*Option " + (index + 1) + "*\n" + escapeSlack(clip(String(text || ""), 2900)) } });
+    });
+    const choices = offered.map((_: string, index: number) => ({ text: { type: "plain_text", text: "Option " + (index + 1) }, value: String(index + 1) }));
+    blocks.push({ type: "actions", block_id: "choose", elements: [{ type: "radio_buttons", action_id: "pick", options: choices, ...(picked ? { initial_option: choices[picked - 1] } : {}) }] });
+  } else {
+    blocks.push({ type: "section", text: { type: "mrkdwn", text: "*Caption*\n" + escapeSlack(clip(String(post.copy_text || "No caption yet"), 2900)) } });
+  }
+  const extras = [post.tags ? "Tags: " + post.tags : "", post.link && post.link !== "n/a" ? "Link: " + post.link : ""].filter(Boolean);
+  if (extras.length) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: escapeSlack(extras.join("   ·   ")) }] });
+  const value = JSON.stringify({ post: post.id, fp: fingerprint(post) });
+  blocks.push({ type: "actions", block_id: "decide", elements: [
+    { type: "button", style: "primary", action_id: "approve", value, text: { type: "plain_text", text: clip(onward ? "Approve & send to " + firstName(members, finalEmail) : "Approve", 75) } },
+    { type: "button", action_id: "back", value, text: { type: "plain_text", text: clip("Send back to " + firstName(members, creator), 75) } },
+    { type: "button", action_id: "edit", value, text: { type: "plain_text", text: "Edit caption" } },
+    { type: "button", action_id: "open", url: SITE + "/#post-" + post.id + "~actions", text: { type: "plain_text", text: "Open in declan" } },
+  ] });
+  return blocks;
+}
+async function sendCard(email: string, title: string, blocks: any[], fallback: string) {
+  if (!slackToken) return false;
+  const channel = await slackUser(email);
+  if (!channel) return false;
+  const response = await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + slackToken, "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ channel, text: title + ": " + fallback, blocks, unfurl_links: false }),
+  });
+  const result = await response.json();
+  if (!result.ok) console.error("Slack card failed", email, result.error);
+  return Boolean(result.ok);
+}
+
 function pacificTime(year: number, month: number, day: number, hour: number, minute: number) {
   const guess = new Date(Date.UTC(year, month - 1, day, hour));
   const parts: Record<string, number> = {};
@@ -127,7 +221,7 @@ function historyMessage(entry: any, post: any, email: string) {
       return { title: entry.passed ? "Reviewer changed" : "Sent for review", detail: who + (entry.passed ? " passed it to " : " sent it to ") + displayName(reviewer) + " for review" };
     case "client": return { title: "Sent to client", detail: who + " marked it sent to the client" };
     case "approved_manager":
-      if (reviewer === email) return { title: "Ready for your final approval", detail: who + " approved it" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) : "") + ". It needs your OK." };
+      if (reviewer === email) return { title: "Ready for your final approval", detail: who + " approved it" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) : "") + ". It needs your OK." + note };
       return { title: "Approved by " + who, detail: "Now with " + displayName(reviewer) + " for final approval" };
     case "moved": return { title: "Date changed", detail: who + " moved it to " + whenText(entry.date, entry.time) + " (was " + whenText(entry.oldDate, entry.oldTime) + ")" };
     case "edited": return { title: entry.stage === "approved" ? "Edited after approval" : "Edited while with the client", detail: who + " changed the " + listText(entry.fields || []) };
@@ -222,7 +316,17 @@ Deno.serve(async (request) => {
     const name = post.title + " · " + (clientName[post.client_id] || "");
     const path = "/#post-" + post.id + (spot ? "~" + spot : "");
     sent += await send(all, email, { title, body: name, url: path });
-    if (wantsSlack && await sendSlack(email, title, [name, ...String(detail).split("\n")], SITE + path)) sent++;
+    if (!wantsSlack) return;
+    // Waiting on their approval: the message is a card they can approve from.
+    if (stageOf(post) === "internal" && post.manager === email) {
+      try {
+        const blocks = await cardBlocks(post, members || [], email, clientName[post.client_id] || "", title, detail, finalEmail, adminEmail);
+        if (await sendCard(email, title, blocks, name)) { sent++; return; }
+      } catch (problem) {
+        console.error("Card failed, sending plain message", problem);
+      }
+    }
+    if (await sendSlack(email, title, [name, ...String(detail).split("\n")], SITE + path)) sent++;
   };
   const spotFor = (types: string[], post: any) => {
     if (types.some((type) => type === "changes" || type === "comment")) return "comments";
