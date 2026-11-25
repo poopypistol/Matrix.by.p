@@ -3954,7 +3954,7 @@ function openNote(kind) {
   $("note-help").textContent = kind === "bump" ? "declan will remind them about this post."
     : edits.length ? "Your edits to the " + edits.join(", ") + " are kept. It goes back to " + displayName(creatorOf(editing)) + " in Draft." : "This sends the post back to Draft.";
   $("note-label").textContent = kind === "bump" ? "Note (optional)" : edits.length ? "Note (optional)" : "Feedback";
-  $("note-text").placeholder = kind === "bump" ? "Need this by 3pm" : hasOptions(draft) ? "Like: go with 2, but swap \"unwind\" for \"reset\"" : "What needs to change?";
+  $("note-text").placeholder = kind === "bump" ? "Need this by 3pm" : edits.length ? "Anything else they should know" : hasOptions(draft) ? "Like: go with 2, but swap \"unwind\" for \"reset\"" : "What needs to change?";
   $("send-note").textContent = kind === "bump" ? "Send bump" : edits.length ? "Send back" : "Request changes";
   $("note-text").value = "";
   $("note-dialog").showModal();
