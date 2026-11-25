@@ -3386,9 +3386,9 @@ function historyText(entry) {
   switch (entry.type) {
     case "sent": if (entry.passed) return who + " passed this to " + objName((entry.to || [])[0]) + " for review";
       return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + objName((entry.to || [])[0]) + " for review";
-    case "approved_internal": return entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally";
-    case "approved_manager": return who + " approved and sent to " + objName((entry.to || [])[0]) + " for final approval";
-    case "changes": return who + " requested changes" + note;
+    case "approved_internal": return (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally") + (entry.fields && entry.fields.length ? ", with edits to the " + listText(entry.fields) : "");
+    case "approved_manager": return who + " approved" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) + "," : "") + " and sent to " + objName((entry.to || [])[0]) + " for final approval";
+    case "changes": return who + (entry.fields && entry.fields.length ? " edited the " + listText(entry.fields) + " and sent it back" : " requested changes") + note;
     case "picked": return who + " picked caption option " + entry.option;
     case "reassigned": return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
     case "client": return who + " sent to client";
@@ -3698,6 +3698,36 @@ document.addEventListener("change", (event) => { if (event.target.matches && eve
 if (document.fonts) document.fonts.ready.then(fitSelects);
 
 const pickedReviewer = new Map();
+/* What the reviewer has changed in this open post (caption, tags...), by name. */
+function reviewEdits() {
+  if (!editing || !draft) return [];
+  const changed = changedFields(postFields());
+  /* Nothing to nothing ([] vs blank) isn't an edit. */
+  const blank = (value) => value == null || value === "" || (Array.isArray(value) && !value.length);
+  Object.keys(changed).forEach((key) => { if (blank(changed[key]) && blank(editing[key])) delete changed[key]; });
+  /* Picking a caption option isn't an edit; changing its words is. */
+  const pick = pickOf(draft);
+  if ("copy" in changed && pick && (draft.copy || "").trim() === (draft.copyOptions[pick - 1] || "").trim()) delete changed.copy;
+  return Object.keys(CONTENT_NAMES).filter((key) => key in changed).map((key) => (key === "copy" ? "caption" : CONTENT_NAMES[key]));
+}
+function refreshReviewLabels() {
+  const approve = document.querySelector("#post-actions .review-approve");
+  const back = document.querySelector("#post-actions .review-back");
+  if (!approve || !back) return;
+  const edited = reviewEdits().length > 0;
+  const final = finalApprover();
+  const next = final && final !== myId && final !== creatorOf(editing) ? displayName(final) : "";
+  approve.textContent = edited ? "Approve with edits" : "Approve";
+  approve.title = next ? "Your edits are kept and it goes to " + next : "";
+  back.textContent = edited ? "Send back with edits" : "Request changes";
+  back.title = edited ? "Your edits are kept and it goes back to " + displayName(creatorOf(editing)) : "";
+}
+let reviewLabelTimer = 0;
+document.addEventListener("input", (event) => {
+  if (!event.target.closest || !event.target.closest("#post-dialog")) return;
+  clearTimeout(reviewLabelTimer);
+  reviewLabelTimer = setTimeout(refreshReviewLabels, 120);
+});
 let draftReviewer = "";
 /* Who a post goes through, left to right, with where it is now highlighted:
    coordinator -> manager -> Dana -> client. Names you can change (someone's out) are quiet dropdowns. */
@@ -3814,7 +3844,14 @@ function renderActions() {
     /* Who it goes to: whoever it was last sent to, else whoever you picked for it (even if you undid the send), else the first
        reviewer who isn't the final approver, so a post doesn't skip straight to final approval by default. */
     const canPick = (email) => email && reviewers(editing).some((person) => person.email === email);
-    const preferred = [lastSent && (lastSent.to || [])[0], pickedReviewer.get(draft.id), draft.manager].find(canPick)
+    /* Else whoever you last sent a post to for this client, so it's usually already right. */
+    const clientId = $("f-client").value || draft.client;
+    const usual = state.posts
+      .filter((post) => post.client === clientId)
+      .flatMap((post) => (post.history || []).filter((entry) => entry.type === "sent" && !entry.passed && entry.by === myId))
+      .sort((a, b) => (b.at || 0) - (a.at || 0))
+      .map((entry) => (entry.to || [])[0])[0];
+    const preferred = [lastSent && (lastSent.to || [])[0], pickedReviewer.get(draft.id), draft.manager, usual].find(canPick)
       || (reviewers(editing).find((person) => person.email !== finalApprover() && (person.roles || []).includes("manager"))
         || reviewers(editing).find((person) => person.email !== finalApprover()) || {}).email;
     if (canPick(preferred)) pick.value = preferred;
@@ -3851,12 +3888,19 @@ function renderActions() {
     if (editing.manager === myId) {
       /* A manager's approval goes on to final approval; final approval makes it ready to send. */
       const onward = final && final !== myId && final !== creatorOf(editing);
-      box.append(
-        button("Approve", true, () => onward
-          ? changeStage("internal", { type: "approved_manager", to: [final] }, { manager: final }, "Sent to " + displayName(final) + " for final approval")
-          : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)] })),
-        button("Request changes", false, () => openNote("changes"))
-      );
+      /* If the reviewer changed anything themselves, the two buttons say so: approve with the edits, or send them back. */
+      const approve = button("Approve", true, () => {
+        const edits = reviewEdits();
+        const tail = edits.length ? " with your edits" : "";
+        onward
+          ? changeStage("internal", { type: "approved_manager", to: [final], ...(edits.length ? { fields: edits } : {}) }, { manager: final }, "Approved" + tail + ", sent to " + displayName(final))
+          : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], ...(edits.length ? { fields: edits } : {}) }, {}, "Approved" + tail);
+      });
+      approve.classList.add("review-approve");
+      const back = button("Request changes", false, () => openNote("changes"));
+      back.classList.add("review-back");
+      box.append(approve, back);
+      refreshReviewLabels();
     }
     const more = [];
     if (final && editing.manager === final && myId !== final) {
@@ -3905,11 +3949,13 @@ function renderActions() {
 function openNote(kind) {
   noteAction = kind;
   const targets = waitingOn(editing).filter((email) => email !== myId).map(displayName).join(", ");
-  $("note-title").textContent = kind === "bump" ? "Bump " + targets : "Request changes";
-  $("note-help").textContent = kind === "bump" ? "declan will remind them about this post." : "This sends the post back to Draft.";
-  $("note-label").textContent = kind === "bump" ? "Note (optional)" : "Feedback";
+  const edits = kind === "changes" ? reviewEdits() : [];
+  $("note-title").textContent = kind === "bump" ? "Bump " + targets : edits.length ? "Send back with edits" : "Request changes";
+  $("note-help").textContent = kind === "bump" ? "declan will remind them about this post."
+    : edits.length ? "Your edits to the " + edits.join(", ") + " are kept. It goes back to " + displayName(creatorOf(editing)) + " in Draft." : "This sends the post back to Draft.";
+  $("note-label").textContent = kind === "bump" ? "Note (optional)" : edits.length ? "Note (optional)" : "Feedback";
   $("note-text").placeholder = kind === "bump" ? "Need this by 3pm" : hasOptions(draft) ? "Like: go with 2, but swap \"unwind\" for \"reset\"" : "What needs to change?";
-  $("send-note").textContent = kind === "bump" ? "Send bump" : "Request changes";
+  $("send-note").textContent = kind === "bump" ? "Send bump" : edits.length ? "Send back" : "Request changes";
   $("note-text").value = "";
   $("note-dialog").showModal();
   $("note-text").focus();
@@ -5802,7 +5848,8 @@ $("note-form").addEventListener("submit", (event) => {
   const note = $("note-text").value.trim();
   $("note-dialog").close();
   if (noteAction === "changes") {
-    changeStage("draft", { type: "changes", note, to: [creatorOf(editing)] });
+    const edits = reviewEdits();
+    changeStage("draft", { type: "changes", note, to: [creatorOf(editing)], ...(edits.length ? { fields: edits } : {}) });
   } else {
     const to = waitingOn(editing).filter((email) => email !== myId);
     changeStage(stageOf(editing), { type: "bump", note, to }, { lastBump: { by: myId, at: Date.now() } }, "Bump sent");

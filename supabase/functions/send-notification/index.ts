@@ -127,14 +127,16 @@ function historyMessage(entry: any, post: any, email: string) {
       return { title: entry.passed ? "Reviewer changed" : "Sent for review", detail: who + (entry.passed ? " passed it to " : " sent it to ") + displayName(reviewer) + " for review" };
     case "client": return { title: "Sent to client", detail: who + " marked it sent to the client" };
     case "approved_manager":
-      if (reviewer === email) return { title: "Ready for your final approval", detail: who + " approved it. It needs your OK." };
+      if (reviewer === email) return { title: "Ready for your final approval", detail: who + " approved it" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) : "") + ". It needs your OK." };
       return { title: "Approved by " + who, detail: "Now with " + displayName(reviewer) + " for final approval" };
     case "moved": return { title: "Date changed", detail: who + " moved it to " + whenText(entry.date, entry.time) + " (was " + whenText(entry.oldDate, entry.oldTime) + ")" };
     case "edited": return { title: entry.stage === "approved" ? "Edited after approval" : "Edited while with the client", detail: who + " changed the " + listText(entry.fields || []) };
     case "deleted": return { title: "Post deleted", detail: who + " deleted it" };
     case "auto": return { title: "Moved back to Drafting", detail: "Info went missing after " + who + "'s edit" };
     case "approved_internal": return { title: "Approved internally", detail: (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved it") + ". Ready to send to client." };
-    case "changes": return { title: "Changes requested", detail: who + " sent this back to Drafting" + note };
+    case "changes": return entry.fields && entry.fields.length
+      ? { title: "Sent back with edits", detail: who + " edited the " + listText(entry.fields) + " and sent it back to Drafting" + note }
+      : { title: "Changes requested", detail: who + " sent this back to Drafting" + note };
     case "approved": return { title: "Approved", detail: who + " marked it client approved. It's green lit." };
     case "back": return { title: "Moved back to " + (STAGE_NAMES[entry.stage] || "an earlier stage"), detail: who + " moved it back" + note };
     case "bump": return { title: "Bump from " + who, detail: "Waiting on " + STAGE_NAMES[stageOf(post)] + note };
