@@ -896,6 +896,35 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 #post-dialog .dlg-foot .post-actions > * { order: 3; }
 #post-dialog .dlg-foot .post-actions .bump-action { order: 2; }
 #post-dialog .dlg-foot .post-actions .route-bar { order: -1; margin: 0 auto 0 0; }
+#cancel { display: none !important; }
+.field { position: relative; }
+.diff-mirror { position: absolute; pointer-events: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; color: var(--fg); border-style: solid; border-color: transparent; box-sizing: border-box; z-index: 3; }
+.diff-mirror.is-line { white-space: pre; display: flex; align-items: center; }
+.diff-mirror ins { color: var(--danger, #c62828); text-decoration: none; font-weight: 600; }
+.diff-mirror del { color: var(--danger, #c62828); opacity: .7; }
+.has-diff { color: transparent !important; caret-color: var(--fg); }
+.has-diff::selection { color: transparent; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+.diff-note { margin: 5px 2px 0; font-size: 12px; font-weight: 600; color: var(--danger, #c62828); }
+.names-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--muted); min-height: 26px; }
+.names-arrow { opacity: .4; font-size: 12px; }
+.names-step { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; font: inherit; color: inherit; font-weight: 600; }
+button.names-step { cursor: pointer; border-radius: 6px; }
+button.names-step:hover { color: var(--fg); }
+.names-step.is-done .names-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fg) 30%, transparent); }
+.names-step.is-now { color: var(--accent); font-weight: 800; }
+.names-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.names-pick { position: relative; display: inline-flex; align-items: center; gap: 3px; padding: 2px 9px; border-radius: 999px; background: var(--hover); color: var(--fg); font-weight: 600; }
+.names-pick:has(select:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.names-chev { font-size: 10px; opacity: .6; }
+#tracker .names-select { position: absolute !important; min-width: 0 !important; inset: 0; width: 100% !important; height: 100%; opacity: 0; cursor: pointer; padding: 0 !important; background: none !important; border: 0; }
+#post-actions .note-line { order: 2; flex: 1 1 100%; min-width: 0; min-height: 42px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg); font: inherit; }
+#post-actions.is-noting .note-cancel { order: 3; margin-left: auto; }
+#post-actions #send-back { order: 4; }
+.people-rows { display: flex; flex-direction: column; }
+.people-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.people-role { color: var(--muted); font-size: 14px; }
+.people-row select { min-width: 180px; min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; }
+.people-row select:disabled { opacity: .55; }
 #post-actions .review-approve, #post-actions .review-back { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .route-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
 .route-arrow { opacity: .45; font-size: 11px; }
@@ -1224,6 +1253,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       <div class="tracker" id="tracker" role="group" aria-label="Post stage"></div>
       <div class="dlg-tools">
         <button class="notes-toggle" id="notes-toggle" type="button" aria-expanded="false" aria-controls="notes-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg><span id="notes-toggle-label">Add a note</span></button>
+        <button class="close" id="people-post" type="button" aria-label="Who's on this post" title="Who's on this post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.2c2.4-.3 4.3 1.2 4.9 4.3"/></svg></button>
         <button class="close" id="share-post" type="button" aria-label="Copy link to this post" title="Copy link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
         <button class="close" id="duplicate-post" type="button" aria-label="Duplicate post" title="Duplicate post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
         <button class="close trash-btn" id="delete-top" type="button" aria-label="Delete post" title="Delete post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/></svg><span class="trash-confirm">Delete?</span></button>
@@ -1375,6 +1405,18 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
     <div class="dlg-foot">
       <button class="quiet" id="cancel-stage" type="button">Cancel</button>
       <button class="primary" type="submit">Move back</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="people-dialog" aria-labelledby="people-title">
+  <form id="people-form" novalidate>
+    <h2 class="dlg-title" id="people-title">Who's on this post</h2>
+    <p class="hint">Swap anyone who's out. They'll be told.</p>
+    <div class="people-rows" id="people-rows"></div>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-people" type="button">Cancel</button>
+      <button class="primary" type="submit">Save</button>
     </div>
   </form>
 </dialog>
@@ -1894,6 +1936,7 @@ let searchMatches = [];
 let searchIndex = -1;
 let inviteRole = "team";
 let pendingBack = null;
+let pendingBackTo = "";
 let passOpen = false;
 let bumpCount = 0;
 let currentView = "calendar";
@@ -3527,6 +3570,7 @@ function renderCopyOptions() {
     if (chosen) {
       /* The chosen caption is edited right here, so a reviewer can fix a word and approve. */
       area.value = draft.copy || "";
+      area.classList.add("chosen-area");
       const label = () => {
         const edited = (draft.copy || "").trim() !== (text || "").trim();
         const who = pickerOf(draft);
@@ -3625,30 +3669,58 @@ function updateHint() {
 
 function renderTracker() {
   const tracker = $("tracker");
+  if (!draft) return;
   tracker.replaceChildren();
   const stage = editing ? stageOf(editing) : "draft";
-  const current = phaseIndex(stage);
-  const steps = el("div", "phase-steps");
-  PHASES.forEach((phase, index) => {
-    if (index) steps.append(el("span", "phase-line" + (index <= current ? " done" : "")));
-    const step = el("button", "phase " + (index < current ? "done" : index === current ? "current" : "ahead"));
-    step.type = "button";
-    step.append(el("i", "phase-dot"), el("span", "", phase.name));
-    const canMove = index < current && editing && !state.readOnly;
-    step.disabled = !canMove;
-    if (index === current) step.setAttribute("aria-current", "step");
-    if (canMove) {
-      step.title = "Move this post back to " + phase.name;
-      step.addEventListener("click", () => {
-        pendingBack = phase.start;
-        $("stage-title").textContent = "Move this post back to " + phase.name + "?";
+  const line = el("div", "names-line");
+  line.setAttribute("aria-label", "Who this post goes through");
+  routeSteps(stage).forEach((step, index) => {
+    if (index) line.append(el("span", "names-arrow", "→"));
+    const name = step.key === "client" ? "Client" : step.email ? displayName(step.email) : "Pick a reviewer";
+    /* While drafting, the reviewer is picked right here. */
+    if (step.key === "reviewer" && stage === "draft" && !state.readOnly) {
+      const chip = el("span", "names-pick" + (step.state === "next" ? " is-next" : ""));
+      const select = el("select", "names-select");
+      select.id = "manager-pick";
+      select.setAttribute("aria-label", "Who reviews it");
+      reviewers(editing).forEach((person) => {
+        const option = el("option", "", displayName(person.email));
+        option.value = person.email;
+        select.append(option);
+      });
+      if (step.email) select.value = step.email;
+      draftReviewer = select.value;
+      select.addEventListener("change", () => {
+        draftReviewer = select.value;
+        draft.manager = select.value;
+        pickedReviewer.set(draft.id, select.value);
+        renderActions();
+      });
+      chip.append(el("span", "names-name", select.value ? displayName(select.value) : name), el("span", "names-chev", "⌄"), select);
+      line.append(chip);
+      return;
+    }
+    const canBack = step.state === "done" && editing && !state.readOnly && step.key !== "client";
+    const item = el(canBack ? "button" : "span", "names-step" + (step.state ? " is-" + step.state : ""));
+    if (canBack) {
+      item.type = "button";
+      item.title = "Move this post back to " + name;
+      item.addEventListener("click", () => {
+        pendingBack = step.back;
+        pendingBackTo = step.key === "creator" ? "" : step.email;
+        $("stage-title").textContent = "Move this post back to " + name + "?";
         $("stage-dialog").showModal();
       });
     }
-    steps.append(step);
+    if (step.state === "now") {
+      item.setAttribute("aria-current", "step");
+      item.append(el("i", "names-dot"));
+    }
+    item.append(el("span", "names-name", name));
+    line.append(item);
   });
   const changesAsked = editing && stageOf(editing) === "draft" && (lastStep(editing) || {}).type === "changes";
-  tracker.append(steps, el("p", "phase-status" + (changesAsked ? " is-changes" : ""), statusText(editing)));
+  tracker.append(line, el("p", "phase-status" + (changesAsked ? " is-changes" : ""), statusText(editing)));
 }
 
 /* One plain sentence: where this post is inside its phase. */
@@ -3658,7 +3730,7 @@ function statusText(post) {
   const step = lastStep(post);
   const when = step ? " · " + stampText(step.at) : "";
   if (stage === "draft") {
-    if (step && step.type === "changes") return displayName(step.by) + " requested changes" + (step.note ? ": " + step.note : "") + when;
+    if (step && step.type === "changes") return displayName(step.by) + " sent it back" + (step.note ? ": “" + step.note + "”" : step.fields && step.fields.length ? " with edits" : "") + when;
     if (step && step.type === "auto") return "Back to drafting because info was missing" + when;
     return "Drafting";
   }
@@ -3699,6 +3771,23 @@ document.addEventListener("change", (event) => { if (event.target.matches && eve
 if (document.fonts) document.fonts.ready.then(fitSelects);
 
 const pickedReviewer = new Map();
+let noteMode = false;
+let noteDraft = "";
+/* What a field said before the reviewer's edits, so the next person sees exactly what changed. */
+function beforeValues(fields) {
+  const keyOf = { caption: "copy", tags: "tags", link: "link", title: "title" };
+  const out = {};
+  const pick = draft && pickOf(draft);
+  fields.forEach((name) => {
+    const key = keyOf[name];
+    if (!key || !editing) return;
+    out[key] = key === "copy" && pick && draft.copyOptions && draft.copyOptions[pick - 1] != null ? draft.copyOptions[pick - 1] : editing[key] || "";
+  });
+  /* Keep the original from an earlier round, so the next person sees every change since it was written. */
+  const step = lastStep(editing) || {};
+  if (step.before) Object.keys(out).forEach((key) => { if (key in step.before) out[key] = step.before[key]; });
+  return out;
+}
 /* What the reviewer has changed in this open post (caption, tags...), by name. */
 function reviewEdits() {
   if (!editing || !draft) return [];
@@ -3730,7 +3819,7 @@ function refreshReviewLabels() {
   const next = final && final !== myId && final !== creatorOf(editing) ? shortName(final) : "";
   approve.textContent = next ? "Approve & send to " + next : "Approve";
   approve.title = edited ? "Your edits are kept" : "";
-  back.textContent = edited ? "Send back to " + shortName(creatorOf(editing)) : "Request changes";
+  back.textContent = (edited ? "Send edits back to " : "Send back to ") + shortName(creatorOf(editing));
   back.title = edited ? "Your edits are kept. Add a comment if they need more context." : "";
 }
 let reviewLabelTimer = 0;
@@ -3740,6 +3829,52 @@ document.addEventListener("input", (event) => {
   reviewLabelTimer = setTimeout(refreshReviewLabels, 120);
 });
 let draftReviewer = "";
+/* Who a draft goes to: whoever it was last sent to, else whoever you picked for it (even after an undo), else whoever you
+   last sent a post to for this client, else a manager who isn't the final approver. */
+function defaultReviewer() {
+  const list = reviewers(editing);
+  const canPick = (email) => email && list.some((person) => person.email === email);
+  const lastSent = [...((editing && editing.history) || [])].reverse().find((entry) => entry.type === "sent" && !entry.passed);
+  const clientId = ($("f-client") && $("f-client").value) || (draft && draft.client);
+  const usual = state.posts
+    .filter((post) => post.client === clientId)
+    .flatMap((post) => (post.history || []).filter((entry) => entry.type === "sent" && !entry.passed && entry.by === myId))
+    .sort((a, b) => (b.at || 0) - (a.at || 0))
+    .map((entry) => (entry.to || [])[0])[0];
+  return [lastSent && (lastSent.to || [])[0], draft && pickedReviewer.get(draft.id), draft && draft.manager, usual].find(canPick)
+    || (list.find((person) => person.email !== finalApprover() && (person.roles || []).includes("manager"))
+      || list.find((person) => person.email !== finalApprover()) || {}).email || "";
+}
+/* The people a post goes through, in order, and where it is now. */
+function routeSteps(stage) {
+  const post = editing || draft;
+  const final = finalApprover();
+  const creator = creatorOf(post);
+  const approvedBy = [...(post.history || [])].reverse().find((entry) => entry.type === "approved_manager");
+  const lastSent = [...(post.history || [])].reverse().find((entry) => entry.type === "sent");
+  let reviewer = stage === "draft" ? draftReviewer || defaultReviewer() :
+    approvedBy ? approvedBy.by :
+    stage === "internal" && post.manager && post.manager !== final ? post.manager :
+    lastSent ? (lastSent.to || [])[0] : "";
+  if (reviewer === final || reviewer === creator) reviewer = "";
+  const steps = [{ key: "creator", email: creator, role: "Made by", back: "draft" }];
+  if (reviewer || stage === "draft") steps.push({ key: "reviewer", email: reviewer, role: "Reviews it", back: "internal" });
+  if (final && final !== creator) steps.push({ key: "final", email: final, role: "Final OK", back: "internal" });
+  steps.push({ key: "client", email: "", role: "Client", back: "client" });
+  const now = stage === "draft" || stage === "ready" ? "creator"
+    : stage === "internal" ? (post.manager === final ? "final" : "reviewer")
+    : stage === "client" ? "client" : "";
+  const at = steps.findIndex((step) => step.key === now);
+  steps.forEach((step, index) => {
+    step.state = index === at ? "now"
+      : stage === "approved" ? "done"
+      : stage === "ready" ? (step.key === "client" ? "next" : step.key === "creator" ? "now" : "done")
+      : stage === "client" ? (step.key === "client" ? "now" : "done")
+      : index === at + 1 ? "next" : index < at ? "done" : "";
+  });
+  if (stage === "ready") steps.find((step) => step.key === "creator").state = "now";
+  return steps;
+}
 /* Who a post goes through, left to right, with where it is now highlighted:
    coordinator -> manager -> Dana -> client. Names you can change (someone's out) are quiet dropdowns. */
 function routeBar(stage, draftPick) {
@@ -3823,11 +3958,138 @@ async function reassignCreator(to) {
     renderActions();
     return;
   }
-  [latest, editing, draft].forEach((post) => { if (post) { post.createdBy = to; if (post !== draft) post.history = [...(latest.history || []).filter((item) => item !== entry), entry]; } });
+  latest.createdBy = to;
+  [editing, draft].forEach((post) => { if (post) { post.createdBy = to; post.history = [...(latest.history || [])]; } });
   render();
   renderActions();
   showToast("Handed to " + displayName(to));
 }
+/* Who's on this post: swap anyone who's out. */
+function openPeople() {
+  if (!editing || state.readOnly) return;
+  const stage = stageOf(editing);
+  const rows = $("people-rows");
+  rows.replaceChildren();
+  const final = finalApprover();
+  routeSteps(stage).filter((step) => step.key !== "client").forEach((step) => {
+    const row = el("label", "people-row");
+    row.append(el("span", "people-role", step.role));
+    const select = el("select");
+    select.dataset.key = step.key;
+    select.dataset.was = step.email || "";
+    const pool = step.key === "creator" ? managers() : reviewers(editing);
+    const add = (email) => { const option = el("option", "", displayName(email)); option.value = email; select.append(option); };
+    if (step.email) add(step.email);
+    pool.filter((person) => person.email !== step.email).forEach((person) => add(person.email));
+    /* Only who the post is with (or will go to) can change; a step that's done stays as it was. */
+    const live = step.key === "creator" ? stage !== "approved"
+      : step.key === "reviewer" ? stage === "draft" || (stage === "internal" && editing.manager === step.email)
+      : stage === "internal" && editing.manager === final;
+    select.disabled = !live;
+    if (step.key === "final" && !live) row.title = "The final approver is set in Settings.";
+    row.append(select);
+    rows.append(row);
+  });
+  $("people-dialog").showModal();
+}
+$("people-post").addEventListener("click", openPeople);
+$("cancel-people").addEventListener("click", () => $("people-dialog").close());
+$("people-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("people-dialog").close();
+  const stage = stageOf(editing);
+  const picks = [...$("people-rows").querySelectorAll("select")].filter((select) => !select.disabled && select.value !== select.dataset.was);
+  for (const select of picks) {
+    const to = select.value;
+    if (select.dataset.key === "creator") await reassignCreator(to);
+    else if (stage === "draft") { draftReviewer = to; draft.manager = to; pickedReviewer.set(draft.id, to); renderActions(); }
+    else await changeStage("internal", { type: "sent", to: [to], passed: true }, { manager: to }, "Passed to " + objName(to));
+  }
+});
+/* Red for exactly the words someone changed: added words red, removed words red and struck (struck only while not typing). */
+function wordDiff(before, after) {
+  const a = String(before || "").split(/(\s+|[.,!?;:"“”()])/).filter((part) => part !== "");
+  const b = String(after || "").split(/(\s+|[.,!?;:"“”()])/).filter((part) => part !== "");
+  if (a.length * b.length > 400000) return [{ op: "add", text: after }];
+  const table = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--)
+    table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1]);
+  const out = [];
+  const push = (op, text) => { const last = out[out.length - 1]; if (last && last.op === op) last.text += text; else out.push({ op, text }); };
+  let i = 0, j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { push("same", a[i]); i++; j++; }
+    else if (table[i + 1][j] >= table[i][j + 1]) { push("del", a[i]); i++; }
+    else { push("add", b[j]); j++; }
+  }
+  while (i < a.length) push("del", a[i++]);
+  while (j < b.length) push("add", b[j++]);
+  /* Whitespace alone isn't worth marking. */
+  return out.map((part) => (part.op !== "same" && !part.text.trim() ? { op: part.op === "del" ? "skip" : "same", text: part.text } : part));
+}
+/* What each field said before this round of edits, and who made them. */
+function diffBase() {
+  if (!editing) return null;
+  const stage = stageOf(editing);
+  const step = lastStep(editing) || {};
+  const carried = step.before && ((step.type === "changes" && stage === "draft") || (step.type === "approved_manager" && stage === "internal")) ? step : null;
+  const reviewing = stage === "internal" && editing.manager === myId && !state.readOnly;
+  if (!carried && !reviewing) return null;
+  const base = { copy: editing.copy || "", tags: editing.tags || "", link: editing.link || "" };
+  /* With caption options, the starting point is the chosen option as written. */
+  const pick = draft && pickOf(draft);
+  if (pick && draft.copyOptions && draft.copyOptions[pick - 1] != null) base.copy = draft.copyOptions[pick - 1];
+  if (carried) Object.assign(base, carried.before);
+  return { base, by: carried && !reviewing ? carried.by : myId, carried };
+}
+const DIFF_FIELDS = [["copy", () => $("f-copy")], ["copy", () => document.querySelector("#copy-options .chosen-area")], ["tags", () => $("f-tags")], ["link", () => $("f-link")]];
+function refreshDiffs() {
+  const info = diffBase();
+  DIFF_FIELDS.forEach(([key, find]) => {
+    const field = find();
+    if (!field) return;
+    let mirror = field.previousElementSibling && field.previousElementSibling.classList.contains("diff-mirror") ? field.previousElementSibling : null;
+    let note = field.parentElement.querySelector(":scope > .diff-note[data-key='" + key + "']");
+    const changed = info && !field.hidden && (info.base[key] || "").trim() !== (field.value || "").trim();
+    field.classList.toggle("has-diff", !!changed);
+    if (!changed) { if (mirror) mirror.remove(); if (note) note.remove(); return; }
+    if (!mirror) {
+      mirror = el("div", "diff-mirror");
+      mirror.setAttribute("aria-hidden", "true");
+      field.before(mirror);
+      field.addEventListener("scroll", () => { const m = field.previousElementSibling; if (m && m.classList.contains("diff-mirror")) { m.scrollTop = field.scrollTop; m.scrollLeft = field.scrollLeft; } });
+    }
+    const css = getComputedStyle(field);
+    ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+      "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "textAlign", "wordSpacing"].forEach((name) => { mirror.style[name] = css[name]; });
+    mirror.style.left = field.offsetLeft + "px";
+    mirror.style.top = field.offsetTop + "px";
+    mirror.style.width = field.offsetWidth + "px";
+    mirror.style.height = field.offsetHeight + "px";
+    mirror.classList.toggle("is-line", field.tagName === "INPUT");
+    const typing = document.activeElement === field;
+    mirror.replaceChildren();
+    wordDiff(info.base[key], field.value).forEach((part) => {
+      if (part.op === "same") mirror.append(document.createTextNode(part.text));
+      else if (part.op === "add") mirror.append(el("ins", "", part.text));
+      else if (part.op === "del" && !typing) mirror.append(el("del", "", part.text), document.createTextNode(" "));
+    });
+    if (field.tagName === "TEXTAREA") mirror.append(document.createTextNode("\u200b"));
+    mirror.classList.toggle("is-shifted", !typing && mirror.querySelector("del") !== null);
+    mirror.scrollTop = field.scrollTop;
+    mirror.scrollLeft = field.scrollLeft;
+    if (!note) {
+      note = el("p", "diff-note");
+      note.dataset.key = key;
+      field.after(note);
+    }
+    note.textContent = "Edited by " + (info.by === myId ? "you" : displayName(info.by));
+  });
+}
+document.addEventListener("input", (event) => { if (event.target.closest && event.target.closest("#post-dialog")) refreshDiffs(); });
+document.addEventListener("focusin", (event) => { if (event.target.classList && event.target.classList.contains("has-diff")) refreshDiffs(); });
+document.addEventListener("focusout", (event) => { if (event.target.classList && event.target.classList.contains("has-diff")) setTimeout(refreshDiffs); });
+window.addEventListener("resize", () => { if ($("post-dialog").open) refreshDiffs(); });
 function renderActions() {
   requestAnimationFrame(fitSelects);
   const box = $("post-actions");
@@ -3842,38 +4104,17 @@ function renderActions() {
     return item;
   };
   if (stage === "draft") {
-    const pick = el("select");
-    pick.id = "manager-pick";
-    pick.setAttribute("aria-label", "Choose who reviews this");
-    reviewers(editing).forEach((person) => {
-      const option = el("option", "", displayName(person.email));
-      option.value = person.email;
-      pick.append(option);
+    renderTracker();
+    const to = draftReviewer;
+    const send = button(to ? "Send to " + shortName(to) : "Send for review", true, () => {
+      const who = draftReviewer;
+      if (!who) return;
+      pickedReviewer.set(draft.id, who);
+      changeStage("internal", { type: "sent", to: [who] }, { manager: who });
     });
-    /* After changes, it goes back to whoever it was first sent to, not straight to final approval. */
-    const lastSent = [...((editing && editing.history) || [])].reverse().find((entry) => entry.type === "sent" && !entry.passed);
-    /* Who it goes to: whoever it was last sent to, else whoever you picked for it (even if you undid the send), else the first
-       reviewer who isn't the final approver, so a post doesn't skip straight to final approval by default. */
-    const canPick = (email) => email && reviewers(editing).some((person) => person.email === email);
-    /* Else whoever you last sent a post to for this client, so it's usually already right. */
-    const clientId = $("f-client").value || draft.client;
-    const usual = state.posts
-      .filter((post) => post.client === clientId)
-      .flatMap((post) => (post.history || []).filter((entry) => entry.type === "sent" && !entry.passed && entry.by === myId))
-      .sort((a, b) => (b.at || 0) - (a.at || 0))
-      .map((entry) => (entry.to || [])[0])[0];
-    const preferred = [lastSent && (lastSent.to || [])[0], pickedReviewer.get(draft.id), draft.manager, usual].find(canPick)
-      || (reviewers(editing).find((person) => person.email !== finalApprover() && (person.roles || []).includes("manager"))
-        || reviewers(editing).find((person) => person.email !== finalApprover()) || {}).email;
-    if (canPick(preferred)) pick.value = preferred;
-    pick.addEventListener("change", () => { draft.manager = pick.value; pickedReviewer.set(draft.id, pick.value); renderActions(); });
-    draftReviewer = pick.value;
-    const send = button("Send to manager", true, () => {
-      pickedReviewer.set(draft.id, pick.value);
-      changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
-    });
-    send.disabled = draftMissing().length > 0 || !pick.options.length;
-    box.append(routeBar(stage, pick), send);
+    send.id = "send-review";
+    send.disabled = draftMissing().length > 0 || !to;
+    box.append(send);
   } else if (stage === "internal") {
     const others = reviewers(editing).filter((person) => person.email !== editing.manager);
     if (false && passOpen && others.length) {
@@ -3896,6 +4137,38 @@ function renderActions() {
       return;
     }
     const final = finalApprover();
+    /* Sending back: the footer becomes one note line, right where you're looking. */
+    if (editing.manager === myId && noteMode) {
+      const edits = reviewEdits();
+      const to = creatorOf(editing);
+      const field = el("input", "note-line");
+      field.type = "text";
+      field.id = "note-line";
+      field.placeholder = edits.length ? "Note for " + shortName(to) + " (optional)" : "What should " + shortName(to) + " change?";
+      field.setAttribute("aria-label", field.placeholder);
+      field.value = noteDraft;
+      const sendBack = button(edits.length ? "Send edits back to " + shortName(to) : "Send back to " + shortName(to), true, () => {
+        const note = field.value.trim();
+        if (!reviewEdits().length && !note) { field.focus(); return; }
+        noteMode = false;
+        noteDraft = "";
+        const now = reviewEdits();
+        changeStage("draft", { type: "changes", note, to: [to], ...(now.length ? { fields: now, before: beforeValues(now) } : {}) }, {},
+          "Sent back to " + displayName(to) + (now.length ? " with your edits" : ""));
+      });
+      sendBack.id = "send-back";
+      sendBack.disabled = !edits.length && !noteDraft.trim();
+      field.addEventListener("input", () => { noteDraft = field.value; sendBack.disabled = !reviewEdits().length && !field.value.trim(); });
+      field.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); sendBack.click(); } if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); noteMode = false; renderActions(); } });
+      const cancel = button("Cancel", false, () => { noteMode = false; renderActions(); });
+      cancel.classList.add("note-cancel");
+      box.append(field, cancel, sendBack);
+      box.classList.add("is-noting");
+      requestAnimationFrame(() => field.focus());
+      box.hidden = false;
+      $("save-post").hidden = true;
+      return;
+    }
     if (editing.manager === myId) {
       /* A manager's approval goes on to final approval; final approval makes it ready to send. */
       const onward = final && final !== myId && final !== creatorOf(editing);
@@ -3903,18 +4176,14 @@ function renderActions() {
       const approve = button("Approve", true, () => {
         const edits = reviewEdits();
         const tail = edits.length ? " with your edits" : "";
+        const extra = edits.length ? { fields: edits, before: beforeValues(edits) } : {};
         onward
-          ? changeStage("internal", { type: "approved_manager", to: [final], ...(edits.length ? { fields: edits } : {}) }, { manager: final }, "Approved" + tail + ", sent to " + displayName(final))
-          : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], ...(edits.length ? { fields: edits } : {}) }, {}, "Approved" + tail);
+          ? changeStage("internal", { type: "approved_manager", to: [final], ...extra }, { manager: final }, "Approved" + tail + ", sent to " + displayName(final))
+          : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], ...extra }, {}, "Approved" + tail);
       });
       approve.classList.add("review-approve");
       /* Edited it yourself: send it straight back, the edits say what changed. Nothing edited: say what needs to change. */
-      const back = button("Request changes", false, () => {
-        const edits = reviewEdits();
-        if (!edits.length) { openNote("changes"); return; }
-        const to = creatorOf(editing);
-        changeStage("draft", { type: "changes", note: "", to: [to], fields: edits }, {}, "Sent back to " + displayName(to) + " with your edits");
-      });
+      const back = button("Send back", false, () => { noteMode = true; renderActions(); });
       back.classList.add("review-back");
       box.append(approve, back);
       refreshReviewLabels();
@@ -3923,7 +4192,6 @@ function renderActions() {
     if (final && editing.manager === final && myId !== final) {
       more.push(["Mark approved by " + displayName(final), () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], onBehalf: final }, {}, "Marked approved by " + displayName(final))]);
     }
-    box.append(routeBar(stage, null));
     if (more.length) {
       const menu = el("details", "more-menu");
       const summary = el("summary", "", "⋯");
@@ -3934,9 +4202,9 @@ function renderActions() {
       box.append(menu);
     }
   } else if (stage === "ready") {
-    box.append(routeBar(stage, null), button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
+    box.append(button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
-    box.append(routeBar(stage, null), button("Client approved", true, () => {
+    box.append(button("Client approved", true, () => {
       changeStage("approved", { type: "approved", to: waitingOn(editing) });
     }));
   }
@@ -3954,7 +4222,11 @@ function renderActions() {
       box.append(bump);
     }
   }
+  box.classList.remove("is-noting");
   box.hidden = !box.children.length;
+  /* A reviewer's footer is just the two choices; anyone else keeps Save. */
+  $("save-post").hidden = !!box.querySelector(".review-approve");
+  requestAnimationFrame(refreshDiffs);
   /* One main button at a time: when there's a next step it leads, and saving steps back. */
   const save = $("save-post");
   save.textContent = stage === "draft" ? "Save draft" : "Save";
@@ -4227,6 +4499,7 @@ function openDialog() {
   $("comment-input").hidden = state.readOnly;
   $("add-comment").hidden = state.readOnly;
   $("share-post").hidden = !editing;
+  $("people-post").hidden = state.readOnly || !editing;
   $("paste-split").hidden = true;
   renderTracker();
   notesOpen = null;
@@ -4238,6 +4511,8 @@ function openDialog() {
   openSnapshot = postSnapshot();
   if (!postInHistory) { history.pushState({ post: true }, "", location.href); postInHistory = true; }
   if (!editing) $("f-title").focus();
+  /* Opening lands on the title, not on the reviewer picker that now sits above it. */
+  else if (document.activeElement && document.activeElement.closest("#tracker")) $("f-title").focus({ preventScroll: true });
 }
 
 /* What's new on the post you just opened: comments and steps from other people since you last looked. */
@@ -5877,8 +6152,10 @@ $("stage-form").addEventListener("submit", (event) => {
   event.preventDefault();
   $("stage-dialog").close();
   const target = pendingBack;
-  const extra = target === "draft" ? {} : {};
-  changeStage(target, { type: "back", stage: target, to: waitingOn(editing, target).filter((email) => email !== myId) }, extra);
+  /* Back to review goes to the person whose name was tapped. */
+  const extra = target === "internal" && pendingBackTo ? { manager: pendingBackTo } : {};
+  const to = target === "internal" && pendingBackTo ? [pendingBackTo] : waitingOn(editing, target);
+  changeStage(target, { type: "back", stage: target, to: to.filter((email) => email !== myId) }, extra);
 });
 $("settings").addEventListener("click", () => {
   showView("settings");
