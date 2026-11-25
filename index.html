@@ -316,6 +316,12 @@ button:disabled { opacity: .35; cursor: not-allowed; }
 .stat-head { font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
 @media (max-width: 560px) { .stat-person { grid-template-columns: minmax(0, 1fr) 80px; } .stat-person .stat-bar { display: none; } }
 .copy-options { display: flex; flex-direction: column; gap: 10px; }
+.copy-options.has-pick .copy-option { transition: opacity .2s; }
+.copy-option.is-chosen { border-color: var(--accent) !important; box-shadow: 0 0 0 1px var(--accent); }
+.copy-option.is-other { opacity: .5; }
+.copy-option.is-other:hover, .copy-option.is-other:focus-within { opacity: .8; }
+.copy-option.is-other textarea { cursor: default; }
+.chosen-tag { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-fg, #fff); font-size: 11px; font-weight: 700; }
 .copy-option { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
 .copy-option-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .copy-option-head .spacer { flex: 1; }
@@ -2643,7 +2649,7 @@ function renderBumps() {
     group.append(el("h2", "", "Notifications"));
     if (!mine.length) group.append(el("p", "empty needs-empty", "Nothing needs you right now."));
     mine.forEach((post) => {
-      const item = noticeItem(post, nextForMe(post), "", hasOptions(post) && stageOf(post) === "internal" ? "options" : "actions");
+      const item = noticeItem(post, nextForMe(post), "", needsPick(post) && stageOf(post) === "internal" ? "options" : "actions");
       item.querySelector(".bump-text small").classList.add("notice-what");
       const step = lastStep(post);
       if (stageOf(post) === "draft" && step && step.type === "changes" && step.note) {
@@ -3445,6 +3451,21 @@ function renderComments() {
 /* Caption options: a coordinator can offer two or three captions; the reviewer picks one, which becomes the caption. */
 const MAX_OPTIONS = 3;
 const hasOptions = (post) => (post.copyOptions || []).length > 1;
+/* Which caption option was picked (1, 2, 3), or 0. The options stay on the post after a pick, so
+   everyone after (like Dana) can see what was offered and which one won. */
+function pickOf(post) {
+  if (!post || !hasOptions(post)) return 0;
+  if (post === draft && draft.pickedOption) return draft.pickedOption;
+  const entry = [...((post === draft ? editing : post) || post || {}).history || []].reverse().find((item) => item.type === "picked");
+  const option = entry ? entry.option : 0;
+  return option >= 1 && option <= post.copyOptions.length ? option : 0;
+}
+function pickerOf(post) {
+  if (post === draft && draft.pickedOption) return myId;
+  const entry = [...(((post === draft ? editing : post) || {}).history || [])].reverse().find((item) => item.type === "picked");
+  return entry ? entry.by : "";
+}
+const needsPick = (post) => hasOptions(post) && !pickOf(post);
 function renderCopyOptions() {
   const box = $("copy-options");
   const options = draft.copyOptions || [];
@@ -3459,17 +3480,26 @@ function renderCopyOptions() {
   box.replaceChildren();
   if (!on) return;
   const stage = editing ? stageOf(editing) : "draft";
+  const picked = pickOf(draft);
+  box.classList.toggle("has-pick", !!picked);
   options.forEach((text, index) => {
-    const card = el("div", "copy-option");
+    const chosen = picked === index + 1;
+    const card = el("div", "copy-option" + (picked ? (chosen ? " is-chosen" : " is-other") : ""));
     const head = el("div", "copy-option-head");
-    head.append(el("span", "", "Option " + (index + 1)), el("span", "spacer"));
-    if (!state.readOnly && stage !== "draft") {
-      const pick = el("button", "quiet pick-option", "Pick this one");
+    head.append(el("span", "", "Option " + (index + 1)));
+    let tag = null;
+    if (chosen) {
+      tag = el("span", "chosen-tag", "");
+      head.append(tag);
+    }
+    head.append(el("span", "spacer"));
+    if (!state.readOnly && stage !== "draft" && !chosen) {
+      const pick = el("button", "quiet pick-option", picked ? "Use this one instead" : "Pick this one");
       pick.type = "button";
       pick.addEventListener("click", () => pickOption(index));
       head.append(pick);
     }
-    if (!state.readOnly && stage === "draft") {
+    if (!state.readOnly && stage === "draft" && !picked) {
       const remove = el("button", "remove-option", "×");
       remove.type = "button";
       remove.setAttribute("aria-label", "Remove option " + (index + 1));
@@ -3477,11 +3507,24 @@ function renderCopyOptions() {
       head.append(remove);
     }
     const area = el("textarea");
-    area.value = text;
     area.disabled = state.readOnly;
     area.placeholder = "Caption option " + (index + 1);
-    area.setAttribute("aria-label", "Caption option " + (index + 1));
-    area.addEventListener("input", () => { draft.copyOptions[index] = area.value; updateHint(); });
+    area.setAttribute("aria-label", "Caption option " + (index + 1) + (chosen ? ", the chosen caption" : ""));
+    if (chosen) {
+      /* The chosen caption is edited right here, so a reviewer can fix a word and approve. */
+      area.value = draft.copy || "";
+      const label = () => {
+        const edited = (draft.copy || "").trim() !== (text || "").trim();
+        const who = pickerOf(draft);
+        tag.textContent = "Chosen" + (who ? " by " + displayName(who) : "") + (edited ? " · edited" : "");
+      };
+      label();
+      area.addEventListener("input", () => { draft.copy = area.value; $("f-copy").value = area.value; label(); updateHint(); });
+    } else {
+      area.value = text;
+      if (picked) area.readOnly = true;
+      area.addEventListener("input", () => { draft.copyOptions[index] = area.value; updateHint(); });
+    }
     card.append(head, area);
     box.append(card);
   });
@@ -3509,13 +3552,17 @@ function removeOption(index) {
   updateHint();
 }
 function pickOption(index) {
+  readTemplate();
+  const before = pickOf(draft);
+  const edited = before && (draft.copy || "").trim() !== (draft.copyOptions[before - 1] || "").trim();
   draft.copy = draft.copyOptions[index] || "";
   draft.pickedOption = index + 1;
-  draft.copyOptions = [];
   $("f-copy").value = draft.copy;
   renderCopyOptions();
   updateHint();
-  showToast("Option " + (index + 1) + " is the caption now. Edit it if needed, then approve.");
+  showToast("Option " + (index + 1) + " is the caption now" + (edited ? " (your edits to the other one were dropped)" : "") + ". Edit it right in its box if needed.");
+  const area = $("copy-options").querySelector(".is-chosen textarea");
+  if (area) area.focus();
 }
 /* A history line for a picked caption, added when the post is saved or moved on. */
 function pickNotes() {
@@ -3829,7 +3876,7 @@ async function changeStage(nextStage, entry, extra = {}, toast) {
     }
   }
   /* Approving or moving on needs one caption: the reviewer picks an option first. */
-  if (["approved_manager", "approved_internal", "client", "approved"].includes(entry.type) && hasOptions(draft)) {
+  if (["approved_manager", "approved_internal", "client", "approved"].includes(entry.type) && needsPick(draft)) {
     $("form-error").textContent = "Pick one of the caption options first.";
     $("form-error").hidden = false;
     $("copy-options").scrollIntoView({ block: "center", behavior: "smooth" });
@@ -4462,10 +4509,12 @@ function goSame(keep) {
 }
 function goDifferent() {
   if (isDifferent()) return;
-  if (hasOptions(draft)) {
+  if (needsPick(draft)) {
     showToast("Pick one caption option first, then make a version for each platform.");
     return;
   }
+  /* A version per platform has one caption each, so the options are set aside once one is picked. */
+  if (hasOptions(draft)) { draft.copyOptions = []; renderCopyOptions(); }
   const now = versionNow();
   const copy = () => ({ ...now, assetFiles: [...(now.assetFiles || [])] });
   draft.versions = { ig: copy(), tt: copy() };
@@ -5218,7 +5267,7 @@ async function savePost(event) {
   const problem = !fields.title ? "Add a title to save this post."
     : !fields.client ? "Choose a client to save this post."
     : !fields.date ? "Choose a date to save this post."
-    : pastReview && fields.copyOptions.length ? "Pick one caption option before saving." : "";
+    : pastReview && needsPick(draft) ? "Pick one caption option before saving." : "";
   if (problem) {
     error.textContent = problem;
     error.hidden = false;
