@@ -894,7 +894,19 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 #post-dialog .dlg-foot .hint:empty { display: none; }
 #post-dialog .dlg-foot .post-actions { display: contents; }
 #post-dialog .dlg-foot .post-actions > * { order: 3; }
-#post-dialog .dlg-foot .post-actions .bump-action { order: -1; margin: 0 auto 0 0; }
+#post-dialog .dlg-foot .post-actions .bump-action { order: 2; }
+#post-dialog .dlg-foot .post-actions .route-bar { order: -1; margin: 0 auto 0 0; }
+.route-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
+.route-arrow { opacity: .45; font-size: 11px; }
+.route-step { position: relative; display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; background: var(--hover); color: var(--muted); font-weight: 500; white-space: nowrap; }
+.route-step.is-done { opacity: .6; }
+.route-step.is-now { background: var(--accent); color: #fff; font-weight: 700; }
+.route-step.is-next { box-shadow: inset 0 0 0 1.5px var(--accent); background: none; color: var(--accent); font-weight: 700; }
+/* The dropdown sits invisibly over the name; a small arrow only shows on hover or focus. */
+.route-select { position: absolute; inset: 0; width: 100% !important; height: 100%; opacity: 0; cursor: pointer; padding: 0 !important; background: none !important; }
+.route-chev { width: 0; overflow: hidden; opacity: 0; font-size: 10px; transition: opacity .15s; }
+.route-step.can-change:hover .route-chev, .route-step.can-change:focus-within .route-chev { width: auto; opacity: .7; }
+.route-step.can-change:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 #post-dialog .dlg-foot .post-actions .action-note { order: -2; flex-basis: 100%; }
 #post-dialog .dlg-foot .post-actions .more-menu .more-items { top: auto; bottom: calc(100% + 6px); left: auto; right: 0; }
 #post-dialog .dlg-foot .error { order: -1; }
@@ -2005,7 +2017,7 @@ function clearOldDeleted() {
       db.collection("posts").doc(post.id).delete().catch(() => clearing.delete(post.id));
     });
 }
-const NOT_STEPS = ["bump", "moved", "edited", "deleted", "picked"];
+const NOT_STEPS = ["bump", "moved", "edited", "deleted", "picked", "reassigned"];
 
 /* The one person who gives final approval after a manager approves (Dana). Empty when nobody is set. */
 function finalApprover() {
@@ -3378,6 +3390,7 @@ function historyText(entry) {
     case "approved_manager": return who + " approved and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + " requested changes" + note;
     case "picked": return who + " picked caption option " + entry.option;
+    case "reassigned": return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
     case "client": return who + " sent to client";
     case "approved": return who + " marked client approved";
     case "back": return who + " moved back to " + phaseName(entry.stage);
@@ -3680,11 +3693,100 @@ function fitSelect(select) {
     + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth) + 2;
   select.style.width = width + "px";
 }
-const fitSelects = () => document.querySelectorAll(".post-actions select, #final-pick").forEach(fitSelect);
-document.addEventListener("change", (event) => { if (event.target.matches && event.target.matches(".post-actions select, #final-pick")) fitSelect(event.target); });
+const fitSelects = () => document.querySelectorAll(".post-actions select:not(.route-select), #final-pick").forEach(fitSelect);
+document.addEventListener("change", (event) => { if (event.target.matches && event.target.matches(".post-actions select:not(.route-select), #final-pick")) fitSelect(event.target); });
 if (document.fonts) document.fonts.ready.then(fitSelects);
 
 const pickedReviewer = new Map();
+let draftReviewer = "";
+/* Who a post goes through, left to right, with where it is now highlighted:
+   coordinator -> manager -> Dana -> client. Names you can change (someone's out) are quiet dropdowns. */
+function routeBar(stage, draftPick) {
+  const post = editing || draft;
+  const final = finalApprover();
+  const creator = creatorOf(post);
+  const approvedBy = [...(post.history || [])].reverse().find((entry) => entry.type === "approved_manager");
+  const lastSent = [...(post.history || [])].reverse().find((entry) => entry.type === "sent");
+  let reviewer = stage === "draft" ? (draftPick && draftPick.value) || "" :
+    approvedBy ? approvedBy.by :
+    stage === "internal" && post.manager && post.manager !== final ? post.manager :
+    lastSent ? (lastSent.to || [])[0] : "";
+  if (reviewer === final || reviewer === creator) reviewer = "";
+  const steps = [{ key: "creator", email: creator, role: "Made it" }];
+  if (reviewer || stage === "draft") steps.push({ key: "reviewer", email: reviewer, role: "Reviews it" });
+  if (final && final !== creator) steps.push({ key: "final", email: final, role: "Final OK" });
+  steps.push({ key: "client", email: "", role: "Client" });
+  const now = stage === "draft" || stage === "ready" ? "creator"
+    : stage === "internal" ? (post.manager === final ? "final" : "reviewer")
+    : stage === "client" ? "client" : "";
+  const at = steps.findIndex((step) => step.key === now);
+  const bar = el("div", "route-bar");
+  bar.setAttribute("aria-label", "Who this post goes through");
+  steps.forEach((step, index) => {
+    if (index) bar.append(el("span", "route-arrow", "→"));
+    /* Ready to send: it's back with whoever made it, the reviews are done, and the client is next. */
+    const ready = stage === "ready" || stage === "client";
+    const state_ = index === at ? " is-now"
+      : stage === "approved" ? " is-done"
+      : ready ? (step.key === "client" && stage === "ready" ? " is-next" : step.key === "creator" && stage === "client" ? " is-done" : step.key === "reviewer" || step.key === "final" ? " is-done" : "")
+      : index === at + 1 ? " is-next" : index < at ? " is-done" : "";
+    const chip = el("span", "route-step" + state_);
+    chip.title = step.role;
+    const name = step.key === "client" ? "Client" : step.email ? displayName(step.email) : "Pick a reviewer";
+    chip.append(el("span", "route-name", name));
+    /* Swapping someone out is rare, so it's a quiet dropdown under the name. */
+    const choices = step.key === "creator" && editing && stage !== "approved" ? managers().filter((person) => person.email !== creator)
+      : step.key === "reviewer" && stage === "draft" && draftPick ? null
+      : step.key === "reviewer" && stage === "internal" && post.manager === reviewer ? reviewers(editing).filter((person) => person.email !== reviewer)
+      : step.key === "final" && stage === "internal" && post.manager === final ? reviewers(editing).filter((person) => person.email !== final)
+      : [];
+    if (step.key === "reviewer" && stage === "draft" && draftPick) {
+      draftPick.classList.add("route-select");
+      draftPick.setAttribute("aria-label", "Who reviews it");
+      chip.append(draftPick, el("span", "route-chev", "⌄"));
+      chip.classList.add("can-change");
+    } else if (choices && choices.length) {
+      const select = el("select", "route-select");
+      select.setAttribute("aria-label", step.key === "creator" ? "Hand this post to another coordinator" : step.key === "final" ? "Pass the final OK to someone else" : "Pass the review to someone else");
+      const keep = el("option", "", displayName(step.email));
+      keep.value = "";
+      select.append(keep);
+      choices.forEach((person) => {
+        const option = el("option", "", displayName(person.email));
+        option.value = person.email;
+        select.append(option);
+      });
+      select.addEventListener("change", () => {
+        const to = select.value;
+        if (!to) return;
+        if (step.key === "reviewer" || step.key === "final") changeStage("internal", { type: "sent", to: [to], passed: true }, { manager: to }, "Passed to " + objName(to));
+        else reassignCreator(to);
+      });
+      chip.append(select, el("span", "route-chev", "⌄"));
+      chip.classList.add("can-change");
+    }
+    bar.append(chip);
+  });
+  return bar;
+}
+/* Someone's out: hand the post to another coordinator. They become the one it waits on when it's theirs to act. */
+async function reassignCreator(to) {
+  const latest = state.posts.find((post) => post.id === editing.id);
+  if (!latest || !db) return;
+  const from = creatorOf(latest);
+  const entry = { type: "reassigned", by: myId, at: Date.now(), from, to: [to] };
+  try {
+    await db.collection("posts").doc(latest.id).update({ createdBy: to, history: [...(latest.history || []), entry] });
+  } catch (failure) {
+    showToast(saveProblem(failure));
+    renderActions();
+    return;
+  }
+  [latest, editing, draft].forEach((post) => { if (post) { post.createdBy = to; if (post !== draft) post.history = [...(latest.history || []).filter((item) => item !== entry), entry]; } });
+  render();
+  renderActions();
+  showToast("Handed to " + displayName(to));
+}
 function renderActions() {
   requestAnimationFrame(fitSelects);
   const box = $("post-actions");
@@ -3716,16 +3818,17 @@ function renderActions() {
       || (reviewers(editing).find((person) => person.email !== finalApprover() && (person.roles || []).includes("manager"))
         || reviewers(editing).find((person) => person.email !== finalApprover()) || {}).email;
     if (canPick(preferred)) pick.value = preferred;
-    pick.addEventListener("change", () => { draft.manager = pick.value; pickedReviewer.set(draft.id, pick.value); });
+    pick.addEventListener("change", () => { draft.manager = pick.value; pickedReviewer.set(draft.id, pick.value); renderActions(); });
+    draftReviewer = pick.value;
     const send = button("Send to manager", true, () => {
       pickedReviewer.set(draft.id, pick.value);
       changeStage("internal", { type: "sent", to: [pick.value] }, { manager: pick.value });
     });
     send.disabled = draftMissing().length > 0 || !pick.options.length;
-    box.append(pick, send);
+    box.append(routeBar(stage, pick), send);
   } else if (stage === "internal") {
     const others = reviewers(editing).filter((person) => person.email !== editing.manager);
-    if (passOpen && others.length) {
+    if (false && passOpen && others.length) {
       const pick = el("select");
       pick.setAttribute("aria-label", "Choose the new reviewer");
       others.forEach((person) => {
@@ -3759,7 +3862,7 @@ function renderActions() {
     if (final && editing.manager === final && myId !== final) {
       more.push(["Mark approved by " + displayName(final), () => changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], onBehalf: final }, {}, "Marked approved by " + displayName(final))]);
     }
-    if (others.length) more.push(["Change reviewer", () => { passOpen = true; renderActions(); }]);
+    box.append(routeBar(stage, null));
     if (more.length) {
       const menu = el("details", "more-menu");
       const summary = el("summary", "", "⋯");
@@ -3770,9 +3873,9 @@ function renderActions() {
       box.append(menu);
     }
   } else if (stage === "ready") {
-    box.append(button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
+    box.append(routeBar(stage, null), button("Sent to client", true, () => changeStage("client", { type: "client", to: [] })));
   } else if (stage === "client") {
-    box.append(button("Client approved", true, () => {
+    box.append(routeBar(stage, null), button("Client approved", true, () => {
       changeStage("approved", { type: "approved", to: waitingOn(editing) });
     }));
   }
