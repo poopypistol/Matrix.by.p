@@ -896,6 +896,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
 #post-dialog .dlg-foot .post-actions > * { order: 3; }
 #post-dialog .dlg-foot .post-actions .bump-action { order: 2; }
 #post-dialog .dlg-foot .post-actions .route-bar { order: -1; margin: 0 auto 0 0; }
+#post-actions .review-approve, #post-actions .review-back { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .route-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12px; color: var(--muted); min-width: 0; }
 .route-arrow { opacity: .45; font-size: 11px; }
 .route-step { position: relative; display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; background: var(--hover); color: var(--muted); font-weight: 500; white-space: nowrap; }
@@ -3710,17 +3711,27 @@ function reviewEdits() {
   if ("copy" in changed && pick && (draft.copy || "").trim() === (draft.copyOptions[pick - 1] || "").trim()) delete changed.copy;
   return Object.keys(CONTENT_NAMES).filter((key) => key in changed).map((key) => (key === "copy" ? "caption" : CONTENT_NAMES[key]));
 }
+/* A short name for buttons: first name, unless two people on the team share it. */
+function shortName(email) {
+  const full = displayName(email);
+  if (full === "You") return full;
+  const first = full.split(/\s+/)[0];
+  const clash = managers().some((person) => person.email !== email && displayName(person.email).split(/\s+/)[0] === first);
+  /* Same first name (like test accounts "Sonsoles (manager)"): the part in brackets tells them apart. */
+  const tag = full.match(/\(([^)]+)\)/);
+  return clash ? (tag ? tag[1] : full) : first;
+}
 function refreshReviewLabels() {
   const approve = document.querySelector("#post-actions .review-approve");
   const back = document.querySelector("#post-actions .review-back");
   if (!approve || !back) return;
   const edited = reviewEdits().length > 0;
   const final = finalApprover();
-  const next = final && final !== myId && final !== creatorOf(editing) ? displayName(final) : "";
-  approve.textContent = edited ? "Approve with edits" : "Approve";
-  approve.title = next ? "Your edits are kept and it goes to " + next : "";
-  back.textContent = edited ? "Send back with edits" : "Request changes";
-  back.title = edited ? "Your edits are kept and it goes back to " + displayName(creatorOf(editing)) : "";
+  const next = final && final !== myId && final !== creatorOf(editing) ? shortName(final) : "";
+  approve.textContent = next ? "Approve & send to " + next : "Approve";
+  approve.title = edited ? "Your edits are kept" : "";
+  back.textContent = edited ? "Send back to " + shortName(creatorOf(editing)) : "Request changes";
+  back.title = edited ? "Your edits are kept. Add a comment if they need more context." : "";
 }
 let reviewLabelTimer = 0;
 document.addEventListener("input", (event) => {
@@ -3897,7 +3908,13 @@ function renderActions() {
           : changeStage("ready", { type: "approved_internal", to: [creatorOf(editing)], ...(edits.length ? { fields: edits } : {}) }, {}, "Approved" + tail);
       });
       approve.classList.add("review-approve");
-      const back = button("Request changes", false, () => openNote("changes"));
+      /* Edited it yourself: send it straight back, the edits say what changed. Nothing edited: say what needs to change. */
+      const back = button("Request changes", false, () => {
+        const edits = reviewEdits();
+        if (!edits.length) { openNote("changes"); return; }
+        const to = creatorOf(editing);
+        changeStage("draft", { type: "changes", note: "", to: [to], fields: edits }, {}, "Sent back to " + displayName(to) + " with your edits");
+      });
       back.classList.add("review-back");
       box.append(approve, back);
       refreshReviewLabels();
