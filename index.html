@@ -188,6 +188,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .feed-tile.unapproved { outline: 2px dashed var(--cbg); outline-offset: -2px; }
 .feed-tile.unapproved img { opacity: .6; }
 .feed-tile[draggable="true"] { cursor: grab; }
+.format-row { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.format-row .side-note { margin: 0; font-size: 12px; color: var(--muted); }
+.asset-error { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 0; font-size: 13px; font-weight: 600; }
+.frame-picker { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 8px; }
+.frame-picker label { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.frame-picker input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
 .feed-tile.dragging { opacity: .35; }
 .feed-tile.feed-drop { box-shadow: inset 0 0 0 3px var(--accent); }
 .feed-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
@@ -1238,6 +1244,14 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
               <button class="link-btn" id="variant-no" type="button">Cancel</button>
             </p>
           </div>
+          <div class="format-row" id="format-row" hidden>
+            <div class="mode-options text-toggle" id="format-pick" role="group" aria-label="Instagram format">
+              <button class="quiet" type="button" data-format="grid" aria-pressed="false">Grid</button>
+              <button class="quiet" type="button" data-format="carousel" aria-pressed="false">Carousel</button>
+              <button class="quiet" type="button" data-format="reel" aria-pressed="false">Reel</button>
+            </div>
+            <p class="side-note" id="format-spec"></p>
+          </div>
         </div>
         <div class="field version-field" id="version-field" hidden>
           <span class="field-label" id="version-label">Editing</span>
@@ -1253,6 +1267,7 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
             <button class="quiet" id="upload-asset" type="button">Upload</button>
             <input id="asset-file" type="file" accept="image/*,video/*,application/pdf" aria-label="Choose files to upload" multiple hidden>
           </div>
+          <p class="error asset-error" id="asset-error" role="alert" hidden></p>
           <div class="asset-preview" id="asset-preview" hidden></div>
         </div>
         <div class="field drop-zone" id="cover-drop">
@@ -1606,12 +1621,12 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
       table: "posts", key: "id", watch: ["posts", "post_comments"],
       row: (d) => strip({
         client_id: d.client, title: d.title, post_date: d.date, post_time: d.time, asset: d.asset,
-        copy_text: d.copy, copy_options: d.copyOptions === undefined ? undefined : (d.copyOptions.length ? d.copyOptions : null), tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFiles === undefined ? undefined : (d.assetFiles.length ? d.assetFiles : null), cover_file: d.coverFile, platforms: d.platforms, kind: d.kind, created_by: d.createdBy,
+        copy_text: d.copy, copy_options: d.copyOptions === undefined ? undefined : (d.copyOptions.length ? d.copyOptions : null), tags: d.tags, link: d.link === undefined ? undefined : d.link || null, asset_file: d.assetFiles === undefined ? undefined : (d.assetFiles.length ? d.assetFiles : null), cover_file: d.coverFile, platforms: d.platforms, kind: d.kind, ig_format: d.igFormat, created_by: d.createdBy,
         stage: d.stage, manager: d.manager, history: d.history, last_bump: d.lastBump
       }),
       doc: (r) => ({
         client: r.client_id, title: r.title, date: r.post_date, time: r.post_time, asset: r.asset,
-        copy: r.copy_text, copyOptions: Array.isArray(r.copy_options) ? r.copy_options : [], tags: r.tags, link: r.link || "", assetFiles: Array.isArray(r.asset_file) ? r.asset_file : r.asset_file ? [r.asset_file] : [], coverFile: r.cover_file || null, platforms: r.platforms || [], kind: r.kind || "post", createdBy: r.created_by || undefined,
+        copy: r.copy_text, copyOptions: Array.isArray(r.copy_options) ? r.copy_options : [], tags: r.tags, link: r.link || "", assetFiles: Array.isArray(r.asset_file) ? r.asset_file : r.asset_file ? [r.asset_file] : [], coverFile: r.cover_file || null, platforms: r.platforms || [], kind: r.kind || "post", igFormat: r.ig_format || "", createdBy: r.created_by || undefined,
         stage: r.stage || "draft", manager: r.manager || "", history: r.history || [], lastBump: r.last_bump || null
       })
     }
@@ -3759,7 +3774,8 @@ function postFields() {
     assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || [],
-    kind: draft.kind || "post"
+    kind: draft.kind || "post",
+    igFormat: draft.igFormat || ""
   };
 }
 
@@ -3934,7 +3950,7 @@ function postSnapshot() {
     value("f-tags"), value("f-link"), value("comment-input"), draft.platforms || [], draft.kind || "post",
     draft.variant || "same", draft.versions ? draft.versions[draft.activeVersion === "ig" ? "tt" : "ig"] : null,
     (draft.assetFiles || []).map((file) => file.id), draft.coverFile ? draft.coverFile.id : null,
-    draft.copyOptions || []
+    draft.copyOptions || [], draft.igFormat || ""
   ]);
 }
 function askDiscard(show) {
@@ -4212,9 +4228,29 @@ function renderAssetPreview() {
       pick.addEventListener("click", () => useImageAsCover(file));
       actions.append(pick);
     } else if (fileKind(file) === "video") {
+      /* Slide through the video to pick the frame for the cover (the reel's thumbnail). */
+      const picker = el("div", "frame-picker");
+      const sliderId = "frame-slider-" + file.id.replace(/[^a-z0-9]/gi, "").slice(0, 12);
+      const label = el("label", "", "Pick a frame");
+      label.htmlFor = sliderId;
+      const slider = el("input");
+      slider.type = "range";
+      slider.id = sliderId;
+      slider.min = "0";
+      slider.max = "1000";
+      slider.value = "0";
+      slider.addEventListener("input", () => {
+        const video = media.querySelector("video");
+        if (!video) return;
+        const seek = () => { if (video.duration) { video.pause(); video.currentTime = (video.duration * Number(slider.value)) / 1000; } };
+        if (video.readyState >= 1) seek();
+        else { video.preload = "auto"; video.addEventListener("loadedmetadata", seek, { once: true }); video.load(); }
+      });
+      picker.append(label, slider);
+      preview.append(picker);
       const grab = el("button", "quiet", "Use this frame as cover");
       grab.type = "button";
-      grab.title = "Pause the video on the frame you want, then click";
+      grab.title = "Slide or pause on the frame you want, then click";
       grab.addEventListener("click", () => {
         const video = media.querySelector("video");
         if (video && video.readyState >= 2) useFrameAsCover(video, file, grab);
@@ -4355,7 +4391,7 @@ function renderKindPick() {
     button.disabled = state.readOnly;
   });
   $("cover-drop").hidden = story;
-  if (draft) renderAssetPreview();
+  if (draft) { renderAssetPreview(); renderFormatPick(); checkExistingFiles(); }
   $("copy-optional").hidden = !story;
   $("copy-field").classList.toggle("is-optional", story);
   $("f-copy").placeholder = story ? "Only if the story has text" : "Final caption";
@@ -4488,7 +4524,7 @@ document.querySelectorAll("[data-version]").forEach((button) => button.addEventL
 async function saveVersions(change) {
   syncActive();
   const error = $("form-error");
-  const base = { title: $("f-title").value.trim(), client: $("f-client").value, date: $("f-date").value, time: $("f-time").value, kind: draft.kind || "post" };
+  const base = { title: $("f-title").value.trim(), client: $("f-client").value, date: $("f-date").value, time: $("f-time").value, kind: draft.kind || "post", igFormat: draft.igFormat || "" };
   const problem = fieldProblem(base);
   if (problem) {
     error.textContent = problem;
@@ -4562,9 +4598,118 @@ function renderCoverShape() {
   const tiktok = (only.length === 1 && only[0] === "tt") || (isDifferent() && draft.activeVersion === "tt");
   $("cover-thumb").classList.toggle("is-tall", tiktok);
 }
+/* Instagram's own specs for each kind of post (checked November 2026). Uploads that don't fit are turned away. */
+const IG_FORMATS = {
+  grid: { name: "grid post", spec: "One image, at least 1080 px wide, from 3:4 (tall) to 1.91:1 (wide). Best: 1080 × 1350.", max: 1, kinds: ["image"], minRatio: 3 / 4, maxRatio: 1.91, minWidth: 1080 },
+  carousel: { name: "carousel", spec: "2 to 20 images or videos, at least 1080 px wide (videos 720), all the same shape as the first, from 3:4 to 1.91:1. Best: 1080 × 1350.", max: 20, kinds: ["image", "video"], minRatio: 3 / 4, maxRatio: 1.91, minWidth: 1080, minVideoWidth: 720, sameShape: true },
+  reel: { name: "reel", spec: "One vertical video, 9:16, at least 720 px wide, up to 20 minutes. Best: 1080 × 1920.", max: 1, kinds: ["video"], minRatio: 9 / 16, maxRatio: 9 / 16, minWidth: 720, maxSeconds: 1200 }
+};
+/* Posts made before formats existed get a sensible one from their files. */
+function igFormatOf(post) {
+  if (post.igFormat && IG_FORMATS[post.igFormat]) return post.igFormat;
+  const files = post.assetFiles || [];
+  if (files.length > 1) return "carousel";
+  if (files.length === 1 && fileKind(files[0]) === "video") return "reel";
+  return "grid";
+}
+/* The rules that apply right now: only for an Instagram post (not a story, not the TikTok version). */
+function igRules() {
+  if (!draft || draft.kind === "story" || !(draft.platforms || []).includes("ig")) return null;
+  if (isDifferent() && draft.activeVersion === "tt") return null;
+  return IG_FORMATS[igFormatOf(draft)];
+}
+function renderFormatPick() {
+  if (!draft) return;
+  const show = !!igRules();
+  $("format-row").hidden = !show;
+  if (!show) return;
+  const current = igFormatOf(draft);
+  document.querySelectorAll("[data-format]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.format === current));
+    button.disabled = state.readOnly;
+  });
+  $("format-spec").textContent = IG_FORMATS[current].spec;
+}
+/* Width, height and length of a file from the computer. */
+function measureFile(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    let settled = false;
+    const done = (value) => { if (settled) return; settled = true; URL.revokeObjectURL(url); resolve(value); };
+    if ((file.type || "").startsWith("video/")) {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => done({ w: video.videoWidth, h: video.videoHeight, seconds: video.duration });
+      video.onerror = () => done(null);
+      video.src = url;
+    } else if ((file.type || "").startsWith("image/")) {
+      const image = new Image();
+      image.onload = () => done({ w: image.naturalWidth, h: image.naturalHeight });
+      image.onerror = () => done(null);
+      image.src = url;
+    } else done(null);
+    setTimeout(() => done(null), 8000);
+  });
+}
+const ratioText = (w, h) => {
+  const r = w / h;
+  const known = [[1, "1:1"], [4 / 5, "4:5"], [3 / 4, "3:4"], [9 / 16, "9:16"], [16 / 9, "16:9"], [1.91, "1.91:1"]].find(([value]) => Math.abs(value - r) / value < 0.015);
+  return known ? known[1] : r.toFixed(2) + ":1";
+};
+/* Why a file doesn't fit the format, or "" if it does. */
+function formatProblem(rules, kind, size, first) {
+  if (!rules.kinds.includes(kind)) {
+    const want = rules.kinds.length === 1 ? (rules.kinds[0] === "image" ? "an image" : "a video") : "";
+    return want ? "isn't " + want + ". A " + rules.name + " needs " + want + "." : "isn't an image or video.";
+  }
+  /* Some files can't be measured in this browser (like iPhone HEIC photos in Chrome); those are let through. */
+  if (!size) return "";
+  const ratio = size.w / size.h;
+  const shape = size.w + " × " + size.h + " (" + ratioText(size.w, size.h) + ")";
+  const minWidth = kind === "video" && rules.minVideoWidth ? rules.minVideoWidth : rules.minWidth;
+  if (ratio < rules.minRatio * 0.985 || ratio > rules.maxRatio * 1.015) {
+    return "is " + shape + ". A " + rules.name + " needs " + (rules.minRatio === rules.maxRatio ? "9:16" : "3:4 to 1.91:1") + ".";
+  }
+  if (size.w < minWidth) return "is " + shape + ", too small. A " + rules.name + " needs at least " + minWidth + " px wide.";
+  if (rules.maxSeconds && size.seconds > rules.maxSeconds) return "is " + Math.round(size.seconds / 60) + " minutes long. Reels can be up to 20 minutes.";
+  if (rules.sameShape && first && Math.abs(first.w / first.h - ratio) / ratio > 0.015) return "is " + ratioText(size.w, size.h) + ", but this carousel is " + ratioText(first.w, first.h) + ". Every slide has to be the same shape.";
+  return "";
+}
+function showAssetError(lines) {
+  const box = $("asset-error");
+  box.replaceChildren(...lines.map((line) => el("span", "", line)));
+  box.hidden = !lines.length;
+}
+/* Files already in the post that don't fit the format picked (after switching formats). */
+function checkExistingFiles() {
+  if (!draft) return;
+  const rules = igRules();
+  if (!rules) { showAssetError([]); return; }
+  const files = draft.assetFiles || [];
+  const lines = [];
+  if (files.length > rules.max) lines.push("A " + rules.name + " has " + (rules.max === 1 ? "one file" : "up to " + rules.max + " files") + ". This post has " + files.length + ".");
+  const first = files.find((file) => file.w && file.h) || null;
+  files.forEach((file) => {
+    const kind = fileKind(file);
+    if (!rules.kinds.includes(kind)) { lines.push(file.name + " " + formatProblem(rules, kind, null, null)); return; }
+    if (!(file.w && file.h)) return;
+    const problem = formatProblem(rules, kind, { w: file.w, h: file.h, seconds: file.seconds }, file === first ? null : first);
+    if (problem) lines.push(file.name + " " + problem);
+  });
+  showAssetError(lines);
+}
+document.querySelectorAll("[data-format]").forEach((button) => button.addEventListener("click", () => {
+  if (!draft || state.readOnly) return;
+  draft.igFormat = button.dataset.format;
+  renderFormatPick();
+  checkExistingFiles();
+  updateHint();
+}));
 function renderPlatformPick() {
   const picked = (draft && draft.platforms) || [];
   renderVariantRow();
+  renderFormatPick();
+  checkExistingFiles();
   renderCoverShape();
   document.querySelectorAll("[data-platform]").forEach((button) => {
     button.setAttribute("aria-pressed", String(picked.includes(button.dataset.platform)));
@@ -4775,7 +4920,38 @@ function useImageAsCover(file) {
 async function uploadAssets(list) {
   const error = $("form-error");
   const upload = $("upload-asset");
-  const files = [...list];
+  let files = [...list];
+  /* Instagram posts only take files that fit their format; the rest are turned away with the reason. */
+  /* Until someone picks a format, it follows the files: one video is a reel, more than one file a carousel. */
+  if (draft && !draft.igFormat && igRules()) {
+    const all = [...(draft.assetFiles || []).map((file) => fileKind(file)), ...files.map((file) => ((file.type || "").startsWith("video/") ? "video" : "image"))];
+    const guess = all.length > 1 ? "carousel" : all[0] === "video" ? "reel" : "grid";
+    if (guess !== "grid") { draft.igFormat = guess; renderFormatPick(); }
+  }
+  const rules = igRules();
+  const sizes = new Map();
+  if (rules) {
+    const turnedAway = [];
+    const have = draft.assetFiles || [];
+    let first = have.find((file) => file.w && file.h) || null;
+    const kept = [];
+    for (const file of files) {
+      const kind = (file.type || "").startsWith("video/") ? "video" : (file.type || "").startsWith("image/") ? "image" : "other";
+      if (have.length + kept.length >= rules.max) {
+        turnedAway.push(file.name + " wasn't added. A " + rules.name + " has " + (rules.max === 1 ? "one file. Remove the one there, or pick Carousel." : "up to " + rules.max + " files."));
+        continue;
+      }
+      const size = kind === "other" ? null : await measureFile(file);
+      const problem = formatProblem(rules, kind, size, first);
+      if (problem) { turnedAway.push(file.name + " " + problem); continue; }
+      if (!first) first = size;
+      sizes.set(file, size);
+      kept.push(file);
+    }
+    showAssetError(turnedAway);
+    files = kept;
+    if (!files.length) return;
+  } else showAssetError([]);
   const tooBig = files.filter((file) => file.size > 50 * 1024 * 1024);
   const ready = files.filter((file) => file.size <= 50 * 1024 * 1024);
   error.hidden = true;
@@ -4790,6 +4966,8 @@ async function uploadAssets(list) {
       const stored = await assets.upload(file);
       uploadsThisOpen.push(stored.id);
       const entry = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+      const size = sizes.get(file) || (rules ? null : await measureFile(file));
+      if (size && size.w) Object.assign(entry, { w: size.w, h: size.h }, size.seconds ? { seconds: Math.round(size.seconds) } : {});
       if (draft !== owner) continue;
       if (version && owner.versions && owner.activeVersion !== version) {
         const target = owner.versions[version];
@@ -5032,7 +5210,8 @@ async function savePost(event) {
     assetFiles: [...(draft.assetFiles || [])],
     coverFile: draft.coverFile || null,
     platforms: draft.platforms || [],
-    kind: draft.kind || "post"
+    kind: draft.kind || "post",
+    igFormat: draft.igFormat || ""
   };
   const error = $("form-error");
   const pastReview = editing && ["ready", "client", "approved"].includes(stageOf(editing));
