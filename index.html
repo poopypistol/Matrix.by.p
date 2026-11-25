@@ -518,7 +518,8 @@ dialog {
 }
 dialog.small { width: min(420px, calc(100vw - 32px)); }
 dialog::backdrop { background: rgba(0, 0, 0, .45); }
-#post-form, #client-form, #post-fields, #note-form, #stage-form, #invite-form { display: flex; flex-direction: column; gap: 16px; }
+#feed-move-form .meta-row { grid-template-columns: 1fr 1fr; }
+#post-form, #client-form, #post-fields, #note-form, #stage-form, #invite-form, #feed-move-form { display: flex; flex-direction: column; gap: 16px; }
 #note-form .hint, #stage-form .hint { margin-top: -8px; }
 #post-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .dlg-title { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; }
@@ -1340,6 +1341,21 @@ body.sheet-open .side, body.sheet-open .main, body.sheet-open .settings-page { t
     <div class="dlg-foot">
       <button class="quiet" id="cancel-stage" type="button">Cancel</button>
       <button class="primary" type="submit">Move back</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="small" id="feed-move-dialog" aria-labelledby="feed-move-title">
+  <form id="feed-move-form" novalidate>
+    <h2 class="dlg-title" id="feed-move-title">Move post</h2>
+    <p class="hint" id="feed-move-hint"></p>
+    <div class="meta-row feed-move-row">
+      <div class="field"><label for="feed-move-date">Date</label><input id="feed-move-date" type="date" required></div>
+      <div class="field"><label for="feed-move-time">Time</label><input id="feed-move-time" type="time"></div>
+    </div>
+    <div class="dlg-foot">
+      <button class="quiet" id="cancel-feed-move" type="button">Cancel</button>
+      <button class="primary" type="submit">Move</button>
     </div>
   </form>
 </dialog>
@@ -2376,8 +2392,7 @@ function renderFeed() {
     tile.append(el("span", "feed-label", shortDate(post.date) + (approved ? "" : " · " + phaseName(stageOf(post)))));
     tile.addEventListener("click", () => openPost(post));
     if (!state.readOnly && posts.length > 1) {
-      /* Drag a tile to a new spot on the grid. The posts keep the same posting slots, just in the new
-         order, so the calendar moves to match (like rearranging a planned grid). */
+      /* Drag a tile to a new spot on the grid, then pick its new date. The calendar moves to match. */
       const index = posts.indexOf(post);
       tile.draggable = true;
       tile.addEventListener("dragstart", (event) => {
@@ -2404,46 +2419,66 @@ function renderFeed() {
   });
 }
 
-async function reorderFeed(posts, from, to) {
+/* Dropping a tile in a new spot asks when it should go out, starting from a date that fits between
+   its new neighbors. Only that post moves; the others keep their dates. */
+let feedMove = null;
+function reorderFeed(posts, from, to) {
   if (from === to || !posts[from] || !posts[to]) return;
-  const slots = posts.map((post) => ({ date: post.date, time: post.time || "" }));
-  const order = [...posts];
-  const [moved] = order.splice(from, 1);
-  order.splice(to, 0, moved);
-  const changes = order
-    .map((post, i) => ({ post, before: { date: post.date, time: post.time || "" }, after: slots[i] }))
-    .filter((item) => item.before.date !== item.after.date || item.before.time !== item.after.time);
-  if (!changes.length) return;
-  const write = async (item, slot, undo) => {
-    const latest = state.posts.find((post) => post.id === item.post.id) || item.post;
-    const notes = undo ? null : followUps(latest, { date: slot.date, time: slot.time });
-    const history = undo
-      ? (latest.history || []).filter((entry) => !(item.note && entry.type === "moved" && entry.at === item.note.at && entry.by === myId))
-      : notes && notes.length ? [...(latest.history || []), ...notes] : null;
-    if (!undo && notes && notes.length) item.note = notes[0];
-    const update = history ? { date: slot.date, time: slot.time, history } : { date: slot.date, time: slot.time };
-    await db.collection("posts").doc(latest.id).update(update);
-    Object.assign(latest, update);
+  const post = posts[from];
+  const order = posts.filter((item) => item !== post);
+  order.splice(to, 0, post);
+  const newer = order[to - 1], older = order[to + 1];
+  const day = (date) => new Date(date + "T12:00:00");
+  const iso = (date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  let suggested;
+  if (newer && older) suggested = iso(new Date((day(newer.date).getTime() + day(older.date).getTime()) / 2));
+  else if (older) { const d = day(older.date); d.setDate(d.getDate() + 1); suggested = iso(d); }
+  else { const d = day(newer.date); d.setDate(d.getDate() - 1); suggested = iso(d); }
+  feedMove = { id: post.id };
+  $("feed-move-hint").textContent = "When should “" + post.title + "” go out? It sits on the grid by its date.";
+  $("feed-move-date").value = suggested;
+  $("feed-move-time").value = post.time || "";
+  $("feed-move-dialog").showModal();
+  $("feed-move-date").focus();
+}
+async function moveFeedPost(id, date, time) {
+  const post = state.posts.find((item) => item.id === id);
+  if (!post || (post.date === date && (post.time || "") === time)) return;
+  const before = { date: post.date, time: post.time || "" };
+  const note = followUps(post, { date, time })[0];
+  const save = async (slot, history) => {
+    const update = history ? { ...slot, history } : { ...slot };
+    await db.collection("posts").doc(id).update(update);
+    Object.assign(post, update);
+    render();
   };
   try {
-    for (const item of changes) await write(item, item.after, false);
+    await save({ date, time }, note && [...(post.history || []), note]);
   } catch (failure) {
     showToast(saveProblem(failure));
-    render();
     return;
   }
-  render();
-  const first = changes.find((item) => item.post === moved) || changes[0];
-  showToast((changes.length === 1 ? "Moved to " : "Reordered · " + first.post.title + " now ") + shortDate(first.after.date) + (changes.length > 1 ? ", " + (changes.length - 1) + " other" + (changes.length > 2 ? "s" : "") + " shifted" : ""), async () => {
+  showToast("Moved to " + shortDate(date) + (time ? ", " + formatTime(time) : ""), async () => {
+    const now = state.posts.find((item) => item.id === id);
+    if (!now || now.date !== date) { showToast("Someone else moved this post since, so it can't be undone here."); return; }
     try {
-      for (const item of changes) await write(item, item.before, true);
-      render();
+      await save(before, note && (now.history || []).filter((entry) => !(entry.type === "moved" && entry.at === note.at && entry.by === myId)));
       showToast("Undone");
     } catch (failure) {
-      showToast("That didn't undo. Drag them back instead.");
+      showToast("That didn't undo. Drag it back instead.");
     }
   });
 }
+$("cancel-feed-move").addEventListener("click", () => { feedMove = null; $("feed-move-dialog").close(); });
+$("feed-move-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const date = $("feed-move-date").value;
+  if (!date || !feedMove) return;
+  const id = feedMove.id;
+  feedMove = null;
+  $("feed-move-dialog").close();
+  moveFeedPost(id, date, $("feed-move-time").value);
+});
 
 function renderBumpList() {
   const posts = bumpListPosts();
