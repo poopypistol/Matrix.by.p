@@ -175,7 +175,8 @@ Deno.serve(async (request) => {
     const tokens = await response.json();
     if (!tokens.refresh_token) { console.error("No refresh token", tokens.error || ""); return back("failed"); }
     const who = await (await fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: { Authorization: "Bearer " + tokens.access_token } })).json();
-    await db.from("google_connection").upsert({ id: 1, email: who.email || state.email, refresh_token: tokens.refresh_token, updated_at: new Date().toISOString() });
+    const { error } = await db.from("google_connection").upsert({ id: 1, email: who.email || state.email, refresh_token: tokens.refresh_token, updated_at: new Date().toISOString() });
+    if (error) { console.error("Couldn't save the Google connection", error.message); return back("failed"); }
     return back("connected");
   }
 
