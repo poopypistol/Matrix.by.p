@@ -166,6 +166,8 @@ async function sendBack(post: any, members: any[], email: string, pick: number, 
 }
 
 /* ---------- the edit / send-back box ---------- */
+/* The most a Slack text box can hold. Longer captions are edited in declan instead. */
+const SLACK_MAX = 3000;
 function reviewBox(post: any, members: any[], meta: object, mode: "edit" | "back", caption: string) {
   const final = finalOf(members);
   const creator = creatorOf(post, members);
@@ -174,7 +176,7 @@ function reviewBox(post: any, members: any[], meta: object, mode: "edit" | "back
   const backLabel = "Send back to " + firstName(members, creator);
   const blocks: any[] = [
     { type: "input", block_id: "caption", label: { type: "plain_text", text: "Caption" },
-      element: { type: "plain_text_input", action_id: "v", multiline: true, initial_value: caption, max_length: 2200 } },
+      element: { type: "plain_text_input", action_id: "v", multiline: true, initial_value: caption, max_length: SLACK_MAX } },
     { type: "input", block_id: "note", optional: mode === "edit", label: { type: "plain_text", text: "Note for " + firstName(members, mode === "back" ? creator : onward ? final : creator) },
       element: { type: "plain_text_input", action_id: "v", multiline: true, placeholder: { type: "plain_text", text: mode === "back" ? "What should change? (optional if you edited the caption)" : "Optional" } } },
   ];
@@ -275,7 +277,13 @@ Deno.serve(async (request) => {
       } else if (action.action_id === "back" || action.action_id === "edit") {
         const caption = options(post).length && pick ? options(post)[pick - 1] : post.copy_text || "";
         const meta = { post: post.id, fp: value.fp, pick, channel, ts, email, mode: action.action_id };
-        await slack("views.open", { trigger_id: payload.trigger_id, view: reviewBox(post, members, meta, action.action_id === "edit" ? "edit" : "back", caption) });
+        const link = SITE + "/#post-" + post.id;
+        if (caption.length > SLACK_MAX) {
+          await whisper(payload.response_url, "This caption is " + caption.length.toLocaleString("en-US") + " characters, longer than Slack can edit (" + SLACK_MAX.toLocaleString("en-US") + "). Open it in declan to " + (action.action_id === "edit" ? "edit it" : "send it back") + ": " + link);
+          return new Response("");
+        }
+        const opened = await slack("views.open", { trigger_id: payload.trigger_id, view: reviewBox(post, members, meta, action.action_id === "edit" ? "edit" : "back", caption) });
+        if (!opened.ok) await whisper(payload.response_url, "Slack couldn't open the box. Open the post in declan instead: " + link);
       }
     } catch (problem) {
       console.error("Slack action failed", problem);
