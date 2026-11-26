@@ -1723,11 +1723,13 @@ button.names-step:hover { color: var(--fg); }
             if (model.key === "id") row.id = id;
             check(await withoutMissingLink(row, () => sb.from(model.table).upsert(row)));
             if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+            if (name === "posts" && window.__syncDrive) window.__syncDrive(id);
           },
           async update(data) {
             const row = model.row(data);
             if (Object.keys(row).length) check(await withoutMissingLink(row, () => sb.from(model.table).update(row).eq(model.key, id)));
             if (data.comments) check(await sb.from("post_comments").upsert({ post_id: id, comments: data.comments }));
+            if (name === "posts" && window.__syncDrive) window.__syncDrive(id);
           },
           async delete() {
             check(await sb.from(model.table).delete().eq(model.key, id));
@@ -1822,6 +1824,21 @@ button.names-step:hover { color: var(--fg); }
     if (error) throw error;
     return { id: path, contentType: "image/jpeg", drive: driveId };
   }
+  /* After a post is saved, Drive catches up: folder and file names, month, client, carousel order.
+     Waits a moment so a burst of saves becomes one sync. */
+  const syncTimers = new Map();
+  function syncDrive(postId) {
+    if (!driveClients) driveOn("");
+    clearTimeout(syncTimers.get(postId));
+    syncTimers.set(postId, setTimeout(() => {
+      syncTimers.delete(postId);
+      driveClients.then((list) => {
+        if (!list.length) return;
+        driveCall("/sync", { post: postId }).catch((problem) => console.warn("Drive sync failed", problem));
+      });
+    }, 1500));
+  }
+  window.__syncDrive = syncDrive;
   const assets = {
     async upload(file, meta) {
       if (meta && meta.client && String(file.type).startsWith("image/") && !/svg|gif/.test(file.type) && await driveOn(meta.client)) {
@@ -4678,7 +4695,7 @@ async function fillMedia(box, file, small, isCurrent) {
 /* Save an uploaded file to your computer, under its original name. */
 /* Where an upload goes in Drive: the post's client, date and title, and which file it is. */
 function uploadMeta(part) {
-  return { client: ($("f-client") && $("f-client").value) || (draft && draft.client) || "", date: ($("f-date") && $("f-date").value) || "", title: ($("f-title") && $("f-title").value.trim()) || "", part };
+  return { post: (draft && draft.id) || "", client: ($("f-client") && $("f-client").value) || (draft && draft.client) || "", date: ($("f-date") && $("f-date").value) || "", title: ($("f-title") && $("f-title").value.trim()) || "", part };
 }
 async function downloadFile(file) {
   try {

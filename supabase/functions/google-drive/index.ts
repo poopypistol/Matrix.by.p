@@ -122,15 +122,107 @@ async function monthFolder(token: string, saved: any, clientId: string, date: st
 }
 /* "Dec 03 – Holiday gift guide – cover.jpg" */
 function fileName(date: string, title: string, part: string, original: string) {
+  if (/^\d+$/.test(part)) part = part.padStart(2, "0");
   const day = /^\d{4}-\d{2}-\d{2}/.test(date) ? SHORT[Number(date.slice(5, 7)) - 1] + " " + date.slice(8, 10) : "No date";
   const ext = (String(original).match(/\.[a-zA-Z0-9]{1,5}$/) || [""])[0].toLowerCase();
   const clean = String(title || "Untitled").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "Untitled";
   return day + " – " + clean + " – " + part + ext;
 }
+/* "Dec 03 – Holiday gift guide": one folder per post, inside its month. */
+function postFolderName(date: string, title: string) {
+  return fileName(date, title, "x", "").replace(/ – x$/, "");
+}
+function escapeQuery(text: string) {
+  return text.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+/* Two posts on the same day with the same title: the second becomes "… (2)". */
+async function freeFolderName(token: string, parent: string, base: string, self = "") {
+  const query = "'" + parent + "' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+  const list = await (await google(token, "/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=files(id,name)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true")).json();
+  const taken = new Set((list.files || []).filter((file: any) => file.id !== self).map((file: any) => file.name));
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 100; n++) if (!taken.has(base + " (" + n + ")")) return base + " (" + n + ")";
+  return base + " (" + Date.now() + ")";
+}
+const sameBase = (name: string, base: string) => name === base || new RegExp("^" + base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + " \\(\\d+\\)$").test(name);
+const postLocks = new Map<string, Promise<unknown>>();
+/* The post's own folder, made the first time a file is uploaded to it. */
+const postFolderMemory = new Map<string, Promise<string>>();
+function postFolder(token: string, saved: any, postId: string, clientId: string, date: string, title: string) {
+  // Two photos uploaded at the same moment share one folder.
+  if (!postFolderMemory.has(postId)) {
+    postFolderMemory.set(postId, makePostFolder(token, saved, postId, clientId, date, title).catch((problem) => { postFolderMemory.delete(postId); throw problem; }));
+  }
+  return postFolderMemory.get(postId)!;
+}
+async function makePostFolder(token: string, saved: any, postId: string, clientId: string, date: string, title: string) {
+  const key = "post/" + postId;
+  const { data } = await db.from("google_folders").select("folder_id").eq("key", key).maybeSingle();
+  if (data && data.folder_id) return data.folder_id as string;
+  const month = await monthFolder(token, saved, clientId, date);
+  const name = await freeFolderName(token, month, postFolderName(date, title));
+  const made = await (await google(token, "/drive/v3/files?supportsAllDrives=true&fields=id", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [month], appProperties: { declan: "1", post: postId } }),
+  })).json();
+  await db.from("google_folders").upsert({ key, folder_id: made.id });
+  return made.id as string;
+}
+/* After a save: make Drive match the post as it is now. Folder name, which client and month it sits in,
+   and every file's name and number in the current order. Only files this post uploaded are touched. */
+async function syncPost(token: string, saved: any, postId: string) {
+  const key = "post/" + postId;
+  const { data: memory } = await db.from("google_folders").select("folder_id").eq("key", key).maybeSingle();
+  const { data: post } = await db.from("posts").select("id, client_id, post_date, title, cover_file, asset_file, history").eq("id", postId).maybeSingle();
+  const changes: string[] = [];
+  if (!memory || !memory.folder_id) return changes;
+  const folderId = memory.folder_id as string;
+  const deleted = !post || (post.history || []).some((entry: any) => entry.type === "deleted");
+  if (deleted) {
+    // Only an empty folder goes to the trash, so a photo another post still uses is never thrown away.
+    const inside = await (await google(token, "/drive/v3/files?q=" + encodeURIComponent("'" + folderId + "' in parents and trashed=false") + "&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true")).json();
+    if (!(inside.files || []).length) {
+      await google(token, "/drive/v3/files/" + folderId + "?supportsAllDrives=true", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+      await db.from("google_folders").delete().eq("key", key);
+      changes.push("trashed folder");
+    }
+    return changes;
+  }
+  const date = post.post_date || "";
+  const title = post.title || "";
+  const month = await monthFolder(token, saved, post.client_id, date);
+  const folderMeta = await (await google(token, "/drive/v3/files/" + folderId + "?fields=id,name,parents,trashed&supportsAllDrives=true")).json();
+  const move = (meta: any, to: string) => meta.parents && meta.parents[0] !== to ? "&addParents=" + to + "&removeParents=" + meta.parents.join(",") : "";
+  const base = postFolderName(date, title);
+  const folderPatch: Record<string, unknown> = {};
+  const moving = move(folderMeta, month);
+  if (moving || !sameBase(folderMeta.name, base)) folderPatch.name = sameBase(folderMeta.name, base) && !moving ? folderMeta.name : await freeFolderName(token, month, base, folderId);
+  if (folderMeta.trashed) folderPatch.trashed = false;
+  if (moving || Object.keys(folderPatch).length) {
+    await google(token, "/drive/v3/files/" + folderId + "?supportsAllDrives=true" + moving, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(folderPatch) });
+    changes.push("folder " + (folderPatch.name || folderMeta.name) + (moving ? " (moved)" : ""));
+  }
+  const assetsList = Array.isArray(post.asset_file) ? post.asset_file : post.asset_file ? [post.asset_file] : [];
+  const files = [
+    ...(post.cover_file && post.cover_file.drive ? [{ file: post.cover_file, part: "cover" }] : []),
+    ...assetsList.map((file: any, index: number) => ({ file, part: String(index + 1) })).filter((item: any) => item.file && item.file.drive),
+  ];
+  for (const { file, part } of files) {
+    const meta = await (await google(token, "/drive/v3/files/" + file.drive + "?fields=id,name,parents,appProperties,trashed&supportsAllDrives=true")).json();
+    if (!meta.appProperties || meta.appProperties.post !== postId || meta.trashed) continue;
+    const want = fileName(date, title, part, file.name || meta.name);
+    const fileMove = move(meta, folderId);
+    if (meta.name === want && !fileMove) continue;
+    await google(token, "/drive/v3/files/" + file.drive + "?supportsAllDrives=true" + fileMove, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: want }) });
+    changes.push(want);
+  }
+  return changes;
+}
+
 /* A Drive file declan made, so nobody can use declan to read the rest of the Drive. */
 async function ownFile(token: string, id: string) {
   if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) return null;
-  const meta = await (await google(token, "/drive/v3/files/" + id + "?fields=id,name,mimeType,appProperties,trashed&supportsAllDrives=true")).json();
+  const meta = await (await google(token, "/drive/v3/files/" + id + "?fields=id,name,mimeType,appProperties,parents,trashed&supportsAllDrives=true")).json();
   return meta.appProperties && meta.appProperties.declan === "1" ? meta : null;
 }
 
@@ -240,7 +332,8 @@ Deno.serve(async (request) => {
       const body = await request.json();
       const { token, saved } = await accessToken();
       if (!((saved.clients || []) as string[]).includes(body.client)) return json({ error: "Drive isn't on for this client" }, 400);
-      const parent = await monthFolder(token, saved, body.client, body.date || "");
+      if (!/^[A-Za-z0-9_-]{4,80}$/.test(String(body.post || ""))) return json({ error: "Missing post" }, 400);
+      const parent = await postFolder(token, saved, body.post, body.client, body.date || "", body.title || "");
       const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
         method: "POST",
         headers: {
@@ -248,11 +341,26 @@ Deno.serve(async (request) => {
           "X-Upload-Content-Type": body.type || "application/octet-stream", "X-Upload-Content-Length": String(body.size || 0),
           Origin: SITE,
         },
-        body: JSON.stringify({ name: fileName(body.date || "", body.title || "", body.part || "file", body.name || ""), parents: [parent], appProperties: { declan: "1" } }),
+        body: JSON.stringify({ name: fileName(body.date || "", body.title || "", body.part || "file", body.name || ""), parents: [parent], appProperties: { declan: "1", post: body.post } }),
       });
       const uploadUrl = response.headers.get("location");
       if (!response.ok || !uploadUrl) return json({ error: "Drive didn't start the upload: " + (await response.text()).slice(0, 200) }, 502);
       return json({ uploadUrl });
+    } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
+  }
+  // After a post is saved: make Drive match it.
+  if (path.startsWith("/sync")) {
+    try {
+      const { post } = await request.json();
+      if (!/^[A-Za-z0-9_-]{4,80}$/.test(String(post || ""))) return json({ error: "Missing post" }, 400);
+      const run = (postLocks.get(post) || Promise.resolve()).catch(() => {}).then(async () => {
+        const { token, saved } = await accessToken();
+        return await syncPost(token, saved, post);
+      });
+      postLocks.set(post, run);
+      const changes = await run;
+      if (postLocks.get(post) === run) postLocks.delete(post);
+      return json({ changes });
     } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
   }
   // The original file, for downloading.
@@ -272,10 +380,25 @@ Deno.serve(async (request) => {
       const { ids } = await request.json();
       const { token } = await accessToken();
       let trashed = 0;
+      const postIds = new Set<string>();
       for (const id of (ids || []).slice(0, 50)) {
-        if (!(await ownFile(token, id))) continue;
+        const meta = await ownFile(token, id);
+        if (!meta) continue;
         await google(token, "/drive/v3/files/" + id + "?supportsAllDrives=true", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+        if (meta.appProperties.post) postIds.add(meta.appProperties.post);
         trashed++;
+      }
+      // A post that was never saved (photos added, then the post was closed) leaves no empty folder behind.
+      for (const postId of postIds) {
+        const { data: post } = await db.from("posts").select("id").eq("id", postId).maybeSingle();
+        if (post) continue;
+        const { data: memory } = await db.from("google_folders").select("folder_id").eq("key", "post/" + postId).maybeSingle();
+        if (!memory) continue;
+        const inside = await (await google(token, "/drive/v3/files?q=" + encodeURIComponent("'" + memory.folder_id + "' in parents and trashed=false") + "&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true")).json();
+        if ((inside.files || []).length) continue;
+        await google(token, "/drive/v3/files/" + memory.folder_id + "?supportsAllDrives=true", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+        await db.from("google_folders").delete().eq("key", "post/" + postId);
+        postFolderMemory.delete(postId);
       }
       return json({ trashed });
     } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
