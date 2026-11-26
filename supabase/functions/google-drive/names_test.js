@@ -19,7 +19,7 @@ for (const id of ids) for (const name of names) {
   ok(parse(p) === id && /^[A-Za-z0-9._-]+$/.test(p), 'path ' + JSON.stringify(name).slice(0, 40) + ' id ' + id + ' -> ' + p.slice(0, 60));
 }
 // Drive file names
-const titles = ['Holiday gift guide', '', '   ', 'Before/After: "Glow" <test> | 50%?', '🎄 Gift guide 🎁', 'x'.repeat(200), "Saltair's best"];
+const titles = ['Kiehl\x27s \\ test', 'Holiday gift guide', '', '   ', 'Before/After: "Glow" <test> | 50%?', '🎄 Gift guide 🎁', 'x'.repeat(200), "Saltair's best"];
 for (const t of titles) {
   const n = fileName('2026-12-03', t, 'cover', 'IMG_1.JPG');
   ok(/^Dec 03 – .+ – cover\.jpg$/.test(n) && !/[\\/:*?"<>|]/.test(n) && n.length < 120, 'title ' + JSON.stringify(t).slice(0, 30) + ' -> ' + n.slice(0, 70));

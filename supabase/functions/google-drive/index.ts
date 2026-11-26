@@ -124,7 +124,7 @@ async function monthFolder(token: string, saved: any, clientId: string, date: st
 function fileName(date: string, title: string, part: string, original: string) {
   const day = /^\d{4}-\d{2}-\d{2}/.test(date) ? SHORT[Number(date.slice(5, 7)) - 1] + " " + date.slice(8, 10) : "No date";
   const ext = (String(original).match(/\.[a-zA-Z0-9]{1,5}$/) || [""])[0].toLowerCase();
-  const clean = String(title || "Untitled").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80) || "Untitled";
+  const clean = String(title || "Untitled").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "Untitled";
   return day + " – " + clean + " – " + part + ext;
 }
 /* A Drive file declan made, so nobody can use declan to read the rest of the Drive. */
