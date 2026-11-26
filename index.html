@@ -179,6 +179,81 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .cover-thumb.has-image { border: 1px solid var(--line); padding: 0; }
 .cover-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+/* Deck: one client's month as slides. Slides scale with their box (container units), so one design
+   serves the thumbnail strip, the big slide, the grid and presenting. */
+#deck-view { max-width: 1180px; gap: 26px; }
+.deck-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 24px; }
+.deck-heading { display: flex; flex-direction: column; gap: 6px; }
+.deck-month { display: flex; align-items: center; gap: 2px; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.deck-month span b { font-weight: 700; } .deck-month span { color: var(--muted); font-weight: 700; } .deck-month span b { color: var(--fg); margin-right: 6px; }
+.deck-step { width: 34px; height: 34px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 0; background: none; color: var(--fg); }
+.deck-step:hover { background: var(--hover); }
+.deck-step svg { width: 18px; height: 18px; }
+.deck-tools { display: flex; align-items: center; gap: 20px; }
+.deck-present { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; }
+.deck-present svg { width: 15px; height: 15px; }
+.slide { container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; border-radius: 12px; background: #fbfaf7; color: #1d1d1f; display: flex; box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.14); text-align: left; }
+.slide-img { flex: none; width: 33%; aspect-ratio: 4 / 5; margin: 6cqw 0 6cqw 6cqw; border-radius: .6cqw; background: #ece8e1 center / cover no-repeat; }
+.slide-text { flex: 1; min-width: 0; padding: 7cqw 6cqw 4cqw 5cqw; display: flex; flex-direction: column; gap: 1.4cqw; }
+.slide-meta { font-size: 1.5cqw; letter-spacing: .14em; text-transform: uppercase; color: #8e8e93; font-weight: 600; }
+.slide-title { font-size: 3.8cqw; font-weight: 700; letter-spacing: -.02em; line-height: 1.12; }
+.slide-copy { font-size: 1.9cqw; line-height: 1.5; color: #48484a; white-space: pre-wrap; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 9; -webkit-box-orient: vertical; }
+.slide-copy.none { color: #b0b0b5; }
+.slide-tags { font-size: 1.7cqw; color: #8e8e93; }
+.slide-cover { background: linear-gradient(135deg, color-mix(in srgb, var(--cbg) 55%, #fbfaf7), #fbfaf7 70%); }
+.slide-cover-in { display: flex; flex-direction: column; justify-content: flex-end; width: 100%; padding: 7cqw; }
+.slide-cover .slide-kicker { font-size: 1.6cqw; letter-spacing: .16em; text-transform: uppercase; color: #6e6e73; font-weight: 600; }
+.slide-cover .slide-name { font-size: 7.5cqw; font-weight: 800; letter-spacing: -.03em; line-height: 1; margin-top: 1.4cqw; }
+.slide-cover .slide-when { font-size: 2.4cqw; color: #48484a; margin-top: 1.2cqw; }
+.slide.pending > * { opacity: .45; filter: saturate(.35); }
+.deck-flow { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 28px; align-items: start; }
+.deck-rail { display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 220px); overflow-y: auto; padding: 4px 8px 4px 4px; scrollbar-width: thin; }
+.deck-thumb { display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: start; padding: 0; min-height: 0; border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 600; text-align: right; }
+.deck-thumb .slide { border-radius: 5px; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .12s; }
+.deck-thumb:hover .slide { outline-color: color-mix(in srgb, var(--fg) 18%, transparent); }
+.deck-thumb[aria-current="true"] { color: var(--fg); }
+.deck-thumb[aria-current="true"] .slide { outline-color: var(--accent); }
+.deck-stage { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.deck-stage .slide { box-shadow: 0 2px 4px rgba(0,0,0,.1), 0 20px 50px rgba(0,0,0,.22); cursor: default; }
+.deck-under { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; }
+.deck-nav { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.deck-nav button { width: 36px; height: 36px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 0; background: var(--hover); color: var(--fg); }
+.deck-nav button:disabled { opacity: .35; }
+.deck-nav button svg { width: 17px; height: 17px; }
+.deck-nav span { min-width: 64px; text-align: center; }
+.deck-status { font-size: 13px; color: var(--muted); }
+.deck-status b { color: var(--fg); font-weight: 600; }
+.deck-edit { border-radius: 999px; white-space: nowrap; padding: 0 16px; min-height: 36px; }
+.deck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 26px 20px; }
+.deck-card { display: flex; flex-direction: column; gap: 9px; padding: 0; min-height: 0; border: 0; background: none; color: var(--fg); text-align: left; }
+.deck-card .slide { transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
+.deck-card:hover .slide { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,.1), 0 16px 36px rgba(0,0,0,.22); }
+.deck-card[aria-current="true"] .slide { outline: 2px solid var(--accent); outline-offset: 3px; }
+.deck-cap { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 0 2px; }
+.deck-cap span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-cap .deck-tag { flex: none; color: var(--muted); }
+.deck-cap .deck-tag.ok { color: var(--good); }
+.deck-empty { padding: 56px 24px; text-align: center; color: var(--muted); border-radius: 22px; background: var(--hover); }
+.deck-show { position: fixed; inset: 0; z-index: 1000; background: #000; display: flex; align-items: center; justify-content: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); cursor: none; }
+.deck-show.awake { cursor: default; }
+.deck-show-stage { width: min(100vw, calc(100vh * 16 / 9)); }
+.deck-show-stage .slide { border-radius: 0; box-shadow: none; }
+.deck-show-bar { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(40,40,40,.78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: #f2f2f2; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity .3s; }
+.deck-show.awake .deck-show-bar { opacity: 1; }
+.deck-show-bar button { width: 36px; height: 36px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 0; background: none; color: inherit; }
+.deck-show-bar button:hover { background: rgba(255,255,255,.12); }
+.deck-show-bar button svg { width: 17px; height: 17px; }
+.deck-show-bar span { min-width: 56px; text-align: center; }
+@media (max-width: 760px) {
+  .deck-flow { grid-template-columns: 1fr; gap: 14px; }
+  .deck-rail { order: 2; flex-direction: row; max-height: none; overflow-x: auto; overflow-y: hidden; padding: 4px 2px 8px; }
+  .deck-thumb { flex: none; width: 118px; grid-template-columns: 1fr; }
+  .deck-thumb > span { display: none; }
+  .deck-grid { grid-template-columns: 1fr 1fr; gap: 18px 12px; }
+  .deck-tools { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 460px) { .deck-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .deck-card .slide, .deck-show-bar { transition: none; } }
 .feed-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; max-width: 620px; margin-top: -8px; }
 .feed-bar .side-note { margin: 0; }
 .feed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 100%; max-width: 620px; }
@@ -747,7 +822,7 @@ h1 { font-weight: 700; letter-spacing: -.04em; }
 .top-icons .settings-btn:hover { background: var(--hover); color: var(--fg); }
 .top-icons .settings-btn.is-active { background: var(--surface); color: var(--fg); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .top-icons .icon-gap { margin: 0; }
-#cal-btn::after { content: "Calendar"; order: 1; }
+#cal-btn::after { content: attr(data-label); order: 1; }
 #pipe-btn::after { content: "Matrix"; order: 1; }
 #bumps::after { content: "Notifications"; order: 1; }
 #cal-btn::before, #bumps::before { content: ""; order: 3; width: 6px; height: 6px; margin: -3px 0 0 2px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(45deg); opacity: .7; }
@@ -1022,12 +1097,22 @@ button.names-step:hover { color: var(--fg); }
 
 
 <style id="client-colors"></style>
+<div class="deck-show" id="deck-show" hidden aria-label="Presenting">
+  <div class="deck-show-stage" id="deck-show-stage"></div>
+  <div class="deck-show-bar">
+    <button type="button" id="show-prev" aria-label="Previous slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <span id="show-count"></span>
+    <button type="button" id="show-next" aria-label="Next slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button type="button" id="show-exit" aria-label="Stop presenting (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+</div>
 <div class="app">
   <div class="top-icons">
-  <button class="settings-btn" id="cal-btn" type="button" aria-label="Calendar and feed" title="Calendar and feed" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></button>
+  <button class="settings-btn" id="cal-btn" data-label="Calendar" type="button" aria-label="Calendar, feed and deck" title="Calendar, feed and deck" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg></button>
   <div class="notif-menu cal-menu" id="cal-menu" role="menu" hidden>
     <button type="button" role="menuitem" id="menu-cal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg><span class="menu-label">Calendar<small>Every client, month by month</small></span></button>
     <button type="button" role="menuitem" id="menu-feed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="menu-label">Feed<small>Cover images, one client at a time</small></span></button>
+    <button type="button" role="menuitem" id="menu-deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M12 16.5V20M8 20h8"/></svg><span class="menu-label">Deck<small>Each client's month as slides</small></span></button>
   </div>
   <button class="settings-btn" id="pipe-btn" type="button" aria-label="Matrix" title="Matrix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M9 4.5v15M15 4.5v15"/></svg></button>
   <button class="settings-btn bell-btn icon-gap" id="bumps" type="button" aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false"></button>
@@ -1128,6 +1213,27 @@ button.names-step:hover { color: var(--fg); }
       </div>
     </div>
     <div class="feed-grid" id="feed-grid"></div>
+  </section>
+
+  <section class="settings-page notify-page deck-page" id="deck-view" aria-labelledby="deck-title" hidden>
+    <div class="deck-head">
+      <div class="deck-heading">
+        <h1 id="deck-title">Deck</h1>
+        <div class="deck-month">
+          <button class="quiet deck-step" id="deck-prev" type="button" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <span id="deck-month-label"></span>
+          <button class="quiet deck-step" id="deck-next" type="button" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="deck-tools">
+        <div class="mode-options text-toggle" role="group" aria-label="Deck layout">
+          <button class="quiet" type="button" data-deck-mode="slides" aria-pressed="true">Slides</button>
+          <button class="quiet" type="button" data-deck-mode="grid" aria-pressed="false">Grid</button>
+        </div>
+        <button class="primary deck-present" id="deck-present" type="button"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>Present</button>
+      </div>
+    </div>
+    <div class="deck-body" id="deck-body"></div>
   </section>
 
   <section class="settings-page notify-page" id="bump-view" aria-labelledby="bump-title" hidden>
@@ -2323,7 +2429,7 @@ const CHEVRON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function renderClients() {
   const list = $("clients");
   list.replaceChildren();
-  const feedMode = currentView === "feed";
+  const feedMode = currentView === "feed" || currentView === "deck";
   const total = state.clients.length;
   const shownCount = state.clients.filter((client) => isShown(client.id)).length;
   const editing = clientEditing && !state.readOnly;
@@ -2342,8 +2448,10 @@ function renderClients() {
   }
   const pickFeed = (client) => {
     state.feedClient = client.id;
+    deckIndex = 0;
     renderClients();
     renderFeed();
+    renderDeck();
   };
   state.clients.forEach((client) => {
     const shown = feedMode ? client.id === state.feedClient : isShown(client.id);
@@ -2507,6 +2615,246 @@ function bumpListPosts(time = new Date()) {
     .filter((post) => !inBumpGrace(post, time) && bumpTimes(post).some((slot) => slot <= time))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
 }
+
+/* ---------- Deck: one client's month as slides ---------- */
+let deckIndex = 0;
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function deckMonth() {
+  if (!/^\d{4}-\d{2}$/.test(state.deckMonth || "")) {
+    const now = new Date();
+    state.deckMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  }
+  return state.deckMonth;
+}
+function deckSlides() {
+  const client = clientById(state.feedClient);
+  if (!client) return [];
+  const month = deckMonth();
+  const posts = state.posts
+    .filter((post) => post.client === client.id && String(post.date || "").startsWith(month))
+    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+  return posts.length ? [{ cover: true, client, month }, ...posts.map((post) => ({ post, client }))] : [];
+}
+function deckStatus(post) {
+  const stage = stageOf(post);
+  if (stage === "approved") return { text: "Approved", ok: true };
+  if (stage === "client") return { text: "With the client" };
+  if (stage === "ready") return { text: "Ready to send" };
+  if (stage === "internal") return { text: "With " + (shortName(post.manager) || "review") };
+  return { text: "Drafting" };
+}
+const PLATFORM_LABEL = { ig: "Instagram", tt: "TikTok" };
+function deckCaption(post) {
+  const options = post.copyOptions || [];
+  const pick = pickOf(post);
+  return post.copy || (pick && options[pick - 1]) || "";
+}
+/* One slide, drawn the same way everywhere. The design is a stand-in until DMA's own deck template. */
+function slideEl(item) {
+  const slide = el("div", "slide " + colorClass(item.client.color));
+  if (item.cover) {
+    const [year, month] = item.month.split("-");
+    slide.classList.add("slide-cover");
+    const inner = el("div", "slide-cover-in");
+    inner.append(el("span", "slide-kicker", "Content calendar"), el("span", "slide-name", item.client.name), el("span", "slide-when", MONTH_NAMES[Number(month) - 1] + " " + year));
+    slide.append(inner);
+    return slide;
+  }
+  const post = item.post;
+  if (stageOf(post) !== "approved") slide.classList.add("pending");
+  const image = el("div", "slide-img");
+  const file = post.coverFile || (post.assetFiles || []).find((asset) => String(asset.type || "").startsWith("image/"));
+  if (file) coverUrl(file).then((url) => { if (url) image.style.backgroundImage = 'url("' + url + '")'; });
+  const day = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const platforms = (post.platforms || []).map((key) => PLATFORM_LABEL[key] || key).join(" + ");
+  const format = (post.platforms || []).includes("ig") && post.kind !== "story" ? IG_FORMATS[igFormatOf(post)] : null;
+  const meta = [day, platforms, post.kind === "story" ? "Story" : format ? format.name.replace(/ post$/, "") : ""].filter(Boolean).join(" · ");
+  const text = el("div", "slide-text");
+  const caption = deckCaption(post);
+  text.append(el("span", "slide-meta", meta), el("span", "slide-title", post.title || "Untitled post"), el("span", "slide-copy" + (caption ? "" : " none"), caption || "No caption yet"));
+  if (post.tags) text.append(el("span", "slide-tags", post.tags));
+  slide.append(image, text);
+  return slide;
+}
+function deckStep(by) {
+  const count = deckSlides().length;
+  if (!count) return;
+  const next = Math.max(0, Math.min(count - 1, deckIndex + by));
+  if (next === deckIndex) return;
+  deckIndex = next;
+  renderDeck();
+  if (!$("deck-show").hidden) renderShow();
+}
+function deckGo(index) { deckIndex = index; renderDeck(); }
+function renderDeck() {
+  if (currentView !== "deck") return;
+  if (!clientById(state.feedClient) && state.clients.length) state.feedClient = state.clients[0].id;
+  const client = clientById(state.feedClient);
+  const [year, month] = deckMonth().split("-");
+  $("deck-title").textContent = client ? client.name : "Deck";
+  $("deck-month-label").innerHTML = "";
+  $("deck-month-label").append(el("b", "", MONTH_NAMES[Number(month) - 1]), document.createTextNode(year));
+  const mode = state.deckMode === "grid" ? "grid" : "slides";
+  document.querySelectorAll("[data-deck-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.deckMode === mode)));
+  const slides = deckSlides();
+  $("deck-present").disabled = !slides.length;
+  const body = $("deck-body");
+  body.replaceChildren();
+  if (!client) { body.append(el("p", "deck-empty", "Add a client to see a deck.")); return; }
+  if (!slides.length) { body.append(el("p", "deck-empty", "No posts for " + client.name + " in " + MONTH_NAMES[Number(month) - 1] + " yet.")); return; }
+  deckIndex = Math.max(0, Math.min(slides.length - 1, deckIndex));
+  const label = (item) => (item.cover ? "Cover" : shortDate(item.post.date) + " · " + (item.post.title || "Untitled post"));
+  if (mode === "grid") {
+    const grid = el("div", "deck-grid");
+    slides.forEach((item, index) => {
+      const card = el("button", "deck-card");
+      card.type = "button";
+      card.setAttribute("aria-current", String(index === deckIndex));
+      card.setAttribute("aria-label", "Slide " + (index + 1) + ": " + label(item));
+      const cap = el("div", "deck-cap");
+      const status = item.cover ? { text: (slides.length - 1) + (slides.length === 2 ? " post" : " posts") } : deckStatus(item.post);
+      cap.append(el("span", "", label(item)), el("span", "deck-tag" + (status.ok ? " ok" : ""), status.text));
+      card.append(slideEl(item), cap);
+      // Like a slide sorter: one click picks the slide and opens it big.
+      card.addEventListener("click", () => { deckIndex = index; state.deckMode = "slides"; renderDeck(); });
+      grid.append(card);
+    });
+    body.append(grid);
+    return;
+  }
+  const flow = el("div", "deck-flow");
+  const rail = el("div", "deck-rail");
+  rail.setAttribute("aria-label", "Slides");
+  slides.forEach((item, index) => {
+    const thumb = el("button", "deck-thumb");
+    thumb.type = "button";
+    thumb.setAttribute("aria-current", String(index === deckIndex));
+    thumb.setAttribute("aria-label", "Slide " + (index + 1) + ": " + label(item));
+    thumb.append(el("span", "", String(index + 1)), slideEl(item));
+    thumb.addEventListener("click", () => deckGo(index));
+    rail.append(thumb);
+  });
+  const stage = el("div", "deck-stage");
+  const current = slides[deckIndex];
+  const big = slideEl(current);
+  if (!current.cover) big.addEventListener("dblclick", () => openPost(current.post));
+  // Swipe on a phone, like photos.
+  let touchX = null;
+  big.addEventListener("touchstart", (event) => { touchX = event.touches[0].clientX; }, { passive: true });
+  big.addEventListener("touchend", (event) => {
+    if (touchX === null) return;
+    const moved = event.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(moved) > 40) deckStep(moved < 0 ? 1 : -1);
+  });
+  const under = el("div", "deck-under");
+  const nav = el("div", "deck-nav");
+  const prev = el("button");
+  prev.type = "button"; prev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  prev.setAttribute("aria-label", "Previous slide"); prev.disabled = deckIndex === 0;
+  prev.addEventListener("click", () => deckStep(-1));
+  const next = el("button");
+  next.type = "button"; next.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  next.setAttribute("aria-label", "Next slide"); next.disabled = deckIndex === slides.length - 1;
+  next.addEventListener("click", () => deckStep(1));
+  nav.append(prev, el("span", "", (deckIndex + 1) + " / " + slides.length), next);
+  const right = el("div", "deck-nav");
+  if (current.cover) {
+    right.append(el("span", "deck-status", (slides.length - 1) + (slides.length === 2 ? " post" : " posts") + " this month"));
+  } else {
+    const status = deckStatus(current.post);
+    const note = el("span", "deck-status");
+    note.append(el("b", "", status.text));
+    const edit = el("button", "quiet deck-edit", "Edit post");
+    edit.type = "button";
+    edit.addEventListener("click", () => openPost(current.post));
+    right.append(note, edit);
+  }
+  under.append(nav, right);
+  stage.append(big, under);
+  flow.append(rail, stage);
+  body.append(flow);
+  const active = rail.querySelector('[aria-current="true"]');
+  if (active) requestAnimationFrame(() => active.scrollIntoView({ block: "nearest", inline: "nearest" }));
+}
+/* Present: the slide fills the screen. Arrows, space or a click move on; Esc stops. */
+let showTimer = 0;
+function wakeShow() {
+  $("deck-show").classList.add("awake");
+  clearTimeout(showTimer);
+  showTimer = setTimeout(() => $("deck-show").classList.remove("awake"), 2200);
+}
+function renderShow() {
+  const slides = deckSlides();
+  if (!slides.length) { stopShow(); return; }
+  $("deck-show-stage").replaceChildren(slideEl(slides[deckIndex]));
+  $("show-count").textContent = (deckIndex + 1) + " / " + slides.length;
+  $("show-prev").disabled = deckIndex === 0;
+  $("show-next").disabled = deckIndex === slides.length - 1;
+}
+function startShow() {
+  if (!deckSlides().length) return;
+  $("deck-show").hidden = false;
+  renderShow();
+  wakeShow();
+  const show = $("deck-show");
+  if (show.requestFullscreen) show.requestFullscreen().catch(() => {});
+}
+function stopShow() {
+  $("deck-show").hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  renderDeck();
+}
+$("menu-deck").addEventListener("click", () => { setCalMenu(false); showView("deck"); });
+$("deck-prev").addEventListener("click", () => {
+  const [year, month] = deckMonth().split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  state.deckMonth = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+  deckIndex = 0;
+  renderDeck();
+});
+$("deck-next").addEventListener("click", () => {
+  const [year, month] = deckMonth().split("-").map(Number);
+  const date = new Date(year, month, 1);
+  state.deckMonth = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+  deckIndex = 0;
+  renderDeck();
+});
+document.querySelectorAll("[data-deck-mode]").forEach((choice) => choice.addEventListener("click", () => { state.deckMode = choice.dataset.deckMode; renderDeck(); }));
+$("deck-present").addEventListener("click", startShow);
+$("show-prev").addEventListener("click", (event) => { event.stopPropagation(); deckStep(-1); wakeShow(); });
+$("show-next").addEventListener("click", (event) => { event.stopPropagation(); deckStep(1); wakeShow(); });
+$("show-exit").addEventListener("click", (event) => { event.stopPropagation(); stopShow(); });
+$("deck-show").addEventListener("mousemove", wakeShow);
+$("deck-show").addEventListener("click", (event) => {
+  if (event.target.closest(".deck-show-bar")) return;
+  deckStep(event.clientX < window.innerWidth / 3 ? -1 : 1);
+});
+let showTouchX = null;
+$("deck-show").addEventListener("touchstart", (event) => { showTouchX = event.touches[0].clientX; wakeShow(); }, { passive: true });
+$("deck-show").addEventListener("touchend", (event) => {
+  if (showTouchX === null) return;
+  const moved = event.changedTouches[0].clientX - showTouchX;
+  showTouchX = null;
+  if (Math.abs(moved) > 40) deckStep(moved < 0 ? 1 : -1);
+});
+document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && !$("deck-show").hidden) stopShow(); });
+/* Keys work the way they do in Slides and Keynote. */
+document.addEventListener("keydown", (event) => {
+  if (currentView !== "deck" || event.metaKey || event.ctrlKey || event.altKey) return;
+  const presenting = !$("deck-show").hidden;
+  if (!presenting && (document.querySelector("dialog[open]") || event.target.closest("input, textarea, select, [contenteditable]"))) return;
+  const key = event.key;
+  if (presenting && key === "Escape") { event.preventDefault(); stopShow(); return; }
+  const slides = deckSlides();
+  if (!slides.length) return;
+  const forward = ["ArrowRight", "ArrowDown", "PageDown"].includes(key) || (presenting && (key === " " || key === "Enter"));
+  const back = ["ArrowLeft", "ArrowUp", "PageUp"].includes(key) || (presenting && key === "Backspace");
+  if (forward) { event.preventDefault(); deckStep(1); if (presenting) wakeShow(); return; }
+  if (back) { event.preventDefault(); deckStep(-1); if (presenting) wakeShow(); return; }
+  if (key === "Home" || key === "End") { event.preventDefault(); deckIndex = key === "Home" ? 0 : slides.length - 1; renderDeck(); if (presenting) renderShow(); return; }
+  if (!presenting && key === "Enter" && state.deckMode !== "grid" && !slides[deckIndex].cover && !event.target.closest("button")) { event.preventDefault(); openPost(slides[deckIndex].post); }
+});
 
 function renderFeed() {
   if (currentView !== "feed") return;
@@ -3339,6 +3687,7 @@ function render() {
   if (!$("stats-view").hidden) renderStats();
   renderBumps();
   renderFeed();
+  if (!$("deck-show").hidden) renderShow(); else renderDeck();
   renderBumpSettings();
   renderBumpTiming();
   document.querySelectorAll("[data-slack]").forEach((button) => {
@@ -6197,12 +6546,13 @@ function showView(view, fromHistory) {
   currentView = view;
   /* The feed opens on the client you're working with: the one you're showing alone on the calendar,
      else the last client you made a post for, else the first. */
-  if (view === "feed" && state.clients.length) {
+  if ((view === "feed" || view === "deck") && state.clients.length) {
     const shownNow = state.clients.filter((client) => isShown(client.id));
     if (shownNow.length === 1) state.feedClient = shownNow[0].id;
     else if (!clientById(state.feedClient)) state.feedClient = clientById(state.lastClient) ? state.lastClient : state.clients[0].id;
   }
   $("feed-view").hidden = view !== "feed";
+  $("deck-view").hidden = view !== "deck";
   $("settings-view").hidden = view !== "settings";
   $("notify-view").hidden = view !== "notifications";
   $("bump-view").hidden = view !== "bumps";
@@ -6212,12 +6562,15 @@ function showView(view, fromHistory) {
   if (view === "analytics") renderStats();
   [["pipeline", "pipe-btn"], ["settings", "settings"]]
     .forEach(([name, id]) => $(id).classList.toggle("is-active", view === name));
-  $("cal-btn").classList.toggle("is-active", view === "calendar" || view === "feed");
+  $("cal-btn").classList.toggle("is-active", view === "calendar" || view === "feed" || view === "deck");
+  // The button names the view you're in, like a view switcher.
+  if (view === "calendar" || view === "feed" || view === "deck") $("cal-btn").dataset.label = view === "feed" ? "Feed" : view === "deck" ? "Deck" : "Calendar";
   $("bumps").classList.toggle("is-active", view === "notifications" || view === "bumps");
   $("calendar-view").hidden = view !== "calendar";
-  $("client-panel").hidden = view !== "calendar" && view !== "feed" && view !== "pipeline";
+  $("client-panel").hidden = view !== "calendar" && view !== "feed" && view !== "deck" && view !== "pipeline";
   renderClients();
   renderFeed();
+  renderDeck();
   const address = view === "calendar" ? location.pathname : "#" + view;
   if (!fromHistory) {
     try {
@@ -6628,8 +6981,9 @@ if (location.hash === "#notifications") showView("notifications");
 if (location.hash === "#bumps") showView("bumps");
 if (location.hash === "#pipeline") showView("pipeline");
 if (location.hash === "#feed") showView("feed");
+if (location.hash === "#deck") showView("deck");
 if (location.hash === "#analytics") showView("analytics");
-if (!["#settings", "#notifications", "#bumps", "#pipeline", "#feed", "#analytics"].includes(location.hash)) $("cal-btn").classList.add("is-active");
+if (!["#settings", "#notifications", "#bumps", "#pipeline", "#feed", "#deck", "#analytics"].includes(location.hash)) $("cal-btn").classList.add("is-active");
 window.addEventListener("hashchange", () => {
   if (notificationsReady) openLinkedPost();
 });
@@ -6651,7 +7005,7 @@ window.addEventListener("popstate", () => {
     return;
   }
   const hash = location.hash.slice(1);
-  const views = ["settings", "notifications", "bumps", "pipeline", "feed", "analytics"];
+  const views = ["settings", "notifications", "bumps", "pipeline", "feed", "deck", "analytics"];
   const target = views.includes(hash) ? hash : "calendar";
   if (target !== currentView) showView(target, true);
 });
