@@ -1816,7 +1816,7 @@ button.names-step:hover { color: var(--fg); }
     if (!put.ok) throw new Error("Drive upload failed (" + put.status + ")");
     const driveId = (await put.json()).id;
     const preview = await previewOf(file);
-    const path = "drive_" + driveId + "_" + file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "-") + ".jpg";
+    const path = "drive." + driveId + "." + file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "-") + ".jpg";
     const { error } = await sb.storage.from("assets").upload(path, preview, { contentType: "image/jpeg" });
     if (error) throw error;
     return { id: path, contentType: "image/jpeg", drive: driveId };
@@ -1839,7 +1839,8 @@ button.names-step:hover { color: var(--fg); }
     },
     async remove(ids) {
       // Files that live in Drive go to Drive's trash too (it empties itself after 30 days).
-      const driveIds = ids.filter((id) => String(id).startsWith("drive_")).map((id) => String(id).split("_")[1]).filter(Boolean);
+      // Drive IDs can contain "_" and "-" but never ".", so the ID is what sits between the first two dots.
+      const driveIds = ids.filter((id) => String(id).startsWith("drive.")).map((id) => String(id).split(".")[1]).filter(Boolean);
       if (driveIds.length) driveCall("/trash", { ids: driveIds }).catch((problem) => console.warn("Drive trash failed", problem));
       const { error } = await sb.storage.from("assets").remove(ids);
       if (error) throw error;
