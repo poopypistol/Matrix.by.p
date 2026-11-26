@@ -2108,6 +2108,7 @@ let user = null;
 let myId = null;
 let draft = null;
 let editing = null;
+let clashWarned = "";
 let pickedColor = PRESET_COLORS[0];
 let wheelHue = 0;
 let wheelSaturation = 1;
@@ -3310,6 +3311,7 @@ function renderInvites() {
 }
 
 async function removeInvite(id) {
+  const gone = (state.invites.find((invite) => invite.id === id) || {}).email || id;
   try {
     if (db) await db.collection("invites").doc(id).delete();
   } catch (problem) {
@@ -3318,7 +3320,54 @@ async function removeInvite(id) {
   }
   state.invites = state.invites.filter((invite) => invite.id !== id);
   loadAccess();
-  showToast("Access removed");
+  const moved = await rehomePosts(gone, false);
+  showToast("Access removed" + (moved ? " · " + moved + (moved === 1 ? " post" : " posts") + " handed on" : ""));
+}
+
+/* When someone leaves, or stops giving the final OK, nothing they were holding gets stuck.
+   Reviews go to the new final approver (or straight to Ready if there's no final step anymore),
+   other reviews go to the admin, and their unfinished posts are handed to the admin. */
+async function rehomePosts(gone, finalOnly) {
+  if (!gone || !db || state.readOnly) return 0;
+  const admin = adminEmail();
+  const final = finalApprover();
+  let moved = 0;
+  for (const post of state.posts) {
+    if ((post.history || []).some((entry) => entry.type === "deleted")) continue;
+    const stage = stageOf(post);
+    const step = lastStep(post) || {};
+    const changes = {};
+    const notes = [];
+    const now = Date.now();
+    if (stage === "internal" && post.manager === gone) {
+      const finalStep = step.type === "approved_manager";
+      if (finalOnly && !finalStep) continue;
+      const next = finalStep ? (final && final !== gone ? final : "") : (admin && admin !== gone ? admin : "");
+      if (next) {
+        changes.manager = next;
+        notes.push({ type: "sent", by: myId, at: now, to: [next], passed: true });
+      } else if (finalStep) {
+        changes.stage = "ready";
+        notes.push({ type: "approved_internal", by: step.by || myId, at: now, auto: "nofinal", to: [creatorOf(post), step.by].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index) });
+      }
+    }
+    if (!finalOnly && stage !== "approved" && creatorOf(post) === gone && admin && admin !== gone) {
+      changes.createdBy = admin;
+      notes.push({ type: "reassigned", by: myId, at: now, from: gone, to: [admin] });
+    }
+    if (!notes.length) continue;
+    changes.history = [...(post.history || []), ...notes];
+    try {
+      await db.collection("posts").doc(post.id).update(changes);
+      Object.assign(post, changes);
+      moved++;
+    } catch (problem) {
+      showToast(saveProblem(problem));
+      break;
+    }
+  }
+  if (moved) render();
+  return moved;
 }
 
 function renderInviteCalendars() {
@@ -3835,7 +3884,9 @@ $("final-pick").addEventListener("change", async () => {
     renderFinalPick();
     return;
   }
-  showToast(chosen ? displayName(chosen) + " now gives final approval" : "No final approval step");
+  const before = changes.find(({ roles }) => !roles.includes("final"));
+  const moved = before ? await rehomePosts(before.person.email, true) : 0;
+  showToast((chosen ? displayName(chosen) + " now gives final approval" : "No final approval step") + (moved ? " · " + moved + (moved === 1 ? " post" : " posts") + " moved over" : ""));
   render();
 });
 /* The ⋯ menu closes when you click anywhere else. */
@@ -3859,7 +3910,8 @@ function historyText(entry) {
   switch (entry.type) {
     case "sent": if (entry.passed) return who + " passed this to " + objName((entry.to || [])[0]) + " for review";
       return (entry.to || [])[0] === entry.by ? who + " sent this for review" : who + " sent to " + objName((entry.to || [])[0]) + " for review";
-    case "approved_internal": return (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally") + (entry.fields && entry.fields.length ? ", with edits to the " + listText(entry.fields) : "");
+    case "approved_internal": if (entry.auto === "nofinal") return "No final approval step anymore, so it's ready to send";
+      return (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally") + (entry.fields && entry.fields.length ? ", with edits to the " + listText(entry.fields) : "");
     case "approved_manager": return who + " approved" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) + "," : "") + " and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + (entry.fields && entry.fields.length ? " edited the " + listText(entry.fields) + " and sent it back" : " requested changes") + note;
     case "picked": return who + " picked caption option " + entry.option;
@@ -4976,6 +5028,7 @@ function openPost(post) {
     savePreferences();
   }
   editing = { ...post, comments: [...(post.comments || [])] };
+  clashWarned = "";
   draft = { ...editing, comments: [...editing.comments], assetFiles: [...(editing.assetFiles || [])] };
   openDialog();
 }
@@ -6036,7 +6089,8 @@ function openClientDialog(client) {
   $("c-name").value = client ? client.name : "";
   $("client-title").textContent = client ? "Edit client" : "Add client";
   $("save-client").textContent = client ? "Save client" : "Create client";
-  $("delete-client").hidden = !client;
+  /* Deleting a client deletes its whole calendar, so only the admin can. */
+  $("delete-client").hidden = !client || !isOwner;
   $("delete-client").textContent = "Delete client";
   $("client-error").hidden = true;
   showPickedColor();
@@ -6186,6 +6240,16 @@ async function savePost(event) {
       } else {
         const latest = state.posts.find((post) => post.id === editing.id) || editing;
         const changes = changedFields(fields);
+        /* Two people changed the same thing while this was open: say so once before replacing theirs. */
+        const clash = Object.keys(changes).filter((key) => key !== "assetFiles" && JSON.stringify(latest[key] ?? "") !== JSON.stringify(editing[key] ?? "") && JSON.stringify(latest[key] ?? "") !== JSON.stringify(changes[key] ?? ""));
+        if (clash.length && clashWarned !== clash.join()) {
+          clashWarned = clash.join();
+          const names = { title: "title", client: "client", date: "date", time: "time", asset: "asset link", copy: "caption", copyOptions: "caption options", tags: "tags", link: "link", coverFile: "cover", platforms: "platforms", kind: "post type", igFormat: "format" };
+          error.textContent = "Someone else changed the " + listText(clash.map((key) => names[key] || key)) + " while you had this open. Save again to replace their version with yours, or close without saving to see theirs.";
+          error.hidden = false;
+          $("save-post").disabled = false;
+          return;
+        }
         if (fields.comments) changes.comments = fields.comments;
         const notes = [...pickNotes(), ...followUps(latest, changes)];
         if (stageOf(latest) !== "draft" && !isComplete({ ...latest, ...changes })) {

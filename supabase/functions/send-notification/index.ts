@@ -248,7 +248,8 @@ function historyMessage(entry: any, post: any, email: string) {
     case "edited": return { title: entry.stage === "approved" ? "Edited after approval" : "Edited while with the client", detail: who + " changed the " + listText(entry.fields || []) };
     case "deleted": return { title: "Post deleted", detail: who + " deleted it" };
     case "auto": return { title: "Moved back to Drafting", detail: "Info went missing after " + who + "'s edit" };
-    case "approved_internal": return { title: "Approved internally", detail: (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved it") + ". Ready to send to client." };
+    case "approved_internal": if (entry.auto === "nofinal") return { title: "Ready to send", detail: "There's no final approval step anymore, so it's ready to send to client." };
+      return { title: "Approved internally", detail: (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved it") + ". Ready to send to client." };
     case "changes": return entry.fields && entry.fields.length
       ? { title: "Sent back with edits", detail: who + " edited the " + listText(entry.fields) + " and sent it back to Drafting" + note }
       : { title: "Changes requested", detail: who + " sent this back to Drafting" + note };
