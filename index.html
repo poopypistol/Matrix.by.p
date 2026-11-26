@@ -3345,7 +3345,8 @@ async function rehomePosts(gone, finalOnly) {
       const next = finalStep ? (final && final !== gone ? final : "") : (admin && admin !== gone ? admin : "");
       if (next) {
         changes.manager = next;
-        notes.push({ type: "sent", by: myId, at: now, to: [next], passed: true });
+        /* A final-approval hand-off isn't a new step: the post stays "approved, waiting on the final OK". */
+        notes.push(finalStep ? { type: "reassigned", role: "final", by: myId, at: now, from: gone, to: [next] } : { type: "sent", by: myId, at: now, to: [next], passed: true });
       } else if (finalStep) {
         changes.stage = "ready";
         notes.push({ type: "approved_internal", by: step.by || myId, at: now, auto: "nofinal", to: [creatorOf(post), step.by].filter((email, index, all) => email && email !== myId && all.indexOf(email) === index) });
@@ -3915,7 +3916,8 @@ function historyText(entry) {
     case "approved_manager": return who + " approved" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) + "," : "") + " and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + (entry.fields && entry.fields.length ? " edited the " + listText(entry.fields) + " and sent it back" : " requested changes") + note;
     case "picked": return who + " picked caption option " + entry.option;
-    case "reassigned": return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
+    case "reassigned": if (entry.role === "final") return who + " handed the final approval " + (entry.from ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
+      return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
     case "client": return who + " sent to client";
     case "approved": return who + " marked client approved";
     case "back": return who + " moved back to " + phaseName(entry.stage);

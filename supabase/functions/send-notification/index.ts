@@ -241,6 +241,11 @@ function historyMessage(entry: any, post: any, email: string) {
       if (reviewer === email) return { title: "Ready for your review", detail: who + " sent this for review" + note };
       return { title: entry.passed ? "Reviewer changed" : "Sent for review", detail: who + (entry.passed ? " passed it to " : " sent it to ") + displayName(reviewer) + " for review" };
     case "client": return { title: "Sent to client", detail: who + " marked it sent to the client" };
+    case "reassigned":
+      if (reviewer !== email) return null;
+      return entry.role === "final"
+        ? { title: "Ready for your final approval", detail: who + " handed this to you for final approval" + (entry.from ? " (it was with " + displayName(entry.from) + ")" : "") }
+        : { title: "Handed to you", detail: who + " handed this post to you" };
     case "approved_manager":
       if (reviewer === email) return { title: "Ready for your final approval", detail: who + " approved it" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) : "") + ". It needs your OK." + note };
       return { title: "Approved by " + who, detail: "Now with " + displayName(reviewer) + " for final approval" };
@@ -352,7 +357,7 @@ Deno.serve(async (request) => {
   };
   const spotFor = (types: string[], post: any) => {
     if (types.some((type) => type === "changes" || type === "comment")) return "comments";
-    if (types.some((type) => ["sent", "approved_manager", "approved_internal", "client", "bump"].includes(type))) {
+    if (types.some((type) => ["sent", "approved_manager", "approved_internal", "client", "bump", "reassigned"].includes(type))) {
       return Array.isArray(post.copy_options) && post.copy_options.length > 1 ? "options" : "actions";
     }
     return "";
