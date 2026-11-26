@@ -1782,8 +1782,55 @@ button.names-step:hover { color: var(--fg); }
     profiles: async (ids) => Object.fromEntries(ids.map((id) => [id, { name: String(id).split("@")[0] }]))
   };
 
+  /* Google Drive: for clients that keep files in Drive, the original goes straight to Drive
+     (declan / 2026 / Saltair / December) and declan keeps a small preview for the calendar. */
+  const DRIVE = "https://wwehsdjcgvkbteeahpkv.supabase.co/functions/v1/google-drive";
+  async function driveCall(route, body) {
+    const { data } = await sb.auth.getSession();
+    const response = await fetch(DRIVE + route, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + (data.session ? data.session.access_token : ""), "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Drive request failed");
+    return response;
+  }
+  let driveClients = null;
+  function driveOn(clientId) {
+    if (!driveClients) driveClients = driveCall("/status").then((response) => response.json()).then((data) => (data.connected ? data.clients || [] : [])).catch(() => []);
+    return driveClients.then((list) => list.includes(clientId));
+  }
+  /* A 1080px JPEG: plenty for the calendar and the post, a fraction of the original's size. */
+  async function previewOf(file) {
+    const image = await createImageBitmap(file);
+    const scale = Math.min(1, 1080 / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("preview"))), "image/jpeg", 0.82));
+  }
+  async function toDrive(file, meta) {
+    const session = await (await driveCall("/upload-session", { ...meta, name: file.name, type: file.type, size: file.size })).json();
+    const put = await fetch(session.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+    if (!put.ok) throw new Error("Drive upload failed (" + put.status + ")");
+    const driveId = (await put.json()).id;
+    const preview = await previewOf(file);
+    const path = "drive_" + driveId + "_" + file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "-") + ".jpg";
+    const { error } = await sb.storage.from("assets").upload(path, preview, { contentType: "image/jpeg" });
+    if (error) throw error;
+    return { id: path, contentType: "image/jpeg", drive: driveId };
+  }
   const assets = {
-    async upload(file) {
+    async upload(file, meta) {
+      if (meta && meta.client && String(file.type).startsWith("image/") && !/svg|gif/.test(file.type) && await driveOn(meta.client)) {
+        try {
+          return await toDrive(file, meta);
+        } catch (problem) {
+          console.warn("Drive upload failed, keeping it in declan", problem);
+          if (typeof showToast === "function") showToast("Couldn't save " + file.name + " to Drive, so it's kept in declan");
+        }
+      }
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const path = crypto.randomUUID() + "-" + safe;
       const { error } = await sb.storage.from("assets").upload(path, file, { contentType: file.type });
@@ -1791,8 +1838,18 @@ button.names-step:hover { color: var(--fg); }
       return { id: path, contentType: file.type };
     },
     async remove(ids) {
+      // Files that live in Drive go to Drive's trash too (it empties itself after 30 days).
+      const driveIds = ids.filter((id) => String(id).startsWith("drive_")).map((id) => String(id).split("_")[1]).filter(Boolean);
+      if (driveIds.length) driveCall("/trash", { ids: driveIds }).catch((problem) => console.warn("Drive trash failed", problem));
       const { error } = await sb.storage.from("assets").remove(ids);
       if (error) throw error;
+    },
+    /* The original from Drive, as a link the browser can save. */
+    async driveFile(driveId) {
+      const { data } = await sb.auth.getSession();
+      const response = await fetch(DRIVE + "/file?id=" + encodeURIComponent(driveId), { headers: { Authorization: "Bearer " + (data.session ? data.session.access_token : "") } });
+      if (!response.ok) throw new Error("Drive download failed");
+      return URL.createObjectURL(await response.blob());
     },
     async signedUrl(id, downloadName) {
       const { data, error } = await sb.storage.from("assets").createSignedUrl(id, 3600, downloadName ? { download: downloadName } : undefined);
@@ -4617,9 +4674,13 @@ async function fillMedia(box, file, small, isCurrent) {
 
 /* The small round x in the top right corner of an image, for removing it. */
 /* Save an uploaded file to your computer, under its original name. */
+/* Where an upload goes in Drive: the post's client, date and title, and which file it is. */
+function uploadMeta(part) {
+  return { client: ($("f-client") && $("f-client").value) || (draft && draft.client) || "", date: ($("f-date") && $("f-date").value) || "", title: ($("f-title") && $("f-title").value.trim()) || "", part };
+}
 async function downloadFile(file) {
   try {
-    const url = await assets.signedUrl(file.id, file.name || "declan-file");
+    const url = file.drive && assets.driveFile ? await assets.driveFile(file.drive) : await assets.signedUrl(file.id, file.name || "declan-file");
     const link = document.createElement("a");
     link.href = url;
     link.download = file.name || "";
@@ -5321,9 +5382,9 @@ async function uploadCover(file) {
   const owner = draft;
   const version = draft.activeVersion;
   try {
-    const stored = await assets.upload(file);
+    const stored = await assets.upload(file, uploadMeta("cover"));
     uploadsThisOpen.push(stored.id);
-    const cover = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload" };
+    const cover = { id: stored.id, name: file.name, type: stored.contentType || file.type, source: "upload", ...(stored.drive ? { drive: stored.drive } : {}) };
     if (draft !== owner) {
       button.disabled = false;
       return;
@@ -5373,9 +5434,9 @@ async function frameBlob(video) {
 
 async function saveFrameAsCover(blob, name, source) {
   const file = new File([blob], name.replace(/\.[^.]+$/, "") + "-cover.jpg", { type: "image/jpeg" });
-  const stored = await assets.upload(file);
+  const stored = await assets.upload(file, uploadMeta("cover"));
   uploadsThisOpen.push(stored.id);
-  draft.coverFile = { id: stored.id, name: file.name, type: "image/jpeg", source };
+  draft.coverFile = { id: stored.id, name: file.name, type: "image/jpeg", source, ...(stored.drive ? { drive: stored.drive } : {}) };
   renderCoverPreview();
   renderAssetPreview();
   updateHint();
@@ -5471,9 +5532,9 @@ async function uploadAssets(list) {
   for (const [index, file] of ready.entries()) {
     upload.textContent = ready.length > 1 ? "Uploading " + (index + 1) + " of " + ready.length : "Uploading";
     try {
-      const stored = await assets.upload(file);
+      const stored = await assets.upload(file, uploadMeta(String(((draft && draft.assetFiles) || []).length + 1)));
       uploadsThisOpen.push(stored.id);
-      const entry = { id: stored.id, name: file.name, type: stored.contentType || file.type };
+      const entry = { id: stored.id, name: file.name, type: stored.contentType || file.type, ...(stored.drive ? { drive: stored.drive } : {}) };
       const size = sizes.get(file) || (rules ? null : await measureFile(file));
       if (size && size.w) Object.assign(entry, { w: size.w, h: size.h }, size.seconds ? { seconds: Math.round(size.seconds) } : {});
       if (draft !== owner) continue;

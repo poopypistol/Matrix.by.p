@@ -22,17 +22,18 @@ const SCOPES = ["openid", "email", "https://www.googleapis.com/auth/drive"].join
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
 
 /* ---------- who's asking ---------- */
-async function adminFrom(request: Request) {
+async function callerFrom(request: Request) {
   const token = (request.headers.get("authorization") || "").replace("Bearer ", "");
   const { data } = await db.auth.getUser(token);
   const email = data.user?.email?.toLowerCase() || "";
-  if (!email) return "";
+  if (!email) return { email: "", role: "" };
   const { data: member } = await db.from("members").select("role").eq("email", email).maybeSingle();
-  return member && member.role === "admin" ? email : "";
+  return { email, role: member ? member.role : "" };
 }
 
 /* ---------- a signed "state" so the Google redirect can't be forged ---------- */
@@ -87,6 +88,34 @@ async function folder(token: string, name: string, parent = "") {
     body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", ...(parent ? { parents: [parent] } : {}) }),
   })).json();
   return made.id as string;
+}
+
+/* ---------- the real thing: where a post's files go ---------- */
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const SHORT = MONTHS.map((month) => month.slice(0, 3));
+/* declan / 2026 / Saltair / December */
+async function monthFolder(token: string, saved: any, clientId: string, date: string) {
+  const root = saved.folder_id || await folder(token, "declan");
+  if (!saved.folder_id) await db.from("google_connection").update({ folder_id: root }).eq("id", 1);
+  const { data: client } = await db.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const year = /^\d{4}-\d{2}/.test(date) ? date.slice(0, 4) : String(new Date().getFullYear());
+  const month = /^\d{4}-\d{2}/.test(date) ? MONTHS[Number(date.slice(5, 7)) - 1] : "No date";
+  const yearId = await folder(token, year, root);
+  const clientFolder = await folder(token, (client && client.name) || "No client", yearId);
+  return await folder(token, month, clientFolder);
+}
+/* "Dec 03 – Holiday gift guide – cover.jpg" */
+function fileName(date: string, title: string, part: string, original: string) {
+  const day = /^\d{4}-\d{2}-\d{2}/.test(date) ? SHORT[Number(date.slice(5, 7)) - 1] + " " + date.slice(8, 10) : "No date";
+  const ext = (String(original).match(/\.[a-zA-Z0-9]{1,5}$/) || [""])[0].toLowerCase();
+  const clean = String(title || "Untitled").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80) || "Untitled";
+  return day + " – " + clean + " – " + part + ext;
+}
+/* A Drive file declan made, so nobody can use declan to read the rest of the Drive. */
+async function ownFile(token: string, id: string) {
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) return null;
+  const meta = await (await google(token, "/drive/v3/files/" + id + "?fields=id,name,mimeType,appProperties,trashed&supportsAllDrives=true")).json();
+  return meta.appProperties && meta.appProperties.declan === "1" ? meta : null;
 }
 
 /* ---------- the four checks ---------- */
@@ -180,9 +209,65 @@ Deno.serve(async (request) => {
     return back("connected");
   }
 
-  const admin = await adminFrom(request);
-  if (!admin) return json({ error: "Only the declan admin can do this" }, 401);
+  const caller = await callerFrom(request);
+  if (!caller.email || !caller.role || caller.role === "client") return json({ error: "Not allowed" }, 401);
   if (!clientId || !clientSecret) return json({ error: "Google isn't set up yet (missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET)" }, 500);
+
+  // Which clients keep their files in Drive (only these, while we test).
+  if (path.startsWith("/status")) {
+    const saved = await connection();
+    return json({ connected: Boolean(saved && saved.refresh_token), email: saved ? saved.email : "", clients: (saved && saved.clients) || [] });
+  }
+  // Start an upload: declan makes the folders, then the browser sends the file straight to Drive.
+  if (path.startsWith("/upload-session")) {
+    try {
+      const body = await request.json();
+      const { token, saved } = await accessToken();
+      if (!((saved.clients || []) as string[]).includes(body.client)) return json({ error: "Drive isn't on for this client" }, 400);
+      const parent = await monthFolder(token, saved, body.client, body.date || "");
+      const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token, "Content-Type": "application/json; charset=UTF-8",
+          "X-Upload-Content-Type": body.type || "application/octet-stream", "X-Upload-Content-Length": String(body.size || 0),
+          Origin: SITE,
+        },
+        body: JSON.stringify({ name: fileName(body.date || "", body.title || "", body.part || "file", body.name || ""), parents: [parent], appProperties: { declan: "1" } }),
+      });
+      const uploadUrl = response.headers.get("location");
+      if (!response.ok || !uploadUrl) return json({ error: "Drive didn't start the upload: " + (await response.text()).slice(0, 200) }, 502);
+      return json({ uploadUrl });
+    } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
+  }
+  // The original file, for downloading.
+  if (path.startsWith("/file")) {
+    try {
+      const id = new URL(request.url).searchParams.get("id") || "";
+      const { token } = await accessToken();
+      const meta = await ownFile(token, id);
+      if (!meta) return json({ error: "Not a declan file" }, 404);
+      const file = await google(token, "/drive/v3/files/" + id + "?alt=media&supportsAllDrives=true");
+      return new Response(file.body, { headers: { ...cors, "Content-Type": meta.mimeType || "application/octet-stream", "Cache-Control": "private, max-age=3600" } });
+    } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
+  }
+  // Removed from a post: into Drive's trash, which empties itself after 30 days.
+  if (path.startsWith("/trash")) {
+    try {
+      const { ids } = await request.json();
+      const { token } = await accessToken();
+      let trashed = 0;
+      for (const id of (ids || []).slice(0, 50)) {
+        if (!(await ownFile(token, id))) continue;
+        await google(token, "/drive/v3/files/" + id + "?supportsAllDrives=true", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+        trashed++;
+      }
+      return json({ trashed });
+    } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
+  }
+
+  // Connecting and the test are for the admin only.
+  if (caller.role !== "admin") return json({ error: "Only the declan admin can do this" }, 401);
+  const admin = caller.email;
 
   if (path.startsWith("/connect")) {
     const link = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
@@ -190,10 +275,6 @@ Deno.serve(async (request) => {
       access_type: "offline", prompt: "consent", login_hint: admin, state: await makeState(admin),
     });
     return json({ link });
-  }
-  if (path.startsWith("/status")) {
-    const saved = await connection();
-    return json({ connected: Boolean(saved && saved.refresh_token), email: saved ? saved.email : "" });
   }
   if (path.startsWith("/test")) {
     try { return json(await runTest()); } catch (problem) { return json({ error: String((problem as Error).message || problem) }, 500); }
