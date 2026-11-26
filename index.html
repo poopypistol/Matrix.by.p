@@ -3915,7 +3915,7 @@ function historyText(entry) {
       return (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally") + (entry.fields && entry.fields.length ? ", with edits to the " + listText(entry.fields) : "");
     case "approved_manager": return who + " approved" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) + "," : "") + " and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + (entry.fields && entry.fields.length ? " edited the " + listText(entry.fields) + " and sent it back" : " requested changes") + note;
-    case "picked": return who + " picked caption option " + entry.option;
+    case "picked": return entry.option ? who + " picked caption option " + entry.option : who + " removed the picked caption option";
     case "reassigned": if (entry.role === "final") return who + " handed the final approval " + (entry.from ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
       return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
     case "client": return who + " sent to client";
@@ -3995,13 +3995,13 @@ const hasOptions = (post) => (post.copyOptions || []).length > 1;
    everyone after (like Dana) can see what was offered and which one won. */
 function pickOf(post) {
   if (!post || !hasOptions(post)) return 0;
-  if (post === draft && draft.pickedOption) return draft.pickedOption;
+  if (post === draft && draft.pickedOption) return Math.max(draft.pickedOption, 0);
   const entry = [...((post === draft ? editing : post) || post || {}).history || []].reverse().find((item) => item.type === "picked");
   const option = entry ? entry.option : 0;
   return option >= 1 && option <= post.copyOptions.length ? option : 0;
 }
 function pickerOf(post) {
-  if (post === draft && draft.pickedOption) return myId;
+  if (post === draft && draft.pickedOption > 0) return myId;
   const entry = [...(((post === draft ? editing : post) || {}).history || [])].reverse().find((item) => item.type === "picked");
   return entry ? entry.by : "";
 }
@@ -4100,6 +4100,10 @@ function addOption() {
   areas[areas.length - 1].focus();
 }
 function removeOption(index) {
+  /* Keep a pick pointing at the same words: removing an earlier option shifts it, removing the picked one clears it. */
+  const picked = pickOf(draft);
+  if (picked && index + 1 === picked) draft.pickedOption = -1;
+  else if (picked && index + 1 < picked) draft.pickedOption = picked - 1;
   const options = [...(draft.copyOptions || [])];
   options.splice(index, 1);
   if (options.length < 2) {
@@ -4125,7 +4129,8 @@ function pickOption(index) {
 }
 /* A history line for a picked caption, added when the post is saved or moved on. */
 function pickNotes() {
-  return draft && draft.pickedOption ? [{ type: "picked", by: myId, at: Date.now(), option: draft.pickedOption, to: [] }] : [];
+  /* -1 means the picked option was removed: record "no pick" so nobody inherits the wrong caption. */
+  return draft && draft.pickedOption ? [{ type: "picked", by: myId, at: Date.now(), option: Math.max(draft.pickedOption, 0), to: [] }] : [];
 }
 
 function readTemplate() {
