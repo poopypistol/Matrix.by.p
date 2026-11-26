@@ -1811,11 +1811,12 @@ button.names-step:hover { color: var(--fg); }
     return await new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("preview"))), "image/jpeg", 0.82));
   }
   async function toDrive(file, meta) {
+    // The preview first: if this browser can't read the photo (like an iPhone HEIC in Chrome), nothing goes to Drive.
+    const preview = await previewOf(file);
     const session = await (await driveCall("/upload-session", { ...meta, name: file.name, type: file.type, size: file.size })).json();
     const put = await fetch(session.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
     if (!put.ok) throw new Error("Drive upload failed (" + put.status + ")");
     const driveId = (await put.json()).id;
-    const preview = await previewOf(file);
     const path = "drive." + driveId + "." + file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "-") + ".jpg";
     const { error } = await sb.storage.from("assets").upload(path, preview, { contentType: "image/jpeg" });
     if (error) throw error;

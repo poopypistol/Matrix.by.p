@@ -79,8 +79,24 @@ async function google(token: string, path: string, init: RequestInit = {}) {
 }
 
 /* ---------- Drive folders ---------- */
-async function folder(token: string, name: string, parent = "") {
-  const query = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='" + name.replace(/'/g, "\\'") + "'" + (parent ? " and '" + parent + "' in parents" : " and 'root' in parents");
+/* Folders are remembered once made (declan/2026/Saltair/December -> its ID), so two uploads at the
+   same moment can't each create their own "December". */
+const folderMemory = new Map<string, Promise<string>>();
+function folder(token: string, name: string, parent = "") {
+  const key = (parent || "root") + "/" + name;
+  if (!folderMemory.has(key)) {
+    folderMemory.set(key, (async () => {
+      const { data } = await db.from("google_folders").select("folder_id").eq("key", key).maybeSingle();
+      if (data && data.folder_id) return data.folder_id as string;
+      const id = await findOrMakeFolder(token, name, parent);
+      await db.from("google_folders").upsert({ key, folder_id: id });
+      return id;
+    })().catch((problem) => { folderMemory.delete(key); throw problem; }));
+  }
+  return folderMemory.get(key)!;
+}
+async function findOrMakeFolder(token: string, name: string, parent = "") {
+  const query = "mimeType='application/vnd.google-apps.folder' and trashed=false and name='" + name.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'" + (parent ? " and '" + parent + "' in parents" : " and 'root' in parents");
   const found = await (await google(token, "/drive/v3/files?q=" + encodeURIComponent(query) + "&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true")).json();
   if (found.files && found.files.length) return found.files[0].id as string;
   const made = await (await google(token, "/drive/v3/files?supportsAllDrives=true&fields=id", {
