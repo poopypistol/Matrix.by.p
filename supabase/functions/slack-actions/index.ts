@@ -207,11 +207,26 @@ async function load(postId: string) {
   return { post, members: members || [] };
 }
 const isMember = (members: any[], email: string) => members.some((item) => item.email === email && item.role !== "client");
-function selectedPick(payload: any) {
-  for (const block of Object.values(payload.state?.values || {}) as any[]) {
-    if (block.pick && block.pick.selected_option) return Number(block.pick.selected_option.value);
-  }
-  return 0;
+/* Choosing an option only changes the card: the choice is marked, and the buttons carry it. It's saved when they approve or send back, like in declan. */
+function withChoice(blocks: any[], option: number) {
+  return blocks.map((block: any) => {
+    if (block.type === "section" && block.accessory && block.accessory.action_id === "choose") {
+      const mine = JSON.parse(block.accessory.value || "{}").option === option;
+      const title = "*Option " + block.block_id.replace("option-", "") + (mine ? "  ·  ✓ Chosen" : "") + "*";
+      const text = block.text.text.replace(/^\*Option \d+(?:  ·  ✓ Chosen)?\*/, title);
+      const accessory = { ...block.accessory, text: { type: "plain_text", text: mine ? "✓ Chosen" : "Choose" } };
+      if (mine) accessory.style = "primary"; else delete accessory.style;
+      return { ...block, text: { ...block.text, text }, accessory };
+    }
+    if (block.type === "actions" && block.block_id === "decide") {
+      return { ...block, elements: block.elements.map((element: any) => {
+        if (!element.value) return element;
+        const value = JSON.parse(element.value);
+        return { ...element, value: JSON.stringify({ ...value, pick: option }) };
+      }) };
+    }
+    return block;
+  });
 }
 
 Deno.serve(async (request) => {
@@ -224,7 +239,7 @@ Deno.serve(async (request) => {
   /* A tap on a card */
   if (payload.type === "block_actions") {
     const action = (payload.actions || [])[0] || {};
-    if (action.action_id === "open" || action.action_id === "pick") return new Response("");
+    if (action.action_id === "open") return new Response("");
     let value: any = {};
     try { value = JSON.parse(action.value || "{}"); } catch { /* not ours */ }
     const { post, members } = await load(value.post || "");
@@ -243,7 +258,12 @@ Deno.serve(async (request) => {
       await whisper(payload.response_url, "This post changed after this message was sent. Open it in declan to see the latest: " + SITE + "/#post-" + post.id);
       return new Response("");
     }
-    const pick = selectedPick(payload) || pickOf(post);
+    if (action.action_id === "choose") {
+      const blocks = withChoice(payload.message?.blocks || [], Number(value.option) || 0);
+      await reply(payload.response_url, { replace_original: true, text: payload.message?.text || "Ready for your review", blocks });
+      return new Response("");
+    }
+    const pick = Number(value.pick) || pickOf(post);
     if (options(post).length && !pick && action.action_id !== "back") {
       await whisper(payload.response_url, "Pick one of the caption options first.");
       return new Response("");

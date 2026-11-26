@@ -102,6 +102,14 @@ async function coverLink(post: any) {
 function clip(text: string, max: number) {
   return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
+/* Long captions are cut at a word, with a link to read the whole thing in declan. */
+const PREVIEW = 600;
+function captionPreview(text: string, link: string) {
+  const full = String(text || "");
+  if (full.length <= PREVIEW) return escapeSlack(full);
+  const cut = full.slice(0, PREVIEW).replace(/\s+\S*$/, "");
+  return escapeSlack(cut) + "…\n<" + link + "|See the full caption in declan>";
+}
 async function cardBlocks(post: any, members: any[], email: string, clientName: string, title: string, detail: string, finalEmail: string, adminEmail: string) {
   const creator = post.created_by || adminEmail;
   const isFinal = email === finalEmail;
@@ -120,24 +128,37 @@ async function cardBlocks(post: any, members: any[], email: string, clientName: 
     { type: "section", text: { type: "mrkdwn", text: "*" + escapeSlack(title) + "*\n" + names } },
     head,
   ];
-  if (detail) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: escapeSlack(clip(detail, 2900)) }] });
+  // Only what the names line doesn't already say: the latest note, and edits made by the last reviewer.
+  const step = [...(post.history || [])].reverse().find((entry: any) => ["sent", "approved_manager", "changes", "back", "bump"].includes(entry.type));
+  const lines: string[] = [];
+  if (step && step.fields && step.fields.length) lines.push(escapeSlack(nameOf(members, step.by) + " edited the " + listText(step.fields)));
+  if (step && step.note) lines.push(escapeSlack(nameOf(members, step.by) + ": “" + clip(String(step.note), 1500) + "”"));
+  if (title === "BUMP" && post.post_date) lines.push(escapeSlack("Posting " + whenText(post.post_date, post.post_time || "")));
+  if (lines.length) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: lines.join("\n") }] });
   const offered = Array.isArray(post.copy_options) && post.copy_options.length > 1 ? post.copy_options : [];
   const picked = (() => {
     const entry = [...(post.history || [])].reverse().find((item: any) => item.type === "picked");
     return entry && entry.option >= 1 && entry.option <= offered.length ? entry.option : 0;
   })();
+  const postLink = SITE + "/#post-" + post.id + (offered.length ? "~options" : "");
+  const fp = fingerprint(post);
   if (offered.length) {
+    // One list: each option with its own Choose button. The chosen one says so, like declan's highlight.
     offered.forEach((text: string, index: number) => {
-      blocks.push({ type: "section", text: { type: "mrkdwn", text: "*Option " + (index + 1) + "*\n" + escapeSlack(clip(String(text || ""), 2900)) } });
+      const chosen = picked === index + 1;
+      blocks.push({
+        type: "section", block_id: "option-" + (index + 1),
+        text: { type: "mrkdwn", text: "*Option " + (index + 1) + (chosen ? "  ·  ✓ Chosen" : "") + "*\n" + captionPreview(text, postLink) },
+        accessory: { type: "button", action_id: "choose", value: JSON.stringify({ post: post.id, fp, option: index + 1 }),
+          text: { type: "plain_text", text: chosen ? "✓ Chosen" : "Choose" }, ...(chosen ? { style: "primary" } : {}) },
+      });
     });
-    const choices = offered.map((_: string, index: number) => ({ text: { type: "plain_text", text: "Option " + (index + 1) }, value: String(index + 1) }));
-    blocks.push({ type: "actions", block_id: "choose", elements: [{ type: "radio_buttons", action_id: "pick", options: choices, ...(picked ? { initial_option: choices[picked - 1] } : {}) }] });
   } else {
-    blocks.push({ type: "section", text: { type: "mrkdwn", text: "*Caption*\n" + escapeSlack(clip(String(post.copy_text || "No caption yet"), 2900)) } });
+    blocks.push({ type: "section", text: { type: "mrkdwn", text: "*Caption*\n" + (post.copy_text ? captionPreview(post.copy_text, postLink) : "No caption yet") } });
   }
   const extras = [post.tags ? "Tags: " + post.tags : "", post.link && post.link !== "n/a" ? "Link: " + post.link : ""].filter(Boolean);
   if (extras.length) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: escapeSlack(extras.join("   ·   ")) }] });
-  const value = JSON.stringify({ post: post.id, fp: fingerprint(post) });
+  const value = JSON.stringify({ post: post.id, fp, pick: picked });
   blocks.push({ type: "actions", block_id: "decide", elements: [
     { type: "button", style: "primary", action_id: "approve", value, text: { type: "plain_text", text: clip(onward ? "Approve & send to " + firstName(members, finalEmail) : "Approve", 75) } },
     { type: "button", action_id: "back", value, text: { type: "plain_text", text: clip("Send back to " + firstName(members, creator), 75) } },
