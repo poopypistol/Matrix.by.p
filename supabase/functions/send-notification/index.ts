@@ -252,6 +252,8 @@ function historyMessage(entry: any, post: any, email: string) {
     case "moved": return { title: "Date changed", detail: who + " moved it to " + whenText(entry.date, entry.time) + " (was " + whenText(entry.oldDate, entry.oldTime) + ")" };
     case "edited": return { title: entry.stage === "approved" ? "Edited after approval" : "Edited while with the client", detail: who + " changed the " + listText(entry.fields || []) };
     case "deleted": return { title: "Post deleted", detail: who + " deleted it" };
+    case "held": return { title: "Put on hold", detail: who + " paused it" + (entry.reason ? ": " + entry.reason : "") + ". No bumps until it's back on." };
+    case "resumed": return { title: "Back on", detail: who + " took it off hold" };
     case "auto": return { title: "Moved back to Drafting", detail: "Info went missing after " + who + "'s edit" };
     case "approved_internal": if (entry.auto === "nofinal") return { title: "Ready to send", detail: "There's no final approval step anymore, so it's ready to send to client." };
       return { title: "Approved internally", detail: (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved it") + ". Ready to send to client." };
@@ -345,7 +347,8 @@ Deno.serve(async (request) => {
     sent += await send(all, email, { title, body: name, url: path });
     if (!wantsSlack) return;
     // Waiting on their approval: the message is a card they can approve from.
-    if (stageOf(post) === "internal" && post.manager === email) {
+    const onHold = [...(post.history || [])].reverse().find((entry: any) => entry.type === "held" || entry.type === "resumed")?.type === "held";
+    if (stageOf(post) === "internal" && post.manager === email && !onHold) {
       try {
         const blocks = await cardBlocks(post, members || [], email, clientName[post.client_id] || "", title, detail, finalEmail, adminEmail);
         if (await sendCard(email, title, blocks, name)) { sent++; return; }
@@ -379,7 +382,9 @@ Deno.serve(async (request) => {
       // New posts get 3 hours before any bump, so nobody is bumped right after making a post.
       const created = (post.history || []).find((entry: any) => entry.type === "created");
       const settled = !created || now - created.at >= 3 * 3600000;
-      const deleted = (post.history || []).some((entry: any) => entry.type === "deleted");
+      // Deleted or on hold: no bumps.
+      const deleted = (post.history || []).some((entry: any) => entry.type === "deleted")
+        || [...(post.history || [])].reverse().find((entry: any) => entry.type === "held" || entry.type === "resumed")?.type === "held";
       if (!deleted && settled && post.post_date && stageOf(post) !== "approved" && mode !== "off" && (waiting.includes(email) || mode === "all")) {
         const [year, month, day] = post.post_date.split("-").map(Number);
         const passed = schedule.map((slot: any) => {

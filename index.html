@@ -674,6 +674,20 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 .link-btn { padding: 0; border: 0; background: none; color: var(--fg); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .drop-zone { border-radius: 6px; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color .12s, background .12s; }
 .drop-zone.is-over { outline-color: var(--accent); background: var(--hover); }
+.hold-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--hover, rgba(127,127,127,.1)); color: var(--fg); font-size: 14px; }
+.hold-banner .hold-text { min-width: 0; color: var(--muted); }
+.hold-banner .hold-text b { color: var(--fg); }
+.hold-resume { display: flex; align-items: center; gap: 8px; }
+.hold-bar .note-line { flex: 1 1 180px; min-width: 0; }
+.hold-list { margin-top: 28px; }
+.hold-fold { border-top: 1px solid var(--line, rgba(127,127,127,.2)); padding-top: 12px; }
+.hold-fold > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+.hold-fold > summary::-webkit-details-marker { display: none; }
+.hold-fold > summary::before { content: "›"; display: inline-block; transition: transform .15s; }
+.hold-fold[open] > summary::before { transform: rotate(90deg); }
+.hold-fold > summary span { font-weight: 500; opacity: .8; }
+.hold-fold[open] > summary { margin-bottom: 8px; }
+.hold-fold .notice, .hold-fold > :not(summary) { opacity: .75; }
 .discard-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-right: auto; font-weight: 600; }
 .dlg-foot.is-asking > :not(.discard-bar), .dlg-foot.is-asking > .discard-bar[hidden] { display: none; }
 .switch { position: relative; width: 44px; height: 26px; padding: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .15s; flex: none; }
@@ -1197,6 +1211,7 @@ button.names-step:hover { color: var(--fg); }
     <h1 id="pipe-title">Matrix</h1>
     <p class="side-note bump-intro">Every post that isn’t approved yet, by step. Shows the clients picked on the left.</p>
     <div class="board" id="pipeline-view"></div>
+    <div class="hold-list" id="hold-list" hidden></div>
   </section>
 
   <section class="settings-page notify-page" id="stats-view" aria-labelledby="stats-title" hidden>
@@ -1366,9 +1381,17 @@ button.names-step:hover { color: var(--fg); }
         <button class="close" id="people-post" type="button" aria-label="Who's on this post" title="Who's on this post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M15.8 14.2c2.4-.3 4.3 1.2 4.9 4.3"/></svg></button>
         <button class="close" id="share-post" type="button" aria-label="Copy link to this post" title="Copy link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7.5 7.5L12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button>
         <button class="close" id="duplicate-post" type="button" aria-label="Duplicate post" title="Duplicate post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button>
+        <button class="close" id="hold-post" type="button" aria-label="Put on hold" title="Put on hold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/></svg></button>
         <button class="close trash-btn" id="delete-top" type="button" aria-label="Delete post" title="Delete post"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"/></svg><span class="trash-confirm">Delete?</span></button>
         <button class="close" id="close-dialog" type="button" aria-label="Close">&times;</button>
       </div>
+    </div>
+    <div class="hold-banner" id="hold-banner" hidden>
+      <span class="hold-text" id="hold-text"></span>
+      <span class="hold-resume">
+        <input id="resume-date" type="date" aria-label="New date" hidden>
+        <button class="primary" id="resume-post" type="button">Resume</button>
+      </span>
     </div>
     <fieldset id="post-fields">
     <input class="title-input" id="f-title" type="text" placeholder="Post title" aria-label="Post title" autocomplete="off">
@@ -1459,6 +1482,12 @@ button.names-step:hover { color: var(--fg); }
     </div>
     </fieldset>
     <div class="dlg-foot">
+      <div class="discard-bar hold-bar" id="hold-bar" hidden>
+        <span>Put on hold?</span>
+        <input class="note-line" id="hold-reason" type="text" placeholder="Why? (optional)" aria-label="Why it's on hold (optional)" maxlength="120">
+        <button class="quiet" id="hold-cancel" type="button">Cancel</button>
+        <button class="primary" id="hold-confirm" type="button">Put on hold</button>
+      </div>
       <div class="discard-bar" id="discard-bar" hidden>
         <span>Discard your changes?</span>
         <button class="quiet" id="keep-editing" type="button">Keep editing</button>
@@ -2248,7 +2277,13 @@ function clearOldDeleted() {
       db.collection("posts").doc(post.id).delete().catch(() => clearing.delete(post.id));
     });
 }
-const NOT_STEPS = ["bump", "moved", "edited", "deleted", "picked", "reassigned"];
+const NOT_STEPS = ["bump", "moved", "edited", "deleted", "picked", "reassigned", "held", "resumed"];
+/* On hold: a pause, not a step. The post keeps its place in the approval chain and comes back to it on resume. */
+function holdEntry(post) {
+  const last = [...((post && post.history) || [])].reverse().find((entry) => entry.type === "held" || entry.type === "resumed");
+  return last && last.type === "held" ? last : null;
+}
+const isHeld = (post) => !!holdEntry(post);
 
 /* The one person who gives final approval after a manager approves (Dana). Empty when nobody is set. */
 function finalApprover() {
@@ -2341,7 +2376,7 @@ function togglePlatform(platform) {
 
 function postsOn(key) {
   return state.posts
-    .filter((post) => post.date === key && clientById(post.client) && isShown(post.client) && onPlatform(post))
+    .filter((post) => post.date === key && clientById(post.client) && isShown(post.client) && onPlatform(post) && !isHeld(post))
     .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 }
 
@@ -2594,7 +2629,7 @@ function inBumpGrace(post, time = new Date()) {
 
 function bumpPosts(time = new Date()) {
   return state.posts
-    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => clientById(post.client) && !isApproved(post) && !isHeld(post))
     .filter((post) => {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
@@ -2609,7 +2644,7 @@ function bumpPosts(time = new Date()) {
 /* The Bumps list: posts waiting on me (or on anyone, for "Whole calendar" clients) coming up and not approved yet, from the first bump time on. */
 function bumpListPosts(time = new Date()) {
   return state.posts
-    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => clientById(post.client) && !isApproved(post) && !isHeld(post))
     .filter((post) => {
       const mode = state.bumpModes[post.client] || "mine";
       if (mode === "off") return false;
@@ -2636,7 +2671,7 @@ function deckSlides() {
   if (!client) return [];
   const month = deckMonth();
   const posts = state.posts
-    .filter((post) => post.client === client.id && String(post.date || "").startsWith(month))
+    .filter((post) => post.client === client.id && String(post.date || "").startsWith(month) && !isHeld(post))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
   return posts.length ? [{ cover: true, client, month }, ...posts.map((post) => ({ post, client }))] : [];
 }
@@ -2876,7 +2911,7 @@ function renderFeed() {
     return;
   }
   const posts = state.posts
-    .filter((post) => post.client === client.id && post.kind !== "story" && (post.platforms || []).includes(ratio))
+    .filter((post) => post.client === client.id && post.kind !== "story" && (post.platforms || []).includes(ratio) && !isHeld(post))
     .sort((a, b) => (b.date + (b.time || "")).localeCompare(a.date + (a.time || "")));
   if (!posts.length) {
     grid.append(el("p", "empty", "No " + (ratio === "tt" ? "TikTok" : "Instagram") + " posts for " + client.name + " yet."));
@@ -3091,7 +3126,7 @@ function renderBumps() {
   const due = new Set(bumpPosts().map((post) => post.id));
   /* Notifications are things sent your way: your own unfinished drafts aren't, unless a manager sent one back. */
   const mine = state.posts
-    .filter((post) => clientById(post.client) && !isApproved(post) && isWaitingOnMe(post))
+    .filter((post) => clientById(post.client) && !isApproved(post) && !isHeld(post) && isWaitingOnMe(post))
     .filter((post) => stageOf(post) !== "draft" || (lastStep(post) || {}).type === "changes")
     .sort((a, b) => a.date.localeCompare(b.date));
   const updates = updatesForMe(new Set([...mine, ...unread].map((post) => post.id)));
@@ -3204,7 +3239,7 @@ function renderBumps() {
   board.replaceChildren();
   STAGES.filter((stage) => stage.id !== "approved").forEach((stage) => {
     const posts = state.posts
-      .filter((post) => clientById(post.client) && isShown(post.client) && stageOf(post) === stage.id)
+      .filter((post) => clientById(post.client) && isShown(post.client) && stageOf(post) === stage.id && !isHeld(post))
       .sort((a, b) => a.date.localeCompare(b.date));
     const column = el("div", "column");
     const heading = el("h2", "", stage.name);
@@ -3217,7 +3252,27 @@ function renderBumps() {
     });
     board.append(column);
   });
+  /* On hold: out of the way, folded up unless you open it. */
+  const held = state.posts.filter((post) => clientById(post.client) && isShown(post.client) && isHeld(post))
+    .sort((a, b) => (holdEntry(b).at || 0) - (holdEntry(a).at || 0));
+  const holdBox = $("hold-list");
+  holdBox.replaceChildren();
+  holdBox.hidden = !held.length;
+  if (held.length) {
+    const fold = el("details", "hold-fold");
+    fold.open = holdOpen;
+    fold.addEventListener("toggle", () => { holdOpen = fold.open; });
+    const summary = el("summary", "", "On hold");
+    summary.append(el("span", "", String(held.length)));
+    fold.append(summary);
+    held.forEach((post) => {
+      const hold = holdEntry(post);
+      fold.append(noticeItem(post, "Paused by " + objName(hold.by) + " " + stampText(hold.at) + (hold.reason ? " · " + hold.reason : "")));
+    });
+    holdBox.append(fold);
+  }
 }
+let holdOpen = false;
 
 function renderBumpSettings() {
   const list = $("bump-clients");
@@ -3591,7 +3646,7 @@ function renderSearch() {
     row.type = "button";
     const date = new Date(post.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const text = el("span", "bump-text", post.title);
-    text.append(el("small", "", client.name + " · " + date));
+    text.append(el("small", "", client.name + " · " + date + (isHeld(post) ? " · On hold" : "")));
     row.append(el("span", "bump-swatch" + (isApproved(post) ? "" : " unapproved")), text);
     row.addEventListener("mousedown", (event) => event.preventDefault());
     row.addEventListener("click", () => goToPost(post));
@@ -3823,7 +3878,7 @@ function renderStats() {
 
   /* Stuck: not approved, and nothing has moved it for 2+ days. */
   const stuck = state.posts
-    .filter((post) => clientById(post.client) && !isApproved(post))
+    .filter((post) => clientById(post.client) && !isApproved(post) && !isHeld(post))
     .map((post) => {
       const moves = (post.history || []).filter((entry) => !NOT_STEPS.includes(entry.type));
       const since = moves.length ? moves[moves.length - 1].at : 0;
@@ -3915,6 +3970,8 @@ function historyText(entry) {
       return (entry.onBehalf ? who + " marked it approved by " + displayName(entry.onBehalf) : who + " approved internally") + (entry.fields && entry.fields.length ? ", with edits to the " + listText(entry.fields) : "");
     case "approved_manager": return who + " approved" + (entry.fields && entry.fields.length ? " with edits to the " + listText(entry.fields) + "," : "") + " and sent to " + objName((entry.to || [])[0]) + " for final approval";
     case "changes": return who + (entry.fields && entry.fields.length ? " edited the " + listText(entry.fields) + " and sent it back" : " requested changes") + note;
+    case "held": return who + " put it on hold" + (entry.reason ? ": " + entry.reason : "");
+    case "resumed": return who + " took it off hold";
     case "picked": return entry.option ? who + " picked caption option " + entry.option : who + " removed the picked caption option";
     case "reassigned": if (entry.role === "final") return who + " handed the final approval " + (entry.from ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
       return who + " handed it " + (entry.from && entry.from !== entry.by ? "from " + displayName(entry.from) + " " : "") + "to " + displayName((entry.to || [])[0]);
@@ -4715,7 +4772,10 @@ function renderActions() {
     }));
   }
 
-  if (editing && stage !== "approved") {
+  if (editing && isHeld(editing)) {
+    /* Paused: no next step and no bumps until someone resumes it. */
+    box.replaceChildren();
+  } else if (editing && stage !== "approved") {
     const targets = waitingOn(editing).filter((email) => email !== myId);
     if (targets.length) {
       const wait = bumpWait(editing);
@@ -5006,6 +5066,8 @@ function openDialog() {
   $("add-comment").hidden = state.readOnly;
   $("share-post").hidden = !editing;
   $("people-post").hidden = state.readOnly || !editing;
+  renderHold();
+  askHold(false);
   $("paste-split").hidden = true;
   renderTracker();
   notesOpen = null;
@@ -7027,6 +7089,77 @@ $("delete-top").addEventListener("click", async () => {
   $("delete-post").classList.toggle("armed", armed);
 });
 $("delete-client").addEventListener("click", deleteClient);
+
+/* On hold */
+function renderHold() {
+  const live = editing && state.posts.find((post) => post.id === editing.id);
+  const hold = live && holdEntry(live);
+  $("hold-post").hidden = state.readOnly || !editing || !!hold || stageOf(editing) === "approved";
+  $("hold-banner").hidden = !hold;
+  $("resume-date").hidden = true;
+  $("resume-post").hidden = state.readOnly;
+  $("resume-post").textContent = "Resume";
+  if (hold) {
+    const text = $("hold-text");
+    text.replaceChildren(el("b", "", "On hold"), document.createTextNode(" · paused by " + (hold.by === myId ? "you" : displayName(hold.by)) + " " + stampText(hold.at) + (hold.reason ? " · " + hold.reason : "")));
+  }
+}
+function askHold(open) {
+  $("hold-bar").hidden = !open;
+  document.querySelector("#post-dialog .dlg-foot").classList.toggle("is-asking", open);
+  if (open) { $("hold-reason").value = ""; requestAnimationFrame(() => $("hold-reason").focus()); }
+}
+async function writeHold(entry, extra = {}) {
+  const latest = state.posts.find((post) => post.id === editing.id);
+  if (!latest || !db) return false;
+  const changes = { ...extra, history: [...(latest.history || []), entry] };
+  try {
+    await db.collection("posts").doc(latest.id).update(changes);
+  } catch (problem) {
+    showToast(saveProblem(problem));
+    return false;
+  }
+  Object.assign(latest, changes);
+  Object.assign(editing, changes);
+  render();
+  return true;
+}
+$("hold-post").addEventListener("click", () => askHold(true));
+$("hold-cancel").addEventListener("click", () => askHold(false));
+$("hold-reason").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); $("hold-confirm").click(); }
+  if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); askHold(false); }
+});
+$("hold-confirm").addEventListener("click", async () => {
+  const live = state.posts.find((post) => post.id === editing.id);
+  const to = live ? waitingOn(live).concat(creatorOf(live)).filter((email, index, all) => email && email !== myId && all.indexOf(email) === index) : [];
+  const ok = await writeHold({ type: "held", by: myId, at: Date.now(), reason: $("hold-reason").value.trim(), to });
+  askHold(false);
+  if (ok) { $("post-dialog").close(); showToast("Put on hold. Find it under On hold in the Matrix."); }
+});
+$("resume-post").addEventListener("click", async () => {
+  const pick = $("resume-date");
+  /* First tap asks for the date (the old slot has often passed); second tap resumes. */
+  if (pick.hidden) {
+    pick.value = editing.date || dateKey(new Date());
+    pick.hidden = false;
+    $("resume-post").textContent = "Resume on this date";
+    pick.focus();
+    return;
+  }
+  const live = state.posts.find((post) => post.id === editing.id);
+  const date = pick.value || editing.date;
+  const to = live ? waitingOn(live).concat(creatorOf(live)).filter((email, index, all) => email && email !== myId && all.indexOf(email) === index) : [];
+  const ok = await writeHold({ type: "resumed", by: myId, at: Date.now(), to }, date !== editing.date ? { date } : {});
+  if (ok) {
+    $("f-date").value = date;
+    if (draft) draft.date = date;
+    openSnapshot = postSnapshot();
+    renderHold();
+    renderActions();
+    showToast("Back on" + (date ? " for " + new Date(date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""));
+  }
+});
 $("upload-asset").addEventListener("click", () => $("asset-file").click());
 $("upload-cover").addEventListener("click", () => $("cover-file").click());
 $("cover-file").addEventListener("change", (event) => {

@@ -109,7 +109,12 @@ async function settleCard(channel: string, ts: string, post: any, members: any[]
   await slack("chat.update", { channel, ts, text, blocks: doneCard(post, members, text) });
 }
 /* Someone tapped a card that's out of date: say where the post is now. */
+function isHeld(post: any) {
+  const last = [...(post.history || [])].reverse().find((entry: any) => entry.type === "held" || entry.type === "resumed");
+  return Boolean(last && last.type === "held");
+}
 function staleText(post: any, members: any[], email: string) {
+  if (isHeld(post)) return "This post is on hold, so there's nothing to approve right now.";
   const stage = post.stage || "draft";
   if (stage === "internal") return "Already handled. It's with " + (post.manager === email ? "you" : nameOf(members, post.manager)) + " now.";
   return "Already handled. It's " + (STATUS[stage] || "moved on") + " now.";
@@ -252,7 +257,7 @@ Deno.serve(async (request) => {
       return new Response("");
     }
     if (!isMember(members, email)) { await whisper(payload.response_url, "declan doesn't know your Slack email. Ask Sonsoles to check it matches your declan login."); return new Response(""); }
-    if ((post.stage || "draft") !== "internal" || post.manager !== email) {
+    if ((post.stage || "draft") !== "internal" || post.manager !== email || isHeld(post)) {
       await reply(payload.response_url, { replace_original: true, text: staleText(post, members, email), blocks: doneCard(post, members, staleText(post, members, email)) });
       return new Response("");
     }
@@ -300,7 +305,7 @@ Deno.serve(async (request) => {
     const note = String(values.note?.v?.value || "").trim();
     const then = meta.mode === "edit" ? values.then?.v?.selected_option?.value || "approve" : "back";
     const { post, members } = await load(meta.post);
-    if (!post || (post.stage || "draft") !== "internal" || post.manager !== email || !isMember(members, email)) {
+    if (!post || (post.stage || "draft") !== "internal" || post.manager !== email || !isMember(members, email) || isHeld(post)) {
       if (post) await settleCard(meta.channel, meta.ts, post, members, staleText(post, members, email));
       return Response.json({ response_action: "clear" });
     }
